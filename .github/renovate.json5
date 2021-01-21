@@ -1,0 +1,8 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["github>remal/renovate-config:global"],
+
+  "git-submodules": {
+    enabled: false, // This is in beta for now, so let's use Dependabot to update Git submodules
+  },
+}
