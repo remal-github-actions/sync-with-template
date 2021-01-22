@@ -11,11 +11,14 @@ build/
 build-cache/
 .gradle/
 
+# NodeJS
+/node_modules
+
 # Intellij
 /.idea/*
 !/.idea/.editorconfig
-!/.idea/checkstyle-idea.xml
 !/.idea/misc.xml
+!/.idea/jsonSchemas.xml
 !/.idea/externalDependencies.xml
 !/.idea/saveactions_settings.xml
 !/.idea/inspectionProfiles/
