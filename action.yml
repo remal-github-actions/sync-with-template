@@ -1,0 +1,5 @@
+name: Synchronize with template repository
+description: Synchronize repository with template repository
+runs:
+  using: node12
+  main: 'dist/main.js'
