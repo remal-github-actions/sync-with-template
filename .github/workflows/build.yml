@@ -36,6 +36,7 @@ jobs:
       run: |
         npm run build
 
-    - uses: ./
+    - name: Integration test
+      uses: ./
       with:
         pushToken: ${{ secrets.PUSH_BACK_TOKEN }}
