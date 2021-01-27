@@ -3,6 +3,7 @@
   "name": "sync-with-template",
   "description": "Synchronize repository with template repository",
   "version": "1.0.0",
+  "engines": {"node": ">=12"},
   "files": [
     "src"
   ],
