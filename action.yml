@@ -1,5 +1,11 @@
 name: Synchronize with template repository
 description: Synchronize repository with template repository
+
+inputs:
+  pushToken:
+    required: true
+    description: GitHub access token with at least 'public_repo' and 'workflow' scopes (use 'repo' scope instead of 'public_repo' for private repositories)
+
 runs:
   using: node12
   main: 'dist/main.js'
