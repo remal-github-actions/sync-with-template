@@ -32,7 +32,14 @@ const core = __importStar(__nccwpck_require__(186));
 const utils_1 = __nccwpck_require__(30);
 const plugin_retry_1 = __nccwpck_require__(298);
 const plugin_throttling_1 = __nccwpck_require__(968);
-const OctokitWithPlugins = utils_1.GitHub.plugin(plugin_retry_1.retry).plugin(plugin_throttling_1.throttling);
+const OctokitWithPlugins = utils_1.GitHub
+    .plugin(plugin_retry_1.retry)
+    .plugin(plugin_throttling_1.throttling)
+    .defaults({
+    previews: [
+        'baptiste',
+    ]
+});
 function newOctokitInstance(token) {
     const baseOptions = utils_1.getOctokitOptions(token);
     const throttleOptions = {
@@ -56,7 +63,7 @@ function newOctokitInstance(token) {
     };
     const logOptions = {
         //log: console
-        log: __nccwpck_require__(385)({ level: "trace" })
+        log: __nccwpck_require__(385)({ level: 'trace' })
     };
     const allOptions = Object.assign(Object.assign(Object.assign(Object.assign({}, baseOptions), throttleOptions), retryOptions), logOptions);
     return new OctokitWithPlugins(allOptions);
@@ -102,15 +109,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(186));
 const octokit_1 = __nccwpck_require__(93);
+const github_1 = __nccwpck_require__(438);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const pushToken = core.getInput('pushToken');
+            const pushToken = core.getInput('pushToken', { required: true });
             const octokit = octokit_1.newOctokitInstance(pushToken);
-            core.warning(octokit.toString());
+            const repo = yield octokit.repos.get({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo
+            });
+            core.warning(JSON.stringify(repo));
         }
         catch (error) {
-            core.setFailed(error.message);
+            core.setFailed(error);
         }
     });
 }
@@ -566,6 +578,49 @@ class Context {
 }
 exports.Context = Context;
 //# sourceMappingURL=context.js.map
+
+/***/ }),
+
+/***/ 438:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getOctokit = exports.context = void 0;
+const Context = __importStar(__nccwpck_require__(53));
+const utils_1 = __nccwpck_require__(30);
+exports.context = new Context.Context();
+/**
+ * Returns a hydrated octokit ready to use for GitHub Actions
+ *
+ * @param     token    the repo PAT or GITHUB_TOKEN
+ * @param     options  other options to set
+ */
+function getOctokit(token, options) {
+    return new utils_1.GitHub(utils_1.getOctokitOptions(token, options));
+}
+exports.getOctokit = getOctokit;
+//# sourceMappingURL=github.js.map
 
 /***/ }),
 
@@ -1395,7 +1450,7 @@ function _objectWithoutProperties(source, excluded) {
   return target;
 }
 
-const VERSION = "3.2.4";
+const VERSION = "3.2.5";
 
 class Octokit {
   constructor(options = {}) {
@@ -1899,7 +1954,7 @@ function withDefaults(oldDefaults, newDefaults) {
   });
 }
 
-const VERSION = "6.0.10";
+const VERSION = "6.0.11";
 
 const userAgent = `octokit-endpoint.js/${VERSION} ${universalUserAgent.getUserAgent()}`; // DEFAULTS has all properties set that EndpointOptions has, except url.
 // So we use RequestParameters and add method as additional required property.
@@ -1936,7 +1991,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 var request = __nccwpck_require__(234);
 var universalUserAgent = __nccwpck_require__(429);
 
-const VERSION = "4.5.8";
+const VERSION = "4.5.9";
 
 class GraphqlError extends Error {
   constructor(request, response) {
@@ -2049,7 +2104,7 @@ exports.withCustomRequest = withCustomRequest;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-const VERSION = "2.8.0";
+const VERSION = "2.9.0";
 
 /**
  * Some “list” response that can be paginated have a different response structure
@@ -3221,7 +3276,7 @@ const Endpoints = {
   }
 };
 
-const VERSION = "4.8.0";
+const VERSION = "4.9.0";
 
 function endpointsToMethods(octokit, endpointsMap) {
   const newMethods = {};
@@ -3375,7 +3430,7 @@ async function wrapRequest(state, request, options) {
   return limiter.schedule(request, options);
 }
 
-const VERSION = "3.0.6";
+const VERSION = "3.0.7";
 function retry(octokit, octokitOptions = {}) {
   const state = Object.assign({
     enabled: true,
@@ -3470,7 +3525,7 @@ function _objectSpread2(target) {
   return target;
 }
 
-const VERSION = "3.4.0";
+const VERSION = "3.4.1";
 
 const noop = () => Promise.resolve(); // @ts-ignore
 
@@ -3786,7 +3841,7 @@ var isPlainObject = __nccwpck_require__(287);
 var nodeFetch = _interopDefault(__nccwpck_require__(467));
 var requestError = __nccwpck_require__(537);
 
-const VERSION = "5.4.12";
+const VERSION = "5.4.13";
 
 function getBufferResponse(response) {
   return response.arrayBuffer();
