@@ -16,7 +16,7 @@ pull_request_rules:
   - -locked
   - "#changes-requested-reviews-by=0"
   #- status-success=build
-  - status-success=CodeFactor
+  #- status-success=CodeFactor
   - status-success=WIP
   - -status-neutral=renovate/stability-days
   - -status-failure=renovate/stability-days
@@ -60,7 +60,7 @@ pull_request_rules:
   - -locked
   - "#changes-requested-reviews-by=0"
   #- status-success=build
-  - status-success=CodeFactor
+  #- status-success=CodeFactor
   - status-success=WIP
   - '#status-neutral=0'
   - '#status-failure=0'
