@@ -37,5 +37,5 @@ jobs:
         npm run build
 
     - uses: ./
-      #with:
-      #pushToken:
+      with:
+        pushToken: ${{ secrets.PUSH_BACK_TOKEN }}
