@@ -16,6 +16,11 @@ jobs:
     timeout-minutes: 60
 
     steps:
+    - name: Setup node 12
+      uses: actions/setup-node@v2
+      with:
+        node-version: '12'
+
     - name: Checkout repository
       uses: actions/checkout@v2
       with:
@@ -24,5 +29,5 @@ jobs:
         fetch-depth: 0
 
     - uses: ./
-        #with:
+      #with:
       #pushToken:
