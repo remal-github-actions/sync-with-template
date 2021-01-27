@@ -1,4 +1,4 @@
-name: integration test
+name: build
 
 on:
   push:
@@ -11,7 +11,7 @@ defaults:
 
 jobs:
   build:
-    name: integration test
+    name: build
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -27,6 +27,14 @@ jobs:
         submodules: recursive
         lfs: true
         fetch-depth: 0
+
+    - name: Install dependencies
+      run: |
+        yarn install
+
+    - name: Build
+      run: |
+        npm run build
 
     - uses: ./
       #with:
