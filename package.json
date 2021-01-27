@@ -18,13 +18,13 @@
     "@octokit/core": "3.2.4",
     "@octokit/plugin-retry": "3.0.6",
     "@octokit/plugin-throttling": "3.4.0",
-    "@octokit/webhooks": "7.21.0",
     "simple-git": "2.31.0"
   },
   "devDependencies": {
     "@types/node": "14.14.22",
     "@typescript-eslint/parser": "4.14.0",
     "@vercel/ncc": "0.27.0",
+    "console-log-level": "1.4.1",
     "del": "6.0.0",
     "eslint": "7.18.0",
     "eslint-config-prettier": "7.2.0",

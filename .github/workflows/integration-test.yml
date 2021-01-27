@@ -1,0 +1,28 @@
+name: integration test
+
+on:
+  push:
+    branches:
+    - main
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: integration test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+        lfs: true
+        fetch-depth: 0
+
+    - uses: ./
+        with:
+          milliseconds: 1000
