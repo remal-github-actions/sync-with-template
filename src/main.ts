@@ -35,7 +35,7 @@ async function run(): Promise<void> {
 
         const workspacePath = require('tmp').dirSync().name
         const git = simpleGit(workspacePath)
-        await core.group("Initializing the repository", async () => {
+        await core.group(`Initializing the repository in ${workspacePath}`, async () => {
             await git.init()
 
             core.debug("Disabling automatic garbage collection")
