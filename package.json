@@ -3,10 +3,9 @@
   "name": "sync-with-template",
   "description": "Synchronize repository with template repository",
   "version": "1.0.0",
-  "engines": {"node": ">=12"},
-  "files": [
-    "src"
-  ],
+  "engines": {
+    "node": ">=12"
+  },
   "main": "dist/main.js",
   "scripts": {
     "lint": "eslint --fix src/**/*.[jt]s",
@@ -17,6 +16,7 @@
   "dependencies": {
     "@actions/core": "1.2.6",
     "@actions/github": "4.0.0",
+    "@actions/io": "1.0.2",
     "@octokit/plugin-retry": "3.0.7",
     "@octokit/plugin-throttling": "3.4.1",
     "simple-git": "2.31.0"
