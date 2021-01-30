@@ -35,31 +35,31 @@ async function run(): Promise<void> {
 
         const workspacePath = require('tmp').dirSync().name
         const git = simpleGit(workspacePath)
-        await core.group(`Initializing the repository in ${workspacePath}`, async () => {
+        await core.group("Initializing the repository", async () => {
             await git.init()
 
-            core.debug("Disabling automatic garbage collection")
+            core.info("Disabling automatic garbage collection")
             await git.addConfig('gc.auto', '0')
 
-            core.debug("Disabling fetching submodules")
+            core.info("Disabling fetching submodules")
             await git.addConfig('fetch.recurseSubmodules', 'no')
 
-            core.debug("Setting up credentials")
+            core.info("Setting up credentials")
             const basicCredentials = Buffer.from(`x-access-token:${pushToken}`, 'utf8').toString('base64')
             for (const origin of [new URL(repo.svn_url).origin, new URL(templateRepo.svn_url).origin]) {
                 await git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`)
             }
 
-            core.debug("Adding origin remote")
+            core.info("Adding origin remote")
             await git.addRemote('origin', repo.svn_url)
             await git.ping('origin')
 
-            core.debug("Adding template remote")
+            core.info("Adding template remote")
             await git.addRemote('template', templateRepo.svn_url)
             await git.ping('template')
 
-            core.debug("Installing LFS")
-            await git.raw(['lfs', 'install', '--local'])
+            core.info("Installing LFS")
+            await git.installLfs()
         })
 
         await core.group("Fetching sync branch", async () => {
