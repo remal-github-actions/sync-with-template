@@ -2,7 +2,6 @@ import * as core from '@actions/core'
 import {newOctokitInstance} from './internal/octokit'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
-import {ensureEmptyDirectory, getWorkspacePath} from "./internal/io-helper"
 import simpleGit from 'simple-git'
 import './internal/simple-git-extensions'
 
@@ -34,7 +33,7 @@ async function run(): Promise<void> {
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
-        const workspacePath = ensureEmptyDirectory(getWorkspacePath())
+        const workspacePath = require('tmp').dirSync()
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
