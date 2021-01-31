@@ -18,5 +18,5 @@ Git.prototype.ping = function (remoteName: string): Response<string> {
 }
 
 Git.prototype.installLfs = function (): Response<string> {
-    return this.listRemote(['lfs', 'install', '--local'])
+    return this.raw(['lfs', 'install', '--local'])
 }
