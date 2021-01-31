@@ -19,7 +19,6 @@
     "es6": true
   },
   "rules": {
-    "co-console": "off",
     "eslint-comments/no-use": "off",
     "prettier/prettier": "off",
     "semi": "off",
