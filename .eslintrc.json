@@ -22,6 +22,7 @@
     "eslint-comments/no-use": "off",
     "prettier/prettier": "off",
     "semi": "off",
+    "camelcase": "off",
     "import/no-namespace": "off",
     "@typescript-eslint/semi": ["error", "never"],
     "github/no-then": "off"

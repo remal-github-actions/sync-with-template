@@ -16,7 +16,8 @@ const syncBranchName = getSyncBranchName()
 
 const octokit = newOctokitInstance(pushToken)
 
-const emailSuffix = '+sync-with-template@users.noreply.github.com'
+const pullRequestLabel = 'sync-with-template'
+const emailSuffix = `+sync-with-template@users.noreply.github.com`
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -207,15 +208,23 @@ async function run(): Promise<void> {
                 if (conventionalCommits) {
                     pullRequestTitle = `chore(template): ${pullRequestTitle}`
                 }
-                const pullRequest = await octokit.pulls.create({
+                const pullRequest = (
+                    await octokit.pulls.create({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        head: syncBranchName,
+                        base: repo.default_branch,
+                        title: pullRequestTitle,
+                        body: "Template repository changes",
+                    })
+                ).data
+                await octokit.issues.addLabels({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
-                    head: syncBranchName,
-                    base: repo.default_branch,
-                    title: pullRequestTitle,
-                    body: "Template repository changes",
+                    issue_number: pullRequest.number,
+                    labels: [pullRequestLabel]
                 })
-                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.data.html_url}`)
+                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
             })
 
         } else {
