@@ -11,7 +11,7 @@ const pushToken = core.getInput('githubToken', {required: true})
 core.setSecret(pushToken)
 
 const conventionalCommits = core.getInput('conventionalCommits', {required: true}).toLowerCase() === 'true'
-const syncBranchName = getSyncBranchName()
+const baseSyncBranchName = getBaseSyncBranchName()
 
 const octokit = newOctokitInstance(pushToken)
 
@@ -33,6 +33,8 @@ async function run(): Promise<void> {
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
+        const syncBranchName = `${baseSyncBranchName}/${templateRepo.full_name}`
+
         const workspacePath = require('tmp').dirSync().name
         require('debug').enable('simple-git')
         const git = simpleGit(workspacePath)
@@ -47,6 +49,7 @@ async function run(): Promise<void> {
 
             core.info("Setting up credentials")
             const basicCredentials = Buffer.from(`x-access-token:${pushToken}`, 'utf8').toString('base64')
+            core.setSecret(basicCredentials)
             for (const origin of [new URL(repo.svn_url).origin, new URL(templateRepo.svn_url).origin]) {
                 await git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`)
             }
@@ -64,7 +67,7 @@ async function run(): Promise<void> {
         })
 
         await core.group("Fetching sync branch", async () => {
-            git.fetch('origin', syncBranchName, {'--depth': 1})
+            await git.fetch('origin', syncBranchName, {'--depth': 1})
         })
 
     } catch (error) {
@@ -77,7 +80,7 @@ run()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-function getSyncBranchName(): string {
+function getBaseSyncBranchName(): string {
     const name = core.getInput('syncBranchName', {required: true})
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
         return name
