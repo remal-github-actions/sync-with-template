@@ -177,7 +177,7 @@ function run() {
             }
             core.info(`Using ${templateRepo.full_name} as a template repository`);
             const workspacePath = __nccwpck_require__(8517).dirSync().name;
-            //require('debug').enable('simple-git')
+            __nccwpck_require__(8231).enable('simple-git');
             const git = simple_git_1.default(workspacePath);
             yield core.group("Initializing the repository", () => __awaiter(this, void 0, void 0, function* () {
                 yield git.init();
@@ -199,10 +199,10 @@ function run() {
                 for (const origin of [new URL(repo.svn_url).origin, new URL(templateRepo.svn_url).origin]) {
                     yield git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`);
                 }
-                core.info("Adding origin remote");
+                core.info(`Adding 'origin' remote: ${repo.svn_url}`);
                 yield git.addRemote('origin', repo.svn_url);
                 yield git.ping('origin');
-                core.info("Adding template remote");
+                core.info(`Adding 'template' remote: ${templateRepo.svn_url}`);
                 yield git.addRemote('template', templateRepo.svn_url);
                 yield git.ping('template');
                 core.info("Installing LFS");
@@ -214,7 +214,7 @@ function run() {
                 }
                 catch (e) {
                     if (e instanceof simple_git_1.GitError) {
-                        core.debug(e.message);
+                        // do nothing
                     }
                     else {
                         throw e;
@@ -262,10 +262,13 @@ function run() {
                 const syncBranchLog = yield git.log(['--reverse']);
                 for (const logItem of syncBranchLog.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
+                        core.info(`Last synchronized commit is: ${logItem.hash}: ${logItem.message}`);
                         return new Date(logItem.date);
                     }
                 }
-                return new Date(syncBranchLog.latest.date);
+                const latestLogItem = syncBranchLog.latest;
+                core.info(`Last synchronized commit is: ${latestLogItem.hash}: ${latestLogItem.message}`);
+                return new Date(latestLogItem.date);
             }));
             const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000;
             const cherryPickedCommitsCount = yield core.group("Cherry-picking template commits", () => __awaiter(this, void 0, void 0, function* () {
@@ -274,7 +277,7 @@ function run() {
                 const templateBranchLog = yield git.log([
                     '--reverse',
                     `--since=${lastSynchronizedCommitTimestamp + 1}`,
-                    `remotes/origin/${templateBranchName}`
+                    `remotes/template/${templateBranchName}`
                 ]);
                 let counter = 0;
                 for (const logItem of templateBranchLog.all) {

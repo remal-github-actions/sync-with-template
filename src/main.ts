@@ -60,11 +60,11 @@ async function run(): Promise<void> {
                 await git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`)
             }
 
-            core.info(`Adding origin remote: ${repo.svn_url}`)
+            core.info(`Adding 'origin' remote: ${repo.svn_url}`)
             await git.addRemote('origin', repo.svn_url)
             await git.ping('origin')
 
-            core.info(`Adding template remote: ${templateRepo.svn_url}`)
+            core.info(`Adding 'template' remote: ${templateRepo.svn_url}`)
             await git.addRemote('template', templateRepo.svn_url)
             await git.ping('template')
 
@@ -145,7 +145,7 @@ async function run(): Promise<void> {
             const templateBranchLog = await git.log([
                 '--reverse',
                 `--since=${lastSynchronizedCommitTimestamp + 1}`,
-                `remotes/origin/${templateBranchName}`
+                `remotes/template/${templateBranchName}`
             ])
             let counter = 0
             for (const logItem of templateBranchLog.all) {
