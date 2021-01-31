@@ -130,7 +130,7 @@ async function run(): Promise<void> {
         const lastSynchronizedCommitDate: Date = await core.group(
             "Retrieving last synchronized commit date",
             async () => {
-                const syncBranchLog = await git.log(['--reverse'])
+                const syncBranchLog = await git.log()
                 for (const logItem of syncBranchLog.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
                         core.info(`Last synchronized commit is: ${logItem.hash}: ${logItem.message}`)
