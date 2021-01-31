@@ -76,7 +76,7 @@ async function run(): Promise<void> {
         await core.group("Fetching sync branch", async () => {
             let isFetchExecutedSuccessfully = true
             try {
-                await git.fetch('origin', syncBranchName, {'--depth': 1})
+                await git.fetch('origin', syncBranchName)
             } catch (e) {
                 if (e instanceof GitError) {
                     isFetchExecutedSuccessfully = false
@@ -115,7 +115,7 @@ async function run(): Promise<void> {
                 const pullRequest = sortedPullRequests[0]
                 core.info(`Restoring '${syncBranchName}' branch from pull request ${pullRequest.html_url}`)
                 const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`
-                await git.fetch('origin', pullRequestBranchName, {'--depth': 1})
+                await git.fetch('origin', pullRequestBranchName)
                 await git.checkoutBranch(syncBranchName, pullRequest.head.sha)
                 return
             }
