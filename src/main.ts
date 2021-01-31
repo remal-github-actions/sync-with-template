@@ -106,7 +106,9 @@ async function run(): Promise<void> {
             const defaultBranchName = repo.default_branch
             core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${defaultBranchName}'`)
             await git.fetch('origin', defaultBranchName)
-            git.log()
+            const defaultBranchLog = await git.log(['--reverse', `remotes/origin/${defaultBranchName}`])
+            core.info(defaultBranchLog.latest?.hash || '<no hash>')
+            core.info(defaultBranchLog.latest?.date || '<no date>')
         })
 
     } catch (error) {
