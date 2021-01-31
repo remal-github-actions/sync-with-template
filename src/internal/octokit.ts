@@ -2,6 +2,7 @@ import * as core from '@actions/core'
 import {getOctokitOptions, GitHub} from '@actions/github/lib/utils'
 import {retry} from '@octokit/plugin-retry'
 import {throttling} from '@octokit/plugin-throttling'
+import {requestLog} from '@octokit/plugin-request-log'
 import {Octokit as OctokitCore} from '@octokit/core'
 import {RestEndpointMethods} from '@octokit/plugin-rest-endpoint-methods/dist-types/generated/method-types'
 import {PaginateInterface} from '@octokit/plugin-paginate-rest'
@@ -9,9 +10,8 @@ import {PaginateInterface} from '@octokit/plugin-paginate-rest'
 const OctokitWithPlugins = GitHub
     .plugin(retry)
     .plugin(throttling)
+    .plugin(requestLog)
     .defaults({
-        //log: console,
-        log: require('console-log-level')({level: 'trace'}),
         previews: [
             'baptiste',
         ]
@@ -45,10 +45,16 @@ export function newOctokitInstance(token: string): Octokit {
         }
     }
 
+    const logOptions = {
+        //log: console
+        log: require('console-log-level')({level: 'trace'})
+    }
+
     const allOptions = {
         ...baseOptions,
         ...throttleOptions,
         ...retryOptions,
+        ...logOptions
     }
 
     return new OctokitWithPlugins(allOptions)
