@@ -74,14 +74,19 @@ async function run(): Promise<void> {
         })
 
         await core.group("Fetching sync branch", async () => {
+            let isFetchExecutedSuccessfully = true
             try {
                 await git.fetch('origin', syncBranchName, {'--depth': 1})
             } catch (e) {
                 if (e instanceof GitError) {
-                    // do nothing
+                    isFetchExecutedSuccessfully = false
                 } else {
                     throw e
                 }
+            }
+            if (isFetchExecutedSuccessfully) {
+                await git.checkout(syncBranchName)
+                return
             }
 
             const allPullRequests = await octokit.paginate(octokit.pulls.list, {
