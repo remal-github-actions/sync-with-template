@@ -15,6 +15,8 @@ const syncBranchName = getSyncBranchName()
 
 const octokit = newOctokitInstance(pushToken)
 
+const emailSuffix = '+sync-with-template@users.noreply.github.com'
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 async function run(): Promise<void> {
@@ -40,10 +42,10 @@ async function run(): Promise<void> {
             await git.init()
             if (repo.owner != null) {
                 await git.addConfig('user.name', repo.owner.login)
-                await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}@users.noreply.github.com`)
+                await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${emailSuffix}`)
             } else {
                 await git.addConfig('user.name', context.repo.owner)
-                await git.addConfig('user.email', `${context.repo.owner}@users.noreply.github.com`)
+                await git.addConfig('user.email', `${context.repo.owner}${emailSuffix}`)
             }
             await git.addConfig('diff.algorithm', 'patience')
             //await git.addConfig('core.pager', 'cat')
@@ -80,19 +82,20 @@ async function run(): Promise<void> {
                 }
             }
 
-            const pullRequests = await octokit.paginate(octokit.pulls.list, {
+            const allPullRequests = await octokit.paginate(octokit.pulls.list, {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 state: 'closed',
                 head: `${context.repo.owner}:${syncBranchName}`
             })
-            const mergedPullRequests = pullRequests
+            const filteredPullRequests = allPullRequests
                 .filter(pr => pr.head.ref === syncBranchName)
                 .filter(pr => pr.head.sha !== pr.base.sha)
+            const mergedPullRequests = filteredPullRequests
                 .filter(pr => pr.merged_at != null)
             const sortedPullRequests = [...mergedPullRequests].sort((pr1, pr2) => {
-                const mergedAt1 = pr1.merged_at!!
-                const mergedAt2 = pr2.merged_at!!
+                const mergedAt1 = new Date(pr1.merged_at!).getTime()
+                const mergedAt2 = new Date(pr2.merged_at!).getTime()
                 if (mergedAt1 < mergedAt2) {
                     return 1
                 } else if (mergedAt1 > mergedAt2) {
@@ -114,9 +117,22 @@ async function run(): Promise<void> {
             core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${defaultBranchName}'`)
             await git.fetch('origin', defaultBranchName)
             const defaultBranchLog = await git.log(['--reverse', `remotes/origin/${defaultBranchName}`])
-            core.info(defaultBranchLog.latest?.hash || '<no hash>')
-            core.info(defaultBranchLog.latest?.date || '<no date>')
+            await git.checkoutBranch(syncBranchName, defaultBranchLog.latest!.hash)
         })
+
+        const lastSynchronizedCommitDate: Date = await core.group(
+            "Retrieve last synchronized commit date",
+            async () => {
+                const syncBranchLog = await git.log(['--reverse'])
+                for (const logItem of syncBranchLog.all) {
+                    if (logItem.author_email.endsWith(emailSuffix)) {
+                        return new Date(logItem.date)
+                    }
+                }
+                return new Date(syncBranchLog.latest!.date)
+            }
+        )
+        core.info(`lastSynchronizedCommitDate=${lastSynchronizedCommitDate}`)
 
     } catch (error) {
         core.setFailed(error)
