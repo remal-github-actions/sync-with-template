@@ -60,11 +60,11 @@ async function run(): Promise<void> {
                 await git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`)
             }
 
-            core.info("Adding origin remote")
+            core.info(`Adding origin remote: ${repo.svn_url}`)
             await git.addRemote('origin', repo.svn_url)
             await git.ping('origin')
 
-            core.info("Adding template remote")
+            core.info(`Adding template remote: ${templateRepo.svn_url}`)
             await git.addRemote('template', templateRepo.svn_url)
             await git.ping('template')
 
@@ -77,7 +77,7 @@ async function run(): Promise<void> {
                 await git.fetch('origin', syncBranchName, {'--depth': 1})
             } catch (e) {
                 if (e instanceof GitError) {
-                    core.debug(e.message)
+                    // do nothing
                 } else {
                     throw e
                 }
