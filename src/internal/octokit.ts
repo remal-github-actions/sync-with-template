@@ -47,7 +47,7 @@ export function newOctokitInstance(token: string): Octokit {
 
     const logOptions = {
         //log: console
-        log: require('console-log-level')({level: 'trace'})
+        //log: require('console-log-level')({level: 'trace'})
     }
 
     const allOptions = {

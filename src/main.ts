@@ -4,6 +4,7 @@ import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
 import simpleGit, {GitError} from 'simple-git'
 import './internal/simple-git-extensions'
+import {isConventionalCommit} from './internal/conventional-commits'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -121,7 +122,7 @@ async function run(): Promise<void> {
         })
 
         const lastSynchronizedCommitDate: Date = await core.group(
-            "Retrieve last synchronized commit date",
+            "Retrieving last synchronized commit date",
             async () => {
                 const syncBranchLog = await git.log(['--reverse'])
                 for (const logItem of syncBranchLog.all) {
@@ -132,7 +133,84 @@ async function run(): Promise<void> {
                 return new Date(syncBranchLog.latest!.date)
             }
         )
-        core.info(`lastSynchronizedCommitDate=${lastSynchronizedCommitDate}`)
+        const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000
+
+        const cherryPickedCommitsCount: number = await core.group("Cherry-picking template commits", async () => {
+            const templateBranchName = templateRepo.default_branch
+            await git.fetch('template', templateBranchName)
+            const templateBranchLog = await git.log([
+                '--reverse',
+                `--since=${lastSynchronizedCommitTimestamp + 1}`,
+                `remotes/origin/${templateBranchName}`
+            ])
+            let counter = 0
+            for (const logItem of templateBranchLog.all) {
+                ++counter
+                await git.raw([
+                    'cherry-pick',
+                    '--no-commit',
+                    '-r',
+                    '--allow-empty',
+                    '--allow-empty-message',
+                    '--strategy=recursive',
+                    '-Xours',
+                    logItem.hash
+                ])
+
+                let message = logItem.message.trim()
+                if (message.length === 0) {
+                    message = `Cherry-pick ${logItem.hash}`
+                }
+                if (conventionalCommits) {
+                    if (isConventionalCommit(message)) {
+                        // do nothing
+                    } else {
+                        message = `chore(template): ${message}`
+                    }
+                }
+                await git
+                    .env('GIT_AUTHOR_DATE', logItem.date)
+                    .env('GIT_COMMITTER_DATE', logItem.date)
+                    .commit(message, {
+                        '--allow-empty': null,
+                    })
+            }
+            return counter
+        })
+
+        if (cherryPickedCommitsCount > 0) {
+            await core.group(`Pushing ${cherryPickedCommitsCount} commits`, async () => {
+                await git.raw(['push', 'origin', syncBranchName])
+            })
+
+            await core.group("Creating pull request", async () => {
+                const allPullRequests = await octokit.paginate(octokit.pulls.list, {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    state: 'open',
+                    head: `${context.repo.owner}:${syncBranchName}`
+                })
+                const filteredPullRequests = allPullRequests
+                    .filter(pr => pr.head.ref === syncBranchName)
+                if (filteredPullRequests.length > 0) {
+                    core.info(`Skip creating, as there is an opened pull request for '${syncBranchName}' branch: ${filteredPullRequests[0].html_url}`)
+                    return
+                }
+
+                let pullRequestTitle = "Merge template repository changes"
+                if (conventionalCommits) {
+                    pullRequestTitle = `chore(template): ${pullRequestTitle}`
+                }
+                await octokit.pulls.create({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    head: syncBranchName,
+                    base: repo.default_branch,
+                    title: pullRequestTitle,
+                    body: "Template repository changes",
+                })
+            })
+        }
 
     } catch (error) {
         core.setFailed(error)
