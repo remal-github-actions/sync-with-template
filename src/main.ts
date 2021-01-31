@@ -219,7 +219,7 @@ async function run(): Promise<void> {
             })
 
         } else {
-            core.info("NO commits were cherry-picked from template repository")
+            core.info("No commits were cherry-picked from template repository")
         }
 
     } catch (error) {
