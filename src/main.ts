@@ -38,8 +38,13 @@ async function run(): Promise<void> {
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
-            await git.addConfig('user.name', repo.owner!.login)
-            await git.addConfig('user.email', `${repo.owner!.id}+${repo.owner!.login}@users.noreply.github.com`)
+            if (repo.owner != null) {
+                await git.addConfig('user.name', repo.owner.login)
+                await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}@users.noreply.github.com`)
+            } else {
+                await git.addConfig('user.name', context.repo.owner)
+                await git.addConfig('user.email', `${context.repo.owner}@users.noreply.github.com`)
+            }
             await git.addConfig('diff.algorithm', 'patience')
             //await git.addConfig('core.pager', 'cat')
             await git.addConfig('gc.auto', '0')
@@ -79,10 +84,12 @@ async function run(): Promise<void> {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 state: 'closed',
-                head: syncBranchName
+                head: `${context.repo.owner}:${syncBranchName}`
             })
-            const mergedPullRequests = pullRequests.filter(pr => pr.merged_at != null)
+            const mergedPullRequests = pullRequests
+                .filter(pr => pr.head.ref === syncBranchName)
                 .filter(pr => pr.head.sha !== pr.base.sha)
+                .filter(pr => pr.merged_at != null)
             const sortedPullRequests = [...mergedPullRequests].sort((pr1, pr2) => {
                 const mergedAt1 = pr1.merged_at!!
                 const mergedAt2 = pr2.merged_at!!
