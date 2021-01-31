@@ -215,7 +215,9 @@ async function run(): Promise<void> {
                         head: syncBranchName,
                         base: repo.default_branch,
                         title: pullRequestTitle,
-                        body: "Template repository changes",
+                        body: "Template repository changes."
+                            + "\n\nIf you close this PR, it will be recreated automatically.",
+                        maintainer_can_modify: true,
                     })
                 ).data
                 await octokit.issues.addLabels({

@@ -159,7 +159,8 @@ core.setSecret(pushToken);
 const conventionalCommits = core.getInput('conventionalCommits', { required: true }).toLowerCase() === 'true';
 const syncBranchName = getSyncBranchName();
 const octokit = octokit_1.newOctokitInstance(pushToken);
-const emailSuffix = '+sync-with-template@users.noreply.github.com';
+const pullRequestLabel = 'sync-with-template';
+const emailSuffix = `+sync-with-template@users.noreply.github.com`;
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -335,15 +336,23 @@ function run() {
                     if (conventionalCommits) {
                         pullRequestTitle = `chore(template): ${pullRequestTitle}`;
                     }
-                    const pullRequest = yield octokit.pulls.create({
+                    const pullRequest = (yield octokit.pulls.create({
                         owner: github_1.context.repo.owner,
                         repo: github_1.context.repo.repo,
                         head: syncBranchName,
                         base: repo.default_branch,
                         title: pullRequestTitle,
-                        body: "Template repository changes",
+                        body: "Template repository changes."
+                            + "\n\nIf you close this PR, it will be recreated automatically.",
+                        maintainer_can_modify: true,
+                    })).data;
+                    yield octokit.issues.addLabels({
+                        owner: github_1.context.repo.owner,
+                        repo: github_1.context.repo.repo,
+                        issue_number: pullRequest.number,
+                        labels: [pullRequestLabel]
                     });
-                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.data.html_url}`);
+                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
                 }));
             }
             else {
