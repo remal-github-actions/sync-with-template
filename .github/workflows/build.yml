@@ -32,7 +32,7 @@ jobs:
       with:
         submodules: recursive
         lfs: true
-        fetch-depth: 0
+        fetch-depth: 1
 
     - name: Install dependencies
       run: |
