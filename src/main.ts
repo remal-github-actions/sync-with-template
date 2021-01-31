@@ -211,7 +211,7 @@ async function run(): Promise<void> {
                     title: pullRequestTitle,
                     body: "Template repository changes",
                 })
-                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.data.html_url}`)
             })
         }
 
