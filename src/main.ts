@@ -217,6 +217,9 @@ async function run(): Promise<void> {
                 })
                 core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.data.html_url}`)
             })
+
+        } else {
+            core.info("NO commits were cherry-picked from template repository")
         }
 
     } catch (error) {
