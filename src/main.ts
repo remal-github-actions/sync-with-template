@@ -37,7 +37,7 @@ async function run(): Promise<void> {
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
         const workspacePath = require('tmp').dirSync().name
-        require('debug').enable('simple-git')
+        //require('debug').enable('simple-git')
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
