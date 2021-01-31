@@ -2,7 +2,7 @@ import * as core from '@actions/core'
 import {newOctokitInstance} from './internal/octokit'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
-import simpleGit from 'simple-git'
+import simpleGit, {GitError} from 'simple-git'
 import './internal/simple-git-extensions'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -11,7 +11,7 @@ const pushToken = core.getInput('githubToken', {required: true})
 core.setSecret(pushToken)
 
 const conventionalCommits = core.getInput('conventionalCommits', {required: true}).toLowerCase() === 'true'
-const baseSyncBranchName = getBaseSyncBranchName()
+const syncBranchName = getSyncBranchName()
 
 const octokit = newOctokitInstance(pushToken)
 
@@ -33,18 +33,16 @@ async function run(): Promise<void> {
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
-        const syncBranchName = `${baseSyncBranchName}/${templateRepo.full_name}`
-
         const workspacePath = require('tmp').dirSync().name
         require('debug').enable('simple-git')
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
-
-            core.info("Disabling automatic garbage collection")
+            await git.addConfig('user.name', repo.owner!.login)
+            await git.addConfig('user.email', `${repo.owner!.id}+${repo.owner!.login}@users.noreply.github.com`)
+            await git.addConfig('diff.algorithm', 'patience')
+            //await git.addConfig('core.pager', 'cat')
             await git.addConfig('gc.auto', '0')
-
-            core.info("Disabling fetching submodules")
             await git.addConfig('fetch.recurseSubmodules', 'no')
 
             core.info("Setting up credentials")
@@ -67,7 +65,48 @@ async function run(): Promise<void> {
         })
 
         await core.group("Fetching sync branch", async () => {
-            await git.fetch('origin', syncBranchName, {'--depth': 1})
+            try {
+                await git.fetch('origin', syncBranchName, {'--depth': 1})
+            } catch (e) {
+                if (e instanceof GitError) {
+                    core.debug(e.message)
+                } else {
+                    throw e
+                }
+            }
+
+            const pullRequests = await octokit.paginate(octokit.pulls.list, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'closed',
+                head: syncBranchName
+            })
+            const mergedPullRequests = pullRequests.filter(pr => pr.merged_at != null)
+                .filter(pr => pr.head.sha !== pr.base.sha)
+            const sortedPullRequests = [...mergedPullRequests].sort((pr1, pr2) => {
+                const mergedAt1 = pr1.merged_at!!
+                const mergedAt2 = pr2.merged_at!!
+                if (mergedAt1 < mergedAt2) {
+                    return 1
+                } else if (mergedAt1 > mergedAt2) {
+                    return -1
+                } else {
+                    return pr2.number - pr1.number
+                }
+            })
+            if (sortedPullRequests.length > 0) {
+                const pullRequest = sortedPullRequests[0]
+                core.info(`Restoring '${syncBranchName}' branch from pull request ${pullRequest.html_url}`)
+                const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`
+                await git.fetch('origin', pullRequestBranchName, {'--depth': 1})
+                await git.checkoutBranch(syncBranchName, pullRequest.head.sha)
+                return
+            }
+
+            const defaultBranchName = repo.default_branch
+            core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${defaultBranchName}'`)
+            await git.fetch('origin', defaultBranchName)
+            git.log()
         })
 
     } catch (error) {
@@ -80,7 +119,7 @@ run()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-function getBaseSyncBranchName(): string {
+function getSyncBranchName(): string {
     const name = core.getInput('syncBranchName', {required: true})
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
         return name
