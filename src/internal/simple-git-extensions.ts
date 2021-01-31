@@ -14,7 +14,7 @@ declare module 'simple-git' {
 const Git = require('simple-git/src/git')
 
 Git.prototype.ping = function (remoteName: string): Response<string> {
-    return this.listRemote(['--heads', remoteName])
+    return this.listRemote(['--exit-code', '--heads', remoteName])
 }
 
 Git.prototype.installLfs = function (): Response<string> {
