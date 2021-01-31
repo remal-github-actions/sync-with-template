@@ -15,6 +15,8 @@ const syncBranchName = getSyncBranchName()
 
 const octokit = newOctokitInstance(pushToken)
 
+console.info("test")
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 async function run(): Promise<void> {
