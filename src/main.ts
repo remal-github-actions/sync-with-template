@@ -37,7 +37,7 @@ async function run(): Promise<void> {
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
         const workspacePath = require('tmp').dirSync().name
-        require('debug').enable('simple-git')
+        //require('debug').enable('simple-git')
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
@@ -145,6 +145,8 @@ async function run(): Promise<void> {
             ])
             let counter = 0
             for (const logItem of templateBranchLog.all) {
+                core.info(`Cherry-picking ${logItem.hash}: ${logItem.message}`)
+
                 ++counter
                 await git.raw([
                     'cherry-pick',
@@ -201,7 +203,7 @@ async function run(): Promise<void> {
                 if (conventionalCommits) {
                     pullRequestTitle = `chore(template): ${pullRequestTitle}`
                 }
-                await octokit.pulls.create({
+                const pullRequest = await octokit.pulls.create({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     head: syncBranchName,
@@ -209,6 +211,7 @@ async function run(): Promise<void> {
                     title: pullRequestTitle,
                     body: "Template repository changes",
                 })
+                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
             })
         }
 
