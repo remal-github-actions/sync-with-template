@@ -10,6 +10,8 @@ const OctokitWithPlugins = GitHub
     .plugin(retry)
     .plugin(throttling)
     .defaults({
+        //log: console,
+        log: require('console-log-level')({level: 'trace'}),
         previews: [
             'baptiste',
         ]
@@ -43,16 +45,10 @@ export function newOctokitInstance(token: string): Octokit {
         }
     }
 
-    const logOptions = {
-        //log: console
-        log: require('console-log-level')({level: 'trace'})
-    }
-
     const allOptions = {
         ...baseOptions,
         ...throttleOptions,
         ...retryOptions,
-        ...logOptions
     }
 
     return new OctokitWithPlugins(allOptions)
