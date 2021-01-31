@@ -2,6 +2,26 @@ module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 6421:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.isConventionalCommit = void 0;
+const conventional_commits_detector_1 = __importDefault(__nccwpck_require__(3973));
+function isConventionalCommit(commitMessage) {
+    const type = conventional_commits_detector_1.default([commitMessage]);
+    return type.length > 0 && type !== 'unknown';
+}
+exports.isConventionalCommit = isConventionalCommit;
+//# sourceMappingURL=conventional-commits.js.map
+
+/***/ }),
+
 /***/ 8093:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -32,9 +52,11 @@ const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(3030);
 const plugin_retry_1 = __nccwpck_require__(6298);
 const plugin_throttling_1 = __nccwpck_require__(9968);
+const plugin_request_log_1 = __nccwpck_require__(8883);
 const OctokitWithPlugins = utils_1.GitHub
     .plugin(plugin_retry_1.retry)
     .plugin(plugin_throttling_1.throttling)
+    .plugin(plugin_request_log_1.requestLog)
     .defaults({
     previews: [
         'baptiste',
@@ -80,8 +102,12 @@ exports.newOctokitInstance = newOctokitInstance;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 /* eslint-enable no-shadow, no-unused-vars */
-__nccwpck_require__(4966).prototype.ping = function (remoteName) {
-    return this.listRemote(['--heads', remoteName]);
+const Git = __nccwpck_require__(4966);
+Git.prototype.ping = function (remoteName) {
+    return this.listRemote(['--exit-code', '--heads', remoteName]);
+};
+Git.prototype.installLfs = function () {
+    return this.raw(['lfs', 'install', '--local']);
 };
 //# sourceMappingURL=simple-git-extensions.js.map
 
@@ -120,21 +146,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const octokit_1 = __nccwpck_require__(8093);
 const github_1 = __nccwpck_require__(5438);
-const simple_git_1 = __importDefault(__nccwpck_require__(1477));
+const simple_git_1 = __importStar(__nccwpck_require__(1477));
 __nccwpck_require__(4794);
+const conventional_commits_1 = __nccwpck_require__(6421);
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 const pushToken = core.getInput('githubToken', { required: true });
 core.setSecret(pushToken);
 const conventionalCommits = core.getInput('conventionalCommits', { required: true }).toLowerCase() === 'true';
 const syncBranchName = getSyncBranchName();
 const octokit = octokit_1.newOctokitInstance(pushToken);
+const emailSuffix = '+sync-with-template@users.noreply.github.com';
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -151,31 +176,173 @@ function run() {
                 return;
             }
             core.info(`Using ${templateRepo.full_name} as a template repository`);
-            const workspacePath = __nccwpck_require__(8517).dirSync();
+            const workspacePath = __nccwpck_require__(8517).dirSync().name;
+            //require('debug').enable('simple-git')
             const git = simple_git_1.default(workspacePath);
             yield core.group("Initializing the repository", () => __awaiter(this, void 0, void 0, function* () {
                 yield git.init();
-                core.debug("Disabling automatic garbage collection");
+                if (repo.owner != null) {
+                    yield git.addConfig('user.name', repo.owner.login);
+                    yield git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${emailSuffix}`);
+                }
+                else {
+                    yield git.addConfig('user.name', github_1.context.repo.owner);
+                    yield git.addConfig('user.email', `${github_1.context.repo.owner}${emailSuffix}`);
+                }
+                yield git.addConfig('diff.algorithm', 'patience');
+                //await git.addConfig('core.pager', 'cat')
                 yield git.addConfig('gc.auto', '0');
-                core.debug("Disabling fetching submodules");
                 yield git.addConfig('fetch.recurseSubmodules', 'no');
-                core.debug("Setting up credentials");
+                core.info("Setting up credentials");
                 const basicCredentials = Buffer.from(`x-access-token:${pushToken}`, 'utf8').toString('base64');
+                core.setSecret(basicCredentials);
                 for (const origin of [new URL(repo.svn_url).origin, new URL(templateRepo.svn_url).origin]) {
                     yield git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`);
                 }
-                core.debug("Adding origin remote");
+                core.info("Adding origin remote");
                 yield git.addRemote('origin', repo.svn_url);
                 yield git.ping('origin');
-                core.debug("Adding template remote");
+                core.info("Adding template remote");
                 yield git.addRemote('template', templateRepo.svn_url);
                 yield git.ping('template');
-                core.debug("Installing LFS");
-                yield git.raw(['lfs', 'install', '--local']);
+                core.info("Installing LFS");
+                yield git.installLfs();
             }));
             yield core.group("Fetching sync branch", () => __awaiter(this, void 0, void 0, function* () {
-                git.fetch('origin', syncBranchName);
+                try {
+                    yield git.fetch('origin', syncBranchName, { '--depth': 1 });
+                }
+                catch (e) {
+                    if (e instanceof simple_git_1.GitError) {
+                        core.debug(e.message);
+                    }
+                    else {
+                        throw e;
+                    }
+                }
+                const allPullRequests = yield octokit.paginate(octokit.pulls.list, {
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    state: 'closed',
+                    head: `${github_1.context.repo.owner}:${syncBranchName}`
+                });
+                const filteredPullRequests = allPullRequests
+                    .filter(pr => pr.head.ref === syncBranchName)
+                    .filter(pr => pr.head.sha !== pr.base.sha);
+                const mergedPullRequests = filteredPullRequests
+                    .filter(pr => pr.merged_at != null);
+                const sortedPullRequests = [...mergedPullRequests].sort((pr1, pr2) => {
+                    const mergedAt1 = new Date(pr1.merged_at).getTime();
+                    const mergedAt2 = new Date(pr2.merged_at).getTime();
+                    if (mergedAt1 < mergedAt2) {
+                        return 1;
+                    }
+                    else if (mergedAt1 > mergedAt2) {
+                        return -1;
+                    }
+                    else {
+                        return pr2.number - pr1.number;
+                    }
+                });
+                if (sortedPullRequests.length > 0) {
+                    const pullRequest = sortedPullRequests[0];
+                    core.info(`Restoring '${syncBranchName}' branch from pull request ${pullRequest.html_url}`);
+                    const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`;
+                    yield git.fetch('origin', pullRequestBranchName, { '--depth': 1 });
+                    yield git.checkoutBranch(syncBranchName, pullRequest.head.sha);
+                    return;
+                }
+                const defaultBranchName = repo.default_branch;
+                core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${defaultBranchName}'`);
+                yield git.fetch('origin', defaultBranchName);
+                const defaultBranchLog = yield git.log(['--reverse', `remotes/origin/${defaultBranchName}`]);
+                yield git.checkoutBranch(syncBranchName, defaultBranchLog.latest.hash);
             }));
+            const lastSynchronizedCommitDate = yield core.group("Retrieving last synchronized commit date", () => __awaiter(this, void 0, void 0, function* () {
+                const syncBranchLog = yield git.log(['--reverse']);
+                for (const logItem of syncBranchLog.all) {
+                    if (logItem.author_email.endsWith(emailSuffix)) {
+                        return new Date(logItem.date);
+                    }
+                }
+                return new Date(syncBranchLog.latest.date);
+            }));
+            const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000;
+            const cherryPickedCommitsCount = yield core.group("Cherry-picking template commits", () => __awaiter(this, void 0, void 0, function* () {
+                const templateBranchName = templateRepo.default_branch;
+                yield git.fetch('template', templateBranchName);
+                const templateBranchLog = yield git.log([
+                    '--reverse',
+                    `--since=${lastSynchronizedCommitTimestamp + 1}`,
+                    `remotes/origin/${templateBranchName}`
+                ]);
+                let counter = 0;
+                for (const logItem of templateBranchLog.all) {
+                    core.info(`Cherry-picking ${logItem.hash}: ${logItem.message}`);
+                    ++counter;
+                    yield git.raw([
+                        'cherry-pick',
+                        '--no-commit',
+                        '-r',
+                        '--allow-empty',
+                        '--allow-empty-message',
+                        '--strategy=recursive',
+                        '-Xours',
+                        logItem.hash
+                    ]);
+                    let message = logItem.message.trim();
+                    if (message.length === 0) {
+                        message = `Cherry-pick ${logItem.hash}`;
+                    }
+                    if (conventionalCommits) {
+                        if (conventional_commits_1.isConventionalCommit(message)) {
+                            // do nothing
+                        }
+                        else {
+                            message = `chore(template): ${message}`;
+                        }
+                    }
+                    yield git
+                        .env('GIT_AUTHOR_DATE', logItem.date)
+                        .env('GIT_COMMITTER_DATE', logItem.date)
+                        .commit(message, {
+                        '--allow-empty': null,
+                    });
+                }
+                return counter;
+            }));
+            if (cherryPickedCommitsCount > 0) {
+                yield core.group(`Pushing ${cherryPickedCommitsCount} commits`, () => __awaiter(this, void 0, void 0, function* () {
+                    yield git.raw(['push', 'origin', syncBranchName]);
+                }));
+                yield core.group("Creating pull request", () => __awaiter(this, void 0, void 0, function* () {
+                    const allPullRequests = yield octokit.paginate(octokit.pulls.list, {
+                        owner: github_1.context.repo.owner,
+                        repo: github_1.context.repo.repo,
+                        state: 'open',
+                        head: `${github_1.context.repo.owner}:${syncBranchName}`
+                    });
+                    const filteredPullRequests = allPullRequests
+                        .filter(pr => pr.head.ref === syncBranchName);
+                    if (filteredPullRequests.length > 0) {
+                        core.info(`Skip creating, as there is an opened pull request for '${syncBranchName}' branch: ${filteredPullRequests[0].html_url}`);
+                        return;
+                    }
+                    let pullRequestTitle = "Merge template repository changes";
+                    if (conventionalCommits) {
+                        pullRequestTitle = `chore(template): ${pullRequestTitle}`;
+                    }
+                    const pullRequest = yield octokit.pulls.create({
+                        owner: github_1.context.repo.owner,
+                        repo: github_1.context.repo.repo,
+                        head: syncBranchName,
+                        base: repo.default_branch,
+                        title: pullRequestTitle,
+                        body: "Template repository changes",
+                    });
+                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.data.html_url}`);
+                }));
+            }
         }
         catch (error) {
             core.setFailed(error);
@@ -2475,6 +2642,44 @@ exports.paginateRest = paginateRest;
 
 /***/ }),
 
+/***/ 8883:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+
+const VERSION = "1.0.3";
+
+/**
+ * @param octokit Octokit instance
+ * @param options Options passed to Octokit constructor
+ */
+
+function requestLog(octokit) {
+  octokit.hook.wrap("request", (request, options) => {
+    octokit.log.debug("request", options);
+    const start = Date.now();
+    const requestOptions = octokit.request.endpoint.parse(options);
+    const path = requestOptions.url.replace(options.baseUrl, "");
+    return request(options).then(response => {
+      octokit.log.info(`${requestOptions.method} ${path} - ${response.status} in ${Date.now() - start}ms`);
+      return response;
+    }).catch(error => {
+      octokit.log.info(`${requestOptions.method} ${path} - ${error.status} in ${Date.now() - start}ms`);
+      throw error;
+    });
+  });
+}
+requestLog.VERSION = VERSION;
+
+exports.requestLog = requestLog;
+//# sourceMappingURL=index.js.map
+
+
+/***/ }),
+
 /***/ 3044:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -4216,6 +4421,22 @@ const request = withDefaults(endpoint.endpoint, {
 
 exports.request = request;
 //# sourceMappingURL=index.js.map
+
+
+/***/ }),
+
+/***/ 1546:
+/***/ ((module) => {
+
+"use strict";
+
+module.exports = function (val) {
+	if (val === null || val === undefined) {
+		return [];
+	}
+
+	return Array.isArray(val) ? val : [val];
+};
 
 
 /***/ }),
@@ -6221,6 +6442,138 @@ var isArray = Array.isArray || function (xs) {
 
 /***/ }),
 
+/***/ 9221:
+/***/ ((module) => {
+
+"use strict";
+
+
+const regex = {
+  angular: /^(\w*)(?:\((.*)\))?: (.*)$/,
+  atom: /^(:.*?:) (.*)$/,
+  ember: /^\[(.*) (.*)] (.*)$/,
+  eslint: /^(\w*): (.*?)(?:\((.*)\))?$/,
+  jquery: /^(\w*): ([^(]*)$/,
+  jshint: /^\[\[(.*)]] (.*)$/,
+};
+
+module.exports = {
+  angular: commit => {
+    const parts = commit.match(regex.angular);
+
+    if (!parts) {
+      return false;
+    }
+
+    if (isLowerCase(parts[0][0])) {
+      return true;
+    }
+  },
+  atom: commit => {
+    const match = commit.match(regex.atom);
+
+    if (match) {
+      return true;
+    }
+
+    return commit.match(/^Prepare (.*?) release$/);
+  },
+  ember: commit => {
+    return commit.match(regex.ember);
+  },
+  eslint: commit => {
+    const parts = commit.match(regex.eslint);
+
+    if (!parts) {
+      return false;
+    }
+
+    if (isUpperCase(parts[0][0])) {
+      return true;
+    }
+  },
+  jquery: commit => {
+    const parts = commit.match(regex.jquery);
+
+    if (!parts) {
+      return false;
+    }
+
+    if (isUpperCase(parts[0][0])) {
+      return true;
+    }
+  },
+  jshint: commit => {
+    return commit.match(regex.jshint);
+  },
+};
+
+function isUpperCase(str) {
+  return str === str.toUpperCase();
+}
+
+function isLowerCase(str) {
+  return str === str.toLowerCase();
+}
+
+
+/***/ }),
+
+/***/ 3973:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+const arrify = __nccwpck_require__(1546);
+const detectors = __nccwpck_require__(9221);
+
+module.exports = commits => {
+  const commitArray = arrify(commits);
+  const tally = {};
+
+  commitArray.forEach(commit => {
+    const header = commit.split(`\n`)[0];
+
+    for (const convention in detectors) {
+      if (!Object.prototype.hasOwnProperty.call(detectors, convention)) {
+        continue;
+      }
+
+      if (detectors[convention](header)) {
+        let count = tally[convention];
+        count = count ? ++count : 1;
+        tally[convention] = count;
+      }
+    }
+  });
+
+  let max = 0;
+  let ret = `unknown`;
+
+  for (const prop in tally) {
+    if (!Object.prototype.hasOwnProperty.call(tally, prop)) {
+      continue;
+    }
+
+    const val = tally[prop];
+    if (val > max) {
+      max = val;
+      ret = prop;
+    } else if (val === max) {
+      // Cheat
+      if (prop === `ember` || prop === `jquery`) {
+        ret = `jquery`;
+      }
+    }
+  }
+
+  return ret;
+};
+
+
+/***/ }),
+
 /***/ 8222:
 /***/ ((module, exports, __nccwpck_require__) => {
 
@@ -7481,7 +7834,7 @@ function ownProp (obj, field) {
 }
 
 var path = __nccwpck_require__(5622)
-var minimatch = __nccwpck_require__(3973)
+var minimatch = __nccwpck_require__(8085)
 var isAbsolute = __nccwpck_require__(8714)
 var Minimatch = minimatch.Minimatch
 
@@ -7757,7 +8110,7 @@ module.exports = glob
 
 var fs = __nccwpck_require__(5747)
 var rp = __nccwpck_require__(6863)
-var minimatch = __nccwpck_require__(3973)
+var minimatch = __nccwpck_require__(8085)
 var Minimatch = minimatch.Minimatch
 var inherits = __nccwpck_require__(4124)
 var EE = __nccwpck_require__(8614).EventEmitter
@@ -8515,7 +8868,7 @@ globSync.GlobSync = GlobSync
 
 var fs = __nccwpck_require__(5747)
 var rp = __nccwpck_require__(6863)
-var minimatch = __nccwpck_require__(3973)
+var minimatch = __nccwpck_require__(8085)
 var Minimatch = minimatch.Minimatch
 var Glob = __nccwpck_require__(1957).Glob
 var util = __nccwpck_require__(1669)
@@ -9173,7 +9526,7 @@ exports.isPlainObject = isPlainObject;
 
 /***/ }),
 
-/***/ 3973:
+/***/ 8085:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 module.exports = minimatch

@@ -37,7 +37,7 @@ async function run(): Promise<void> {
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
         const workspacePath = require('tmp').dirSync().name
-        //require('debug').enable('simple-git')
+        require('debug').enable('simple-git')
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
@@ -127,10 +127,14 @@ async function run(): Promise<void> {
                 const syncBranchLog = await git.log(['--reverse'])
                 for (const logItem of syncBranchLog.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
+                        core.info(`Last synchronized commit is: ${logItem.hash}: ${logItem.message}`)
                         return new Date(logItem.date)
                     }
                 }
-                return new Date(syncBranchLog.latest!.date)
+
+                const latestLogItem = syncBranchLog.latest!
+                core.info(`Last synchronized commit is: ${latestLogItem.hash}: ${latestLogItem.message}`)
+                return new Date(latestLogItem.date)
             }
         )
         const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000
