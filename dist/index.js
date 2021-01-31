@@ -177,7 +177,7 @@ function run() {
             }
             core.info(`Using ${templateRepo.full_name} as a template repository`);
             const workspacePath = __nccwpck_require__(8517).dirSync().name;
-            __nccwpck_require__(8231).enable('simple-git');
+            //require('debug').enable('simple-git')
             const git = simple_git_1.default(workspacePath);
             yield core.group("Initializing the repository", () => __awaiter(this, void 0, void 0, function* () {
                 yield git.init();
@@ -345,6 +345,9 @@ function run() {
                     });
                     core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.data.html_url}`);
                 }));
+            }
+            else {
+                core.info("No commits were cherry-picked from template repository");
             }
         }
         catch (error) {
