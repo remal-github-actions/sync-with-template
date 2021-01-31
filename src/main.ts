@@ -63,7 +63,7 @@ async function run(): Promise<void> {
         })
 
         await core.group("Fetching sync branch", async () => {
-            git.fetch('origin', syncBranchName)
+            git.fetch('origin', syncBranchName, {'--depth': 1})
         })
 
     } catch (error) {
