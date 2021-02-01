@@ -23,6 +23,8 @@ build-cache/
 !/.idea/saveactions_settings.xml
 !/.idea/inspectionProfiles/
 !/.idea/inspectionProfiles/*
+!/.idea/jsLinters/
+!/.idea/jsLinters/*
 !/.idea/runConfigurations/
 !/.idea/runConfigurations/*
 !/.idea/scopes/
