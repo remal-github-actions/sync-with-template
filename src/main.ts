@@ -38,7 +38,7 @@ async function run(): Promise<void> {
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
         const workspacePath = require('tmp').dirSync().name
-        //require('debug').enable('simple-git')
+        require('debug').enable('simple-git')
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
@@ -144,7 +144,7 @@ async function run(): Promise<void> {
         )
         const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000
 
-        const commitMessages: Set<string> = await core.group("Cherry-picking template commits", async () => {
+        const commitsCount: number = await core.group("Cherry-picking template commits", async () => {
             const templateBranchName = templateRepo.default_branch
             await git.fetch('template', templateBranchName)
             const templateBranchLog = await git.log([
@@ -152,8 +152,9 @@ async function run(): Promise<void> {
                 `--since=${lastSynchronizedCommitTimestamp + 1}`,
                 `remotes/template/${templateBranchName}`
             ])
-            const messages = new Set<string>()
+            let counter = 0
             for (const logItem of templateBranchLog.all) {
+                ++counter
                 core.info(`Cherry-picking ${logItem.hash}: ${logItem.message}`)
 
                 await git.raw([
@@ -188,13 +189,28 @@ async function run(): Promise<void> {
                         '--allow-empty': null,
                     })
             }
-            return messages
+            return counter
         })
 
-        if (commitMessages.size > 0) {
-            await core.group(`Pushing ${commitMessages.size} commits`, async () => {
+        if (commitsCount > 0) {
+            await core.group(`Pushing ${commitsCount} commits`, async () => {
                 await git.raw(['push', 'origin', syncBranchName])
             })
+
+            const commitMessages = new Set<string>()
+            const mergeBase = await git.raw([
+                'merge-base',
+                `remotes/origin/${repo.default_branch}`,
+                syncBranchName
+            ]).then(text => text.trim())
+            if (mergeBase !== '') {
+                const log = await git.log({from: mergeBase})
+                for (const logItem of log.all) {
+                    if (logItem.author_email.endsWith(emailSuffix)) {
+                        commitMessages.add(logItem.message)
+                    }
+                }
+            }
 
             await core.group("Creating pull request", async () => {
                 let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
@@ -216,28 +232,7 @@ async function run(): Promise<void> {
                             continue
                         }
 
-                        const commitsIterator = octokit.paginate.iterator(octokit.pulls.listCommits, {
-                            owner: context.repo.owner,
-                            repo: context.repo.repo,
-                            pull_number: filteredPullRequest.number,
-                        })
-                        let syncCommitsCount = 0
-                        allCommits: for await (const commitsResponse of commitsIterator) {
-                            for (const commit of commitsResponse.data) {
-                                const committer = commit.commit.committer || commit.commit.author
-                                const email = committer!.email || ''
-                                core.info(`email=${email}`)
-                                if (email.endsWith(emailSuffix)) {
-                                    ++syncCommitsCount
-                                    if (syncCommitsCount >= 2) {
-                                        break allCommits
-                                    }
-                                }
-                            }
-                        }
-                        core.info(`syncCommitsCount=${syncCommitsCount}`)
-
-                        if (syncCommitsCount >= 2) {
+                        if (commitMessages.size >= 2) {
                             const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
                                 owner: context.repo.owner,
                                 repo: context.repo.repo,
