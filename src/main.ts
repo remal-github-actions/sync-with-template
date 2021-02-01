@@ -89,6 +89,7 @@ async function run(): Promise<void> {
                 return
             }
 
+            const defaultBranchName = repo.default_branch
             const allPullRequests = await octokit.paginate(octokit.pulls.list, {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -113,14 +114,12 @@ async function run(): Promise<void> {
             })
             if (sortedPullRequests.length > 0) {
                 const pullRequest = sortedPullRequests[0]
-                core.info(`Restoring '${syncBranchName}' branch from pull request ${pullRequest.html_url}`)
-                const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`
-                await git.fetch('origin', pullRequestBranchName)
-                await git.checkoutBranch(syncBranchName, pullRequest.head.sha)
+                core.info(`Creating '${syncBranchName}' branch from merge commit: ${pullRequest.merge_commit_sha}`)
+                await git.fetch('origin', defaultBranchName)
+                await git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha!)
                 return
             }
 
-            const defaultBranchName = repo.default_branch
             core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${defaultBranchName}'`)
             await git.fetch('origin', defaultBranchName)
             const defaultBranchLog = await git.log(['--reverse', `remotes/origin/${defaultBranchName}`])
