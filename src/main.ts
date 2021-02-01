@@ -197,26 +197,31 @@ async function run(): Promise<void> {
                 await git.raw(['push', 'origin', syncBranchName])
             })
 
-            const commitMessages = new Set<string>()
-            const mergeBase = await git.raw([
-                'merge-base',
-                `remotes/origin/${repo.default_branch}`,
-                syncBranchName
-            ]).then(text => text.trim())
-            if (mergeBase !== '') {
-                const log = await git.log({from: mergeBase})
-                for (const logItem of log.all) {
-                    if (logItem.author_email.endsWith(emailSuffix)) {
-                        commitMessages.add(logItem.message)
+            await core.group("Creating pull request", async () => {
+                const commitMessages = new Set<string>()
+                const mergeBase = await git.raw([
+                    'merge-base',
+                    `remotes/origin/${repo.default_branch}`,
+                    syncBranchName
+                ]).then(text => text.trim())
+                if (mergeBase !== '') {
+                    const log = await git.log({from: mergeBase})
+                    for (const logItem of log.all) {
+                        if (logItem.author_email.endsWith(emailSuffix)) {
+                            commitMessages.add(logItem.message)
+                        }
                     }
                 }
-            }
+                core.info(`commitMessages=${commitMessages}`)
 
-            await core.group("Creating pull request", async () => {
                 let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
                 if (conventionalCommits) {
                     pullRequestTitle = `chore(template): ${pullRequestTitle}`
                 }
+                if (commitMessages.size === 1) {
+                    pullRequestTitle = commitMessages.values().next().value
+                }
+                core.info(`pullRequestTitle=${pullRequestTitle}`)
 
                 const allPullRequests = await octokit.paginate(octokit.pulls.list, {
                     owner: context.repo.owner,
@@ -265,9 +270,6 @@ async function run(): Promise<void> {
                     return
                 }
 
-                if (commitMessages.size === 1) {
-                    pullRequestTitle = commitMessages.values().next().value
-                }
                 const pullRequest = (
                     await octokit.pulls.create({
                         owner: context.repo.owner,
