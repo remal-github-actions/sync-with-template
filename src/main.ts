@@ -169,7 +169,9 @@ async function run(): Promise<void> {
                     logItem.hash
                 ])
 
-                let message = logItem.message.trim()
+                let message = logItem.message
+                    .replace(/ \(#\d+\)$/, '')
+                    .trim()
                 if (message.length === 0) {
                     message = `Cherry-pick ${logItem.hash}`
                 }
@@ -209,7 +211,7 @@ async function run(): Promise<void> {
                     return
                 }
 
-                let pullRequestTitle = "Merge template repository changes"
+                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
                 if (conventionalCommits) {
                     pullRequestTitle = `chore(template): ${pullRequestTitle}`
                 }
