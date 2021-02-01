@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/eslintrc",
+  "plugins": [
+    "@typescript-eslint"
+  ],
+  "extends": [
+    "eslint:recommended",
+    "plugin:github/recommended",
+    "prettier"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 9,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "env": {
+    "node": true,
+    "es6": true
+  },
+  "rules": {
+    "eslint-comments/no-use": "off",
+    "prettier/prettier": "off",
+    "semi": "off",
+    "camelcase": "off",
+    "import/no-namespace": "off",
+    "@typescript-eslint/semi": ["error", "never"],
+    "github/no-then": "off"
+  }
+}
