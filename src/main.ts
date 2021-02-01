@@ -195,7 +195,7 @@ async function run(): Promise<void> {
             await core.group(`Pushing ${commitMessages.size} commits`, async () => {
                 await git.raw(['push', 'origin', syncBranchName])
             })
-
+        } else {
             await core.group("Creating pull request", async () => {
                 let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
                 if (conventionalCommits) {
@@ -226,6 +226,7 @@ async function run(): Promise<void> {
                             for (const commit of commitsResponse.data) {
                                 const committer = commit.commit.committer || commit.commit.author
                                 const email = committer!.email || ''
+                                core.info(`email=${email}`)
                                 if (email.endsWith(emailSuffix)) {
                                     ++syncCommitsCount
                                     if (syncCommitsCount >= 2) {
@@ -234,30 +235,35 @@ async function run(): Promise<void> {
                                 }
                             }
                         }
+                        core.info(`syncCommitsCount=${syncCommitsCount}`)
 
-                        const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
-                            owner: context.repo.owner,
-                            repo: context.repo.repo,
-                            issue_number: filteredPullRequest.number,
-                        })
-                        let wasRenamed = false
-                        allEvents: for await (const eventsResponse of eventsIterator) {
-                            for (const event of eventsResponse.data) {
-                                if (event.event === 'renamed') {
-                                    wasRenamed = true
-                                    break allEvents
-                                }
-                            }
-                        }
-
-                        if (!wasRenamed && syncCommitsCount >= 2) {
-                            core.info(`Renaming pull request #${filteredPullRequest.number} from '${filteredPullRequest.title}' to '${pullRequestTitle}'`)
-                            await octokit.pulls.update({
+                        if (syncCommitsCount >= 2) {
+                            const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
                                 owner: context.repo.owner,
                                 repo: context.repo.repo,
-                                pull_number: filteredPullRequest.number,
-                                title: pullRequestTitle,
+                                issue_number: filteredPullRequest.number,
                             })
+                            let wasRenamed = false
+                            allEvents: for await (const eventsResponse of eventsIterator) {
+                                for (const event of eventsResponse.data) {
+                                    core.info(`event.event=${event.event}`)
+                                    if (event.event === 'renamed') {
+                                        wasRenamed = true
+                                        break allEvents
+                                    }
+                                }
+                            }
+                            core.info(`wasRenamed=${wasRenamed}`)
+
+                            if (!wasRenamed) {
+                                core.info(`Renaming pull request #${filteredPullRequest.number} from '${filteredPullRequest.title}' to '${pullRequestTitle}'`)
+                                await octokit.pulls.update({
+                                    owner: context.repo.owner,
+                                    repo: context.repo.repo,
+                                    pull_number: filteredPullRequest.number,
+                                    title: pullRequestTitle,
+                                })
+                            }
                         }
                     }
                     core.info(`Skip creating, as there is an opened pull request for '${syncBranchName}' branch: ${filteredPullRequests[0].html_url}`)
@@ -285,10 +291,12 @@ async function run(): Promise<void> {
                     issue_number: pullRequest.number,
                     labels: [pullRequestLabel]
                 })
-                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+                core.info(`Pull request for '${syncBranchName}' branch has already been created: ${pullRequest.html_url}`)
             })
 
-        } else {
+        }
+    else
+        {
             core.info("No commits were cherry-picked from template repository")
         }
 
