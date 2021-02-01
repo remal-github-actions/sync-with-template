@@ -195,7 +195,7 @@ async function run(): Promise<void> {
             await core.group(`Pushing ${commitMessages.size} commits`, async () => {
                 await git.raw(['push', 'origin', syncBranchName])
             })
-        } else {
+        } else if (commitMessages.size === 0) {
             await core.group("Creating pull request", async () => {
                 let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
                 if (conventionalCommits) {
@@ -294,9 +294,7 @@ async function run(): Promise<void> {
                 core.info(`Pull request for '${syncBranchName}' branch has already been created: ${pullRequest.html_url}`)
             })
 
-        }
-    else
-        {
+        } else {
             core.info("No commits were cherry-picked from template repository")
         }
 
