@@ -67,7 +67,7 @@ async function run(): Promise<void> {
 
             core.info(`Adding 'template' remote: ${templateRepo.svn_url}`)
             await git.addRemote('template', templateRepo.svn_url)
-            await git.fetch('templateRepo', templateRepo.default_branch)
+            await git.fetch('template', templateRepo.default_branch)
 
             core.info("Installing LFS")
             await git.raw(['lfs', 'install', '--local'])
