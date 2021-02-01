@@ -90,6 +90,8 @@ async function run(): Promise<void> {
             }
 
             const defaultBranchName = repo.default_branch
+            await git.fetch('origin', defaultBranchName)
+
             const allPullRequests = await octokit.paginate(octokit.pulls.list, {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -114,14 +116,12 @@ async function run(): Promise<void> {
             })
             if (sortedPullRequests.length > 0) {
                 const pullRequest = sortedPullRequests[0]
-                core.info(`Creating '${syncBranchName}' branch from merge commit: ${pullRequest.merge_commit_sha}`)
-                await git.fetch('origin', defaultBranchName)
+                core.info(`Creating '${syncBranchName}' branch from merge commit of #${pullRequest.number}: ${pullRequest.merge_commit_sha}`)
                 await git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha!)
                 return
             }
 
             core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${defaultBranchName}'`)
-            await git.fetch('origin', defaultBranchName)
             const defaultBranchLog = await git.log(['--reverse', `remotes/origin/${defaultBranchName}`])
             await git.checkoutBranch(syncBranchName, defaultBranchLog.latest!.hash)
         })
@@ -144,7 +144,7 @@ async function run(): Promise<void> {
         )
         const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000
 
-        const cherryPickedCommitsCount: number = await core.group("Cherry-picking template commits", async () => {
+        const commitMessages: Set<string> = await core.group("Cherry-picking template commits", async () => {
             const templateBranchName = templateRepo.default_branch
             await git.fetch('template', templateBranchName)
             const templateBranchLog = await git.log([
@@ -152,11 +152,10 @@ async function run(): Promise<void> {
                 `--since=${lastSynchronizedCommitTimestamp + 1}`,
                 `remotes/template/${templateBranchName}`
             ])
-            let counter = 0
+            const messages = new Set<string>()
             for (const logItem of templateBranchLog.all) {
                 core.info(`Cherry-picking ${logItem.hash}: ${logItem.message}`)
 
-                ++counter
                 await git.raw([
                     'cherry-pick',
                     '--no-commit',
@@ -181,6 +180,7 @@ async function run(): Promise<void> {
                         message = `chore(template): ${message}`
                     }
                 }
+                messages.add(message)
                 await git
                     .env('GIT_AUTHOR_DATE', logItem.date)
                     .env('GIT_COMMITTER_DATE', logItem.date)
@@ -188,15 +188,20 @@ async function run(): Promise<void> {
                         '--allow-empty': null,
                     })
             }
-            return counter
+            return messages
         })
 
-        if (cherryPickedCommitsCount > 0) {
-            await core.group(`Pushing ${cherryPickedCommitsCount} commits`, async () => {
+        if (commitMessages.size > 0) {
+            await core.group(`Pushing ${commitMessages.size} commits`, async () => {
                 await git.raw(['push', 'origin', syncBranchName])
             })
 
             await core.group("Creating pull request", async () => {
+                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
+                if (conventionalCommits) {
+                    pullRequestTitle = `chore(template): ${pullRequestTitle}`
+                }
+
                 const allPullRequests = await octokit.paginate(octokit.pulls.list, {
                     owner: context.repo.owner,
                     repo: context.repo.repo,
@@ -206,13 +211,61 @@ async function run(): Promise<void> {
                 const filteredPullRequests = allPullRequests
                     .filter(pr => pr.head.ref === syncBranchName)
                 if (filteredPullRequests.length > 0) {
+                    for (const filteredPullRequest of filteredPullRequests) {
+                        if (filteredPullRequest.title === pullRequestTitle) {
+                            continue
+                        }
+
+                        const commitsIterator = octokit.paginate.iterator(octokit.pulls.listCommits, {
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            pull_number: filteredPullRequest.number,
+                        })
+                        let syncCommitsCount = 0
+                        allCommits: for await (const commitsResponse of commitsIterator) {
+                            for (const commit of commitsResponse.data) {
+                                const committer = commit.commit.committer || commit.commit.author
+                                const email = committer!.email || ''
+                                if (email.endsWith(emailSuffix)) {
+                                    ++syncCommitsCount
+                                    if (syncCommitsCount >= 2) {
+                                        break allCommits
+                                    }
+                                }
+                            }
+                        }
+
+                        const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            issue_number: filteredPullRequest.number,
+                        })
+                        let wasRenamed = false
+                        allEvents: for await (const eventsResponse of eventsIterator) {
+                            for (const event of eventsResponse.data) {
+                                if (event.event === 'renamed') {
+                                    wasRenamed = true
+                                    break  allEvents
+                                }
+                            }
+                        }
+
+                        if (!wasRenamed && syncCommitsCount >= 2) {
+                            core.info(`Renaming pull request #${filteredPullRequest.number} from '${filteredPullRequest.title}' to '${pullRequestTitle}'`)
+                            await octokit.pulls.update({
+                                owner: context.repo.owner,
+                                repo: context.repo.repo,
+                                pull_number: filteredPullRequest.number,
+                                title: pullRequestTitle,
+                            })
+                        }
+                    }
                     core.info(`Skip creating, as there is an opened pull request for '${syncBranchName}' branch: ${filteredPullRequests[0].html_url}`)
                     return
                 }
 
-                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
-                if (conventionalCommits) {
-                    pullRequestTitle = `chore(template): ${pullRequestTitle}`
+                if (commitMessages.size === 1) {
+                    pullRequestTitle = commitMessages.values().next().value
                 }
                 const pullRequest = (
                     await octokit.pulls.create({
