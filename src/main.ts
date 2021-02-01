@@ -245,7 +245,7 @@ async function run(): Promise<void> {
                             for (const event of eventsResponse.data) {
                                 if (event.event === 'renamed') {
                                     wasRenamed = true
-                                    break  allEvents
+                                    break allEvents
                                 }
                             }
                         }
