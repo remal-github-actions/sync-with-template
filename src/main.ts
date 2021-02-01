@@ -64,14 +64,14 @@ async function run(): Promise<void> {
 
             core.info(`Adding 'origin' remote: ${repo.svn_url}`)
             await git.addRemote('origin', repo.svn_url)
-            await git.ping('origin')
+            await git.fetch('origin', repo.default_branch)
 
             core.info(`Adding 'template' remote: ${templateRepo.svn_url}`)
             await git.addRemote('template', templateRepo.svn_url)
-            await git.ping('template')
+            await git.fetch('templateRepo', templateRepo.default_branch)
 
             core.info("Installing LFS")
-            await git.installLfs()
+            await git.raw(['lfs', 'install', '--local'])
         })
 
         const lastCommitLogItem: DefaultLogFields | null = await core.group("Fetching sync branch", async () => {
@@ -89,9 +89,6 @@ async function run(): Promise<void> {
                 await git.checkout(syncBranchName)
                 return null
             }
-
-            const defaultBranchName = repo.default_branch
-            await git.fetch('origin', defaultBranchName)
 
             const allPullRequests = await octokit.paginate(octokit.pulls.list, {
                 owner: context.repo.owner,
@@ -128,8 +125,8 @@ async function run(): Promise<void> {
                 return log.latest!
             }
 
-            core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${defaultBranchName}'`)
-            const defaultBranchLog = await git.log(['--reverse', `remotes/origin/${defaultBranchName}`])
+            core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${repo.default_branch}'`)
+            const defaultBranchLog = await git.log(['--reverse', `remotes/origin/${repo.default_branch}`])
             await git.checkoutBranch(syncBranchName, defaultBranchLog.latest!.hash)
             return null
         })
