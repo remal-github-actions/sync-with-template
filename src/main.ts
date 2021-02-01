@@ -3,7 +3,6 @@ import {newOctokitInstance} from './internal/octokit'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
 import simpleGit, {GitError} from 'simple-git'
-import './internal/simple-git-extensions'
 import {isConventionalCommit} from './internal/conventional-commits'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 
