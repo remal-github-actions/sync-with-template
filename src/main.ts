@@ -120,8 +120,13 @@ async function run(): Promise<void> {
                 core.info(`Fetching last commit of pull request #${pullRequest.number}: ${pullRequest.head.sha}`)
                 const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`
                 await git.fetch('origin', pullRequestBranchName)
-                const log = await git.log(['--max-count=1', pullRequest.head.sha])
-                return log.latest!
+                const log = await git.log([pullRequest.head.sha])
+                for (const logItem of log.all) {
+                    if (logItem.author_email.endsWith(emailSuffix)) {
+                        return logItem
+                    }
+                }
+                return null
             }
 
             core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${repo.default_branch}'`)
@@ -220,7 +225,6 @@ async function run(): Promise<void> {
                         }
                     }
                 }
-                core.info(`commitMessages=${commitMessages}`)
 
                 let pullRequestTitle = "Merge template repository changes"
                 if (conventionalCommits) {
@@ -229,7 +233,6 @@ async function run(): Promise<void> {
                 if (commitMessages.size === 1) {
                     pullRequestTitle = commitMessages.values().next().value
                 }
-                core.info(`pullRequestTitle=${pullRequestTitle}`)
 
                 const allPullRequests = await octokit.paginate(octokit.pulls.list, {
                     owner: context.repo.owner,
@@ -254,14 +257,12 @@ async function run(): Promise<void> {
                             let wasRenamed = false
                             allEvents: for await (const eventsResponse of eventsIterator) {
                                 for (const event of eventsResponse.data) {
-                                    core.info(`event.event=${event.event}`)
                                     if (event.event === 'renamed') {
                                         wasRenamed = true
                                         break allEvents
                                     }
                                 }
                             }
-                            core.info(`wasRenamed=${wasRenamed}`)
 
                             if (!wasRenamed) {
                                 core.info(`Renaming pull request #${filteredPullRequest.number} from '${filteredPullRequest.title}' to '${pullRequestTitle}'`)
