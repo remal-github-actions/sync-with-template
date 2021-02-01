@@ -73,7 +73,7 @@ async function run(): Promise<void> {
             await git.installLfs()
         })
 
-        await core.group("Fetching sync branch", async () => {
+        const lastSynchronizedCommitDateRewrite: Date | null = await core.group("Fetching sync branch", async () => {
             let isFetchExecutedSuccessfully = true
             try {
                 await git.fetch('origin', syncBranchName)
@@ -86,7 +86,7 @@ async function run(): Promise<void> {
             }
             if (isFetchExecutedSuccessfully) {
                 await git.checkout(syncBranchName)
-                return
+                return null
             }
 
             const defaultBranchName = repo.default_branch
@@ -118,12 +118,17 @@ async function run(): Promise<void> {
                 const pullRequest = sortedPullRequests[0]
                 core.info(`Creating '${syncBranchName}' branch from merge commit of #${pullRequest.number}: ${pullRequest.merge_commit_sha}`)
                 await git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha!)
+
+                const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`
+                await git.fetch('origin', pullRequestBranchName)
+                const log = await git.log()
                 return
             }
 
             core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${defaultBranchName}'`)
             const defaultBranchLog = await git.log(['--reverse', `remotes/origin/${defaultBranchName}`])
             await git.checkoutBranch(syncBranchName, defaultBranchLog.latest!.hash)
+            return null
         })
 
         const lastSynchronizedCommitDate: Date = await core.group(
