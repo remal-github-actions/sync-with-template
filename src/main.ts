@@ -5,6 +5,7 @@ import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dis
 import simpleGit, {GitError} from 'simple-git'
 import './internal/simple-git-extensions'
 import {isConventionalCommit} from './internal/conventional-commits'
+import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -73,7 +74,7 @@ async function run(): Promise<void> {
             await git.installLfs()
         })
 
-        const lastSynchronizedCommitDateRewrite: Date | null = await core.group("Fetching sync branch", async () => {
+        const lastCommitLogItem: DefaultLogFields | null = await core.group("Fetching sync branch", async () => {
             let isFetchExecutedSuccessfully = true
             try {
                 await git.fetch('origin', syncBranchName)
@@ -123,7 +124,7 @@ async function run(): Promise<void> {
                 const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`
                 await git.fetch('origin', pullRequestBranchName)
                 const log = await git.log(['--max-count=1', pullRequest.head.sha])
-                return new Date(log.latest!.date)
+                return log.latest!
             }
 
             core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${defaultBranchName}'`)
@@ -135,8 +136,9 @@ async function run(): Promise<void> {
         const lastSynchronizedCommitDate: Date = await core.group(
             "Retrieving last synchronized commit date",
             async () => {
-                if (lastSynchronizedCommitDateRewrite != null) {
-                    return lastSynchronizedCommitDateRewrite
+                if (lastCommitLogItem != null) {
+                    core.info(`Last synchronized commit is: ${lastCommitLogItem.hash}: ${lastCommitLogItem.message}`)
+                    return new Date(lastCommitLogItem.date)
                 }
 
                 const syncBranchLog = await git.log()
