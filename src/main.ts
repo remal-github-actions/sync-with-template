@@ -181,7 +181,6 @@ async function run(): Promise<void> {
                         message = `chore(template): ${message}`
                     }
                 }
-                messages.add(message)
                 await git
                     .env('GIT_AUTHOR_DATE', logItem.date)
                     .env('GIT_COMMITTER_DATE', logItem.date)
