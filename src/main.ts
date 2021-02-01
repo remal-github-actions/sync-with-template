@@ -121,6 +121,7 @@ async function run(): Promise<void> {
                 core.info(`Creating '${syncBranchName}' branch from merge commit of #${pullRequest.number}: ${pullRequest.merge_commit_sha}`)
                 await git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha!)
 
+                core.info(`Fetching last commit of pull request #${pullRequest.number}: ${pullRequest.head.sha}`)
                 const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`
                 await git.fetch('origin', pullRequestBranchName)
                 const log = await git.log(['--max-count=1', pullRequest.head.sha])
