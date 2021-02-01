@@ -195,7 +195,7 @@ async function run(): Promise<void> {
             await core.group(`Pushing ${commitMessages.size} commits`, async () => {
                 await git.raw(['push', 'origin', syncBranchName])
             })
-        } else if (commitMessages.size === 0) {
+
             await core.group("Creating pull request", async () => {
                 let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
                 if (conventionalCommits) {
