@@ -213,7 +213,7 @@ async function run(): Promise<void> {
                 }
                 core.info(`commitMessages=${commitMessages}`)
 
-                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
+                let pullRequestTitle = "Merge template repository changes"
                 if (conventionalCommits) {
                     pullRequestTitle = `chore(template): ${pullRequestTitle}`
                 }
