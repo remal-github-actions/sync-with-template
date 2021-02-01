@@ -116,13 +116,14 @@ async function run(): Promise<void> {
             })
             if (sortedPullRequests.length > 0) {
                 const pullRequest = sortedPullRequests[0]
+
                 core.info(`Creating '${syncBranchName}' branch from merge commit of #${pullRequest.number}: ${pullRequest.merge_commit_sha}`)
                 await git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha!)
 
                 const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`
                 await git.fetch('origin', pullRequestBranchName)
-                const log = await git.log()
-                return
+                const log = await git.log(['--max-count=1', pullRequest.head.sha])
+                return new Date(log.latest!.date)
             }
 
             core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${defaultBranchName}'`)
@@ -134,6 +135,10 @@ async function run(): Promise<void> {
         const lastSynchronizedCommitDate: Date = await core.group(
             "Retrieving last synchronized commit date",
             async () => {
+                if (lastSynchronizedCommitDateRewrite != null) {
+                    return lastSynchronizedCommitDateRewrite
+                }
+
                 const syncBranchLog = await git.log()
                 for (const logItem of syncBranchLog.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
