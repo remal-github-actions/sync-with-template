@@ -281,7 +281,7 @@ async function run(): Promise<void> {
         }
 
 
-        if (cherryPickedCommitCounts.length > 0) {
+        if (cherryPickedCommitCounts > 0) {
             const openedPullRequests = (
                 await octokit.pulls.list({
                     owner: context.repo.owner,
