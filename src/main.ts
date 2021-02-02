@@ -227,6 +227,7 @@ async function run(): Promise<void> {
                 `remotes/origin/${repo.default_branch}`,
                 syncBranchName
             ]).then(text => text.trim())
+            core.info(`diff=${diff}`)
             isDiffEmpty = diff === ''
         }
         core.info(`isDiffEmpty=${isDiffEmpty}`)
