@@ -357,14 +357,36 @@ function run() {
                         core.info(`No opened pull requests found for '${syncBranchName}' branch`);
                         return false;
                     }
-                    for (const filteredPullRequest of filteredPullRequests) {
-                        yield core.group(`Processing #${filteredPullRequest.number}`, () => __awaiter(this, void 0, void 0, function* () {
+                    for (const pullRequest of filteredPullRequests) {
+                        yield core.group(`Processing #${pullRequest.number}`, () => __awaiter(this, void 0, void 0, function* () {
                             var e_1, _a;
-                            if (filteredPullRequest.title !== pullRequestTitle) {
+                            const pullRequestFiles = yield octokit.pulls.listFiles({
+                                owner: github_1.context.repo.owner,
+                                repo: github_1.context.repo.repo,
+                                pull_number: pullRequest.number,
+                                per_page: 1,
+                            });
+                            if (pullRequestFiles.data.length === 0) {
+                                core.info("Closing empty pull request");
+                                yield octokit.issues.createComment({
+                                    owner: github_1.context.repo.owner,
+                                    repo: github_1.context.repo.repo,
+                                    issue_number: pullRequest.number,
+                                    body: "Closing empty pull request",
+                                });
+                                yield octokit.pulls.update({
+                                    owner: github_1.context.repo.owner,
+                                    repo: github_1.context.repo.repo,
+                                    pull_number: pullRequest.number,
+                                    title: `${pullRequest.title} - autoclosed`,
+                                });
+                                return;
+                            }
+                            if (pullRequest.title !== pullRequestTitle) {
                                 const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
                                     owner: github_1.context.repo.owner,
                                     repo: github_1.context.repo.repo,
-                                    issue_number: filteredPullRequest.number,
+                                    issue_number: pullRequest.number,
                                 });
                                 let wasRenamed = false;
                                 try {
@@ -386,11 +408,11 @@ function run() {
                                     finally { if (e_1) throw e_1.error; }
                                 }
                                 if (!wasRenamed) {
-                                    core.info(`Renaming pull request #${filteredPullRequest.number} from '${filteredPullRequest.title}' to '${pullRequestTitle}'`);
+                                    core.info(`Renaming from '${pullRequest.title}' to '${pullRequestTitle}'`);
                                     yield octokit.pulls.update({
                                         owner: github_1.context.repo.owner,
                                         repo: github_1.context.repo.repo,
-                                        pull_number: filteredPullRequest.number,
+                                        pull_number: pullRequest.number,
                                         title: pullRequestTitle,
                                     });
                                 }
