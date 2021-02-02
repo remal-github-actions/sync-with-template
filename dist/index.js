@@ -317,8 +317,59 @@ function run() {
                         '--allow-empty': null,
                     });
                 }
+                if (counter === 0) {
+                    core.info("No commits were cherry-picked from template repository");
+                }
                 return counter;
             }));
+            let isDiffEmpty = false;
+            const mergeBase = yield git.raw([
+                'merge-base',
+                `remotes/origin/${repo.default_branch}`,
+                syncBranchName
+            ]).then(text => text.trim());
+            if (mergeBase !== '') {
+                const diff = yield git.raw(['diff', `${mergeBase}..HEAD`]).then(text => text.trim());
+                isDiffEmpty = diff === '';
+            }
+            const listRemote = yield git.listRemote(['--heads', 'origin']);
+            core.info(listRemote);
+            if (isDiffEmpty) {
+                core.group(`Diff is empty, removing '${syncBranchName}' branch`, () => __awaiter(this, void 0, void 0, function* () {
+                    const pullRequests = (yield octokit.paginate(octokit.pulls.list, {
+                        owner: github_1.context.repo.owner,
+                        repo: github_1.context.repo.repo,
+                        state: 'open',
+                        head: `${github_1.context.repo.owner}:${syncBranchName}`
+                    })).filter(pr => pr.head.ref === syncBranchName);
+                    for (const pullRequest of pullRequests) {
+                        core.info(`Closing empty pull request: ${pullRequest.html_url}`);
+                        yield octokit.issues.createComment({
+                            owner: github_1.context.repo.owner,
+                            repo: github_1.context.repo.repo,
+                            issue_number: pullRequest.number,
+                            body: "Closing empty pull request",
+                        });
+                        const autoclosedSuffix = ' - autoclosed';
+                        let newTitle = pullRequest.title;
+                        if (!newTitle.endsWith(autoclosedSuffix)) {
+                            newTitle = `${newTitle}${autoclosedSuffix}`;
+                        }
+                        yield octokit.pulls.update({
+                            owner: github_1.context.repo.owner,
+                            repo: github_1.context.repo.repo,
+                            pull_number: pullRequest.number,
+                            title: newTitle,
+                        });
+                        yield octokit.issues.update({
+                            owner: github_1.context.repo.owner,
+                            repo: github_1.context.repo.repo,
+                            issue_number: pullRequest.number,
+                            state: 'closed',
+                        });
+                    }
+                }));
+            }
             if (commitsCount > 0) {
                 yield core.group(`Pushing ${commitsCount} commits`, () => __awaiter(this, void 0, void 0, function* () {
                     yield git.raw(['push', 'origin', syncBranchName]);
@@ -329,11 +380,6 @@ function run() {
                 pullRequestTitle = `chore(template): ${pullRequestTitle}`;
             }
             const commitMessages = new Set();
-            const mergeBase = yield git.raw([
-                'merge-base',
-                `remotes/origin/${repo.default_branch}`,
-                syncBranchName
-            ]).then(text => text.trim());
             if (mergeBase !== '') {
                 const log = yield git.log({ from: mergeBase });
                 for (const logItem of log.all) {
@@ -346,19 +392,17 @@ function run() {
                 pullRequestTitle = commitMessages.values().next().value;
             }
             const hasAtLeastOneOpenedPullRequest = yield core.group("Process opened pull requests", () => __awaiter(this, void 0, void 0, function* () {
-                const allPullRequests = yield octokit.paginate(octokit.pulls.list, {
+                const pullRequests = (yield octokit.paginate(octokit.pulls.list, {
                     owner: github_1.context.repo.owner,
                     repo: github_1.context.repo.repo,
                     state: 'open',
                     head: `${github_1.context.repo.owner}:${syncBranchName}`
-                });
-                const filteredPullRequests = allPullRequests
-                    .filter(pr => pr.head.ref === syncBranchName);
-                if (filteredPullRequests.length === 0) {
+                })).filter(pr => pr.head.ref === syncBranchName);
+                if (pullRequests.length === 0) {
                     core.info(`No opened pull requests found for '${syncBranchName}' branch`);
                     return false;
                 }
-                for (const pullRequest of filteredPullRequests) {
+                for (const pullRequest of pullRequests) {
                     yield core.group(`Processing opened pull request #${pullRequest.number}`, () => __awaiter(this, void 0, void 0, function* () {
                         var e_1, _a;
                         const pullRequestFiles = yield octokit.pulls.listFiles({
@@ -433,31 +477,26 @@ function run() {
                 }
                 return true;
             }));
-            if (commitsCount > 0) {
-                if (!hasAtLeastOneOpenedPullRequest) {
-                    yield core.group("Creating pull request", () => __awaiter(this, void 0, void 0, function* () {
-                        const pullRequest = (yield octokit.pulls.create({
-                            owner: github_1.context.repo.owner,
-                            repo: github_1.context.repo.repo,
-                            head: syncBranchName,
-                            base: repo.default_branch,
-                            title: pullRequestTitle,
-                            body: "Template repository changes."
-                                + "\n\nIf you close this PR, it will be recreated automatically.",
-                            maintainer_can_modify: true,
-                        })).data;
-                        yield octokit.issues.addLabels({
-                            owner: github_1.context.repo.owner,
-                            repo: github_1.context.repo.repo,
-                            issue_number: pullRequest.number,
-                            labels: [pullRequestLabel]
-                        });
-                        core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
-                    }));
-                }
-            }
-            else {
-                core.info("No commits were cherry-picked from template repository");
+            if (commitsCount > 0 && !hasAtLeastOneOpenedPullRequest) {
+                yield core.group("Creating pull request", () => __awaiter(this, void 0, void 0, function* () {
+                    const pullRequest = (yield octokit.pulls.create({
+                        owner: github_1.context.repo.owner,
+                        repo: github_1.context.repo.repo,
+                        head: syncBranchName,
+                        base: repo.default_branch,
+                        title: pullRequestTitle,
+                        body: "Template repository changes."
+                            + "\n\nIf you close this PR, it will be recreated automatically.",
+                        maintainer_can_modify: true,
+                    })).data;
+                    yield octokit.issues.addLabels({
+                        owner: github_1.context.repo.owner,
+                        repo: github_1.context.repo.repo,
+                        issue_number: pullRequest.number,
+                        labels: [pullRequestLabel]
+                    });
+                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
+                }));
             }
         }
         catch (error) {
