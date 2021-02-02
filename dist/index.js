@@ -127,13 +127,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __asyncValues = (this && this.__asyncValues) || function (o) {
-    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-    var m = o[Symbol.asyncIterator], i;
-    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
-    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
-    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -168,7 +161,7 @@ function run() {
             }
             core.info(`Using ${templateRepo.full_name} as a template repository`);
             const workspacePath = __nccwpck_require__(8517).dirSync().name;
-            __nccwpck_require__(8231).enable('simple-git');
+            //require('debug').enable('simple-git')
             const git = simple_git_1.default(workspacePath);
             yield core.group("Initializing the repository", () => __awaiter(this, void 0, void 0, function* () {
                 yield git.init();
@@ -251,23 +244,22 @@ function run() {
             }));
             const lastSynchronizedCommitDate = yield core.group("Retrieving last synchronized commit date", () => __awaiter(this, void 0, void 0, function* () {
                 if (lastCommitLogItem != null) {
-                    core.info(`Last synchronized commit is: ${repo.html_url}/commit/${lastCommitLogItem.hash}: ${lastCommitLogItem.message}`);
+                    core.info(`Last synchronized commit is: ${repo.html_url}/commit/${lastCommitLogItem.hash} (${lastCommitLogItem.date}): ${lastCommitLogItem.message}`);
                     return new Date(lastCommitLogItem.date);
                 }
                 const syncBranchLog = yield git.log();
                 for (const logItem of syncBranchLog.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
-                        core.info(`Last synchronized commit is: ${repo.html_url}/commit/${logItem.hash}: ${logItem.message}`);
+                        core.info(`Last synchronized commit is: ${repo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`);
                         return new Date(logItem.date);
                     }
                 }
                 const latestLogItem = syncBranchLog.latest;
-                core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestLogItem.hash}: ${latestLogItem.message}`);
+                core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestLogItem.hash} (${latestLogItem.date}): ${latestLogItem.message}`);
                 return new Date(latestLogItem.date);
             }));
             const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000;
-            const cherryPickedCommits = [];
-            yield core.group("Cherry-picking template commits", () => __awaiter(this, void 0, void 0, function* () {
+            const cherryPickedCommitCounts = yield core.group("Cherry-picking template commits", () => __awaiter(this, void 0, void 0, function* () {
                 const templateBranchName = templateRepo.default_branch;
                 yield git.fetch('template', templateBranchName);
                 const templateBranchLog = yield git.log([
@@ -275,8 +267,10 @@ function run() {
                     `--since=${lastSynchronizedCommitTimestamp + 1}`,
                     `remotes/template/${templateBranchName}`
                 ]);
+                let count = 0;
                 for (const logItem of templateBranchLog.all) {
-                    core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash}: ${logItem.message}`);
+                    ++count;
+                    core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`);
                     yield git.raw([
                         'cherry-pick',
                         '--no-commit',
@@ -288,7 +282,7 @@ function run() {
                         logItem.hash
                     ]);
                     let message = logItem.message
-                        .replace(/ \(#\d+\)$/, '')
+                        .replace(/( \(#\d+\))+$/, '')
                         .trim();
                     if (message.length === 0) {
                         message = `Cherry-pick ${logItem.hash}`;
@@ -307,14 +301,10 @@ function run() {
                         .commit(message, {
                         '--allow-empty': null,
                     });
-                    cherryPickedCommits.push({
-                        templateCommit: logItem,
-                        message,
-                        hash: yield git.raw(['rev-parse', 'HEAD']).then(text => text.trim())
-                    });
                 }
+                return count;
             }));
-            if (cherryPickedCommits.length === 0) {
+            if (cherryPickedCommitCounts === 0) {
                 core.info("No commits were cherry-picked from template repository");
             }
             let isDiffEmpty = false;
@@ -332,9 +322,9 @@ function run() {
                 ]).then(text => text.trim());
                 isDiffEmpty = diff === '';
             }
-            if (cherryPickedCommits.length > 0) {
+            if (cherryPickedCommitCounts > 0) {
                 if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                    core.info(`Pushing ${cherryPickedCommits.length} commits`);
+                    core.info(`Pushing ${cherryPickedCommitCounts} commits`);
                     yield git.raw(['push', 'origin', syncBranchName]);
                 }
             }
@@ -379,127 +369,43 @@ function run() {
                 }));
                 return;
             }
-            let pullRequestTitle = "Merge template repository changes";
-            if (conventionalCommits) {
-                pullRequestTitle = `chore(template): ${pullRequestTitle}`;
-            }
-            const diffCommits = [];
-            if (mergeBase !== '') {
-                const log = yield git.log({ from: mergeBase, to: syncBranchName, '--reverse': null });
-                for (const logItem of log.all) {
-                    if (logItem.author_email.endsWith(emailSuffix)) {
-                        const diff = yield git.raw([
-                            'merge-tree',
-                            mergeBase,
-                            `remotes/origin/${repo.default_branch}`,
-                            logItem.hash
-                        ]).then(text => text.trim());
-                        core.info(`diff=${diff}`);
-                        if (diff !== '') {
-                            diffCommits.push(logItem);
-                            core.info(`diffCommitMessages[]=${logItem.message}`);
-                        }
-                    }
-                }
-            }
-            if (diffCommits.length === 1) {
-                pullRequestTitle = diffCommits.values().next().value;
-            }
-            let pullRequestBody = "Template repository changes."
-                + "\n\nIf you close this PR, it will be recreated automatically.";
-            if (diffCommits.length > 0) {
-                pullRequestBody += "\n\nCommits to merge:";
-                for (const diffCommit of diffCommits) {
-                    const cherryPickedCommit = cherryPickedCommits.find(commit => commit.hash === diffCommit.hash);
-                    if (cherryPickedCommit != null) {
-                        pullRequestBody += `\n* [${diffCommit.message}](${templateRepo.html_url}/commit/${cherryPickedCommit.templateCommit.hash})`;
-                    }
-                    else {
-                        pullRequestBody += `\n* ${diffCommit.message}`;
-                    }
-                }
-            }
-            const hasAtLeastOneOpenedPullRequest = yield core.group("Process opened pull requests", () => __awaiter(this, void 0, void 0, function* () {
-                const pullRequests = (yield octokit.paginate(octokit.pulls.list, {
+            if (cherryPickedCommitCounts > 0) {
+                const openedPullRequests = (yield octokit.pulls.list({
                     owner: github_1.context.repo.owner,
                     repo: github_1.context.repo.repo,
                     state: 'open',
-                    head: `${github_1.context.repo.owner}:${syncBranchName}`
-                })).filter(pr => pr.head.ref === syncBranchName);
-                if (pullRequests.length === 0) {
-                    core.info(`No opened pull requests found for '${syncBranchName}' branch`);
-                    return false;
+                    head: `${github_1.context.repo.owner}:${syncBranchName}`,
+                    sort: 'created',
+                    direction: 'desc',
+                    per_page: 1,
+                })).data.filter(pr => pr.head.ref === syncBranchName);
+                if (openedPullRequests.length > 0) {
+                    const openedPullRequest = openedPullRequests[0];
+                    core.info(`Skip creating pull request for '${syncBranchName}' branch`
+                        + `, as there is an opened one: ${openedPullRequest.html_url}`);
+                    return;
                 }
-                for (const pullRequest of pullRequests) {
-                    yield core.group(`Processing opened pull request: ${pullRequest.html_url}`, () => __awaiter(this, void 0, void 0, function* () {
-                        var e_1, _a;
-                        if (pullRequest.title !== pullRequestTitle) {
-                            const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
-                                owner: github_1.context.repo.owner,
-                                repo: github_1.context.repo.repo,
-                                issue_number: pullRequest.number,
-                            });
-                            let wasRenamed = false;
-                            try {
-                                allEvents: for (var eventsIterator_1 = __asyncValues(eventsIterator), eventsIterator_1_1; eventsIterator_1_1 = yield eventsIterator_1.next(), !eventsIterator_1_1.done;) {
-                                    const eventsResponse = eventsIterator_1_1.value;
-                                    for (const event of eventsResponse.data) {
-                                        if (event.event === 'renamed') {
-                                            wasRenamed = true;
-                                            break allEvents;
-                                        }
-                                    }
-                                }
-                            }
-                            catch (e_1_1) { e_1 = { error: e_1_1 }; }
-                            finally {
-                                try {
-                                    if (eventsIterator_1_1 && !eventsIterator_1_1.done && (_a = eventsIterator_1.return)) yield _a.call(eventsIterator_1);
-                                }
-                                finally { if (e_1) throw e_1.error; }
-                            }
-                            if (!wasRenamed) {
-                                core.info(`Renaming from '${pullRequest.title}' to '${pullRequestTitle}'`);
-                                yield octokit.pulls.update({
-                                    owner: github_1.context.repo.owner,
-                                    repo: github_1.context.repo.repo,
-                                    pull_number: pullRequest.number,
-                                    title: pullRequestTitle,
-                                });
-                            }
-                        }
-                        if (pullRequest.body !== pullRequestBody) {
-                            core.info("Changing pull request body");
-                            yield octokit.pulls.update({
-                                owner: github_1.context.repo.owner,
-                                repo: github_1.context.repo.repo,
-                                pull_number: pullRequest.number,
-                                body: pullRequestBody,
-                            });
-                        }
-                    }));
+                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`;
+                if (conventionalCommits) {
+                    pullRequestTitle = `chore(template): ${pullRequestTitle}`;
                 }
-                return true;
-            }));
-            if (cherryPickedCommits.length > 0 && !hasAtLeastOneOpenedPullRequest) {
-                yield core.group("Creating pull request", () => __awaiter(this, void 0, void 0, function* () {
-                    const pullRequest = (yield octokit.pulls.create({
-                        owner: github_1.context.repo.owner,
-                        repo: github_1.context.repo.repo,
-                        head: syncBranchName,
-                        base: repo.default_branch,
-                        title: pullRequestTitle,
-                        body: pullRequestBody,
-                        maintainer_can_modify: true,
-                    })).data;
-                    yield octokit.issues.addLabels({
-                        owner: github_1.context.repo.owner,
-                        repo: github_1.context.repo.repo,
-                        issue_number: pullRequest.number,
-                        labels: [pullRequestLabel]
-                    });
-                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
-                }));
+                const pullRequest = (yield octokit.pulls.create({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    head: syncBranchName,
+                    base: repo.default_branch,
+                    title: pullRequestTitle,
+                    body: "Template repository changes."
+                        + "\n\nIf you close this PR, it will be recreated automatically.",
+                    maintainer_can_modify: true,
+                })).data;
+                yield octokit.issues.addLabels({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    issue_number: pullRequest.number,
+                    labels: [pullRequestLabel]
+                });
+                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
             }
         }
         catch (error) {
@@ -509,6 +415,7 @@ function run() {
 }
 //noinspection JSIgnoredPromiseFromCall
 run();
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 function getSyncBranchName() {
     const name = core.getInput('syncBranchName', { required: true });
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {

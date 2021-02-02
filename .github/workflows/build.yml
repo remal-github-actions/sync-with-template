@@ -82,11 +82,3 @@ jobs:
           git push --force origin "v$MAJOR_VERSION"
           echo "::endgroup::"
         fi
-
-
-    - uses: ./
-      env:
-        PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
-      if: ${{ env.PUSH_BACK_TOKEN && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') }}
-      with:
-        githubToken: '${{ env.PUSH_BACK_TOKEN }}'

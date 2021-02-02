@@ -39,7 +39,7 @@ async function run(): Promise<void> {
 
 
         const workspacePath = require('tmp').dirSync().name
-        require('debug').enable('simple-git')
+        //require('debug').enable('simple-git')
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
@@ -138,28 +138,27 @@ async function run(): Promise<void> {
             "Retrieving last synchronized commit date",
             async () => {
                 if (lastCommitLogItem != null) {
-                    core.info(`Last synchronized commit is: ${repo.html_url}/commit/${lastCommitLogItem.hash}: ${lastCommitLogItem.message}`)
+                    core.info(`Last synchronized commit is: ${repo.html_url}/commit/${lastCommitLogItem.hash} (${lastCommitLogItem.date}): ${lastCommitLogItem.message}`)
                     return new Date(lastCommitLogItem.date)
                 }
 
                 const syncBranchLog = await git.log()
                 for (const logItem of syncBranchLog.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
-                        core.info(`Last synchronized commit is: ${repo.html_url}/commit/${logItem.hash}: ${logItem.message}`)
+                        core.info(`Last synchronized commit is: ${repo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`)
                         return new Date(logItem.date)
                     }
                 }
 
                 const latestLogItem = syncBranchLog.latest!
-                core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestLogItem.hash}: ${latestLogItem.message}`)
+                core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestLogItem.hash} (${latestLogItem.date}): ${latestLogItem.message}`)
                 return new Date(latestLogItem.date)
             }
         )
         const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000
 
 
-        const cherryPickedCommits: CherryPickedCommit[] = []
-        await core.group("Cherry-picking template commits", async () => {
+        const cherryPickedCommitCounts: number = await core.group("Cherry-picking template commits", async () => {
             const templateBranchName = templateRepo.default_branch
             await git.fetch('template', templateBranchName)
             const templateBranchLog = await git.log([
@@ -167,8 +166,10 @@ async function run(): Promise<void> {
                 `--since=${lastSynchronizedCommitTimestamp + 1}`,
                 `remotes/template/${templateBranchName}`
             ])
+            let count = 0
             for (const logItem of templateBranchLog.all) {
-                core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash}: ${logItem.message}`)
+                ++count
+                core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`)
 
                 await git.raw([
                     'cherry-pick',
@@ -182,7 +183,7 @@ async function run(): Promise<void> {
                 ])
 
                 let message = logItem.message
-                    .replace(/ \(#\d+\)$/, '')
+                    .replace(/( \(#\d+\))+$/, '')
                     .trim()
                 if (message.length === 0) {
                     message = `Cherry-pick ${logItem.hash}`
@@ -200,15 +201,10 @@ async function run(): Promise<void> {
                     .commit(message, {
                         '--allow-empty': null,
                     })
-
-                cherryPickedCommits.push({
-                    templateCommit: logItem,
-                    message,
-                    hash: await git.raw(['rev-parse', 'HEAD']).then(text => text.trim())
-                })
             }
+            return count
         })
-        if (cherryPickedCommits.length === 0) {
+        if (cherryPickedCommitCounts === 0) {
             core.info("No commits were cherry-picked from template repository")
         }
 
@@ -230,9 +226,9 @@ async function run(): Promise<void> {
         }
 
 
-        if (cherryPickedCommits.length > 0) {
+        if (cherryPickedCommitCounts > 0) {
             if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                core.info(`Pushing ${cherryPickedCommits.length} commits`)
+                core.info(`Pushing ${cherryPickedCommitCounts} commits`)
                 await git.raw(['push', 'origin', syncBranchName])
             }
         }
@@ -285,129 +281,50 @@ async function run(): Promise<void> {
         }
 
 
-        let pullRequestTitle = "Merge template repository changes"
-        if (conventionalCommits) {
-            pullRequestTitle = `chore(template): ${pullRequestTitle}`
-        }
-
-        const diffCommits: DefaultLogFields[] = []
-        if (mergeBase !== '') {
-            const log = await git.log({from: mergeBase, to: syncBranchName, '--reverse': null})
-            for (const logItem of log.all) {
-                if (logItem.author_email.endsWith(emailSuffix)) {
-                    const diff = await git.raw([
-                        'merge-tree',
-                        mergeBase,
-                        `remotes/origin/${repo.default_branch}`,
-                        logItem.hash
-                    ]).then(text => text.trim())
-                    core.info(`diff=${diff}`)
-                    if (diff !== '') {
-                        diffCommits.push(logItem)
-                        core.info(`diffCommitMessages[]=${logItem.message}`)
-                    }
-                }
-            }
-        }
-        if (diffCommits.length === 1) {
-            pullRequestTitle = diffCommits.values().next().value
-        }
-
-        let pullRequestBody = "Template repository changes."
-            + "\n\nIf you close this PR, it will be recreated automatically."
-        if (diffCommits.length > 0) {
-            pullRequestBody += "\n\nCommits to merge:"
-            for (const diffCommit of diffCommits) {
-                const cherryPickedCommit = cherryPickedCommits.find(commit => commit.hash === diffCommit.hash)
-                if (cherryPickedCommit != null) {
-                    pullRequestBody += `\n* [${diffCommit.message}](${templateRepo.html_url}/commit/${cherryPickedCommit.templateCommit.hash})`
-                } else {
-                    pullRequestBody += `\n* ${diffCommit.message}`
-                }
-            }
-        }
-
-        const hasAtLeastOneOpenedPullRequest = await core.group("Process opened pull requests", async () => {
-            const pullRequests = (
-                await octokit.paginate(octokit.pulls.list, {
+        if (cherryPickedCommitCounts > 0) {
+            const openedPullRequests = (
+                await octokit.pulls.list({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     state: 'open',
-                    head: `${context.repo.owner}:${syncBranchName}`
+                    head: `${context.repo.owner}:${syncBranchName}`,
+                    sort: 'created',
+                    direction: 'desc',
+                    per_page: 1,
                 })
-            ).filter(pr => pr.head.ref === syncBranchName)
-
-            if (pullRequests.length === 0) {
-                core.info(`No opened pull requests found for '${syncBranchName}' branch`)
-                return false
+            ).data.filter(pr => pr.head.ref === syncBranchName)
+            if (openedPullRequests.length > 0) {
+                const openedPullRequest = openedPullRequests[0]
+                core.info(`Skip creating pull request for '${syncBranchName}' branch`
+                    + `, as there is an opened one: ${openedPullRequest.html_url}`
+                )
+                return
             }
 
-            for (const pullRequest of pullRequests) {
-                await core.group(`Processing opened pull request: ${pullRequest.html_url}`, async () => {
-                    if (pullRequest.title !== pullRequestTitle) {
-                        const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
-                            owner: context.repo.owner,
-                            repo: context.repo.repo,
-                            issue_number: pullRequest.number,
-                        })
-                        let wasRenamed = false
-                        allEvents: for await (const eventsResponse of eventsIterator) {
-                            for (const event of eventsResponse.data) {
-                                if (event.event === 'renamed') {
-                                    wasRenamed = true
-                                    break allEvents
-                                }
-                            }
-                        }
-
-                        if (!wasRenamed) {
-                            core.info(`Renaming from '${pullRequest.title}' to '${pullRequestTitle}'`)
-                            await octokit.pulls.update({
-                                owner: context.repo.owner,
-                                repo: context.repo.repo,
-                                pull_number: pullRequest.number,
-                                title: pullRequestTitle,
-                            })
-                        }
-                    }
-
-                    if (pullRequest.body !== pullRequestBody) {
-                        core.info("Changing pull request body")
-                        await octokit.pulls.update({
-                            owner: context.repo.owner,
-                            repo: context.repo.repo,
-                            pull_number: pullRequest.number,
-                            body: pullRequestBody,
-                        })
-                    }
-                })
+            let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
+            if (conventionalCommits) {
+                pullRequestTitle = `chore(template): ${pullRequestTitle}`
             }
 
-            return true
-        })
-
-
-        if (cherryPickedCommits.length > 0 && !hasAtLeastOneOpenedPullRequest) {
-            await core.group("Creating pull request", async () => {
-                const pullRequest = (
-                    await octokit.pulls.create({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        head: syncBranchName,
-                        base: repo.default_branch,
-                        title: pullRequestTitle,
-                        body: pullRequestBody,
-                        maintainer_can_modify: true,
-                    })
-                ).data
-                await octokit.issues.addLabels({
+            const pullRequest = (
+                await octokit.pulls.create({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
-                    issue_number: pullRequest.number,
-                    labels: [pullRequestLabel]
+                    head: syncBranchName,
+                    base: repo.default_branch,
+                    title: pullRequestTitle,
+                    body: "Template repository changes."
+                        + "\n\nIf you close this PR, it will be recreated automatically.",
+                    maintainer_can_modify: true,
                 })
-                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+            ).data
+            await octokit.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullRequest.number,
+                labels: [pullRequestLabel]
             })
+            core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
         }
 
 
@@ -420,12 +337,6 @@ async function run(): Promise<void> {
 run()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-type CherryPickedCommit = {
-    templateCommit: DefaultLogFields,
-    message: string,
-    hash: string,
-}
 
 function getSyncBranchName(): string {
     const name = core.getInput('syncBranchName', {required: true})
