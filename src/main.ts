@@ -76,9 +76,7 @@ async function run(): Promise<void> {
 
 
         const originBranches = await gitRemoteBranches(git, 'origin')
-        core.info(`originBranches='${originBranches.join("', '")}'`)
         const doesOriginHasSyncBranch = originBranches.indexOf(`refs/heads/${syncBranchName}`) >= 0
-        core.info(`doesOriginHasSyncBranch=${doesOriginHasSyncBranch}`)
 
 
         const lastCommitLogItem: DefaultLogFields | null = await core.group("Fetching sync branch", async () => {
@@ -269,12 +267,12 @@ async function run(): Promise<void> {
                         state: 'closed',
                     })
                 }
-            })
 
-            if (doesOriginHasSyncBranch) {
-                core.info(`Removing '${syncBranchName}' branch from origin remote`)
-                await git.raw(['push', '--delete', 'origin', syncBranchName])
-            }
+                if (doesOriginHasSyncBranch) {
+                    core.info(`Removing '${syncBranchName}' branch from origin remote`)
+                    await git.raw(['push', '--delete', 'origin', syncBranchName])
+                }
+            })
 
             return
         }
