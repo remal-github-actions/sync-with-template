@@ -367,6 +367,7 @@ function run() {
                     }
                 }));
                 if (doesOriginHasSyncBranch) {
+                    core.info(`Removing '${syncBranchName}' branch from origin remote`);
                     yield git.raw(['push', '--delete', 'origin', syncBranchName]);
                 }
                 return;
