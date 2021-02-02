@@ -225,9 +225,8 @@ async function run(): Promise<void> {
 
         if (commitsCount > 0) {
             if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                await core.group(`Pushing ${commitsCount} commits`, async () => {
-                    await git.raw(['push', 'origin', syncBranchName])
-                })
+                core.info(`Pushing ${commitsCount} commits`)
+                await git.raw(['push', 'origin', syncBranchName])
             }
         }
 
