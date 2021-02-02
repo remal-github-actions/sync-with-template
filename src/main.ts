@@ -214,6 +214,8 @@ async function run(): Promise<void> {
             await core.group(`Pushing ${commitsCount} commits`, async () => {
                 await git.raw(['push', 'origin', syncBranchName])
             })
+        } else {
+            core.info("No commits were cherry-picked from template repository")
         }
 
 
@@ -324,34 +326,30 @@ async function run(): Promise<void> {
         })
 
 
-        if (commitsCount > 0) {
-            if (!hasAtLeastOneOpenedPullRequest) {
-                await core.group("Creating pull request", async () => {
-                    const pullRequest = (
-                        await octokit.pulls.create({
-                            owner: context.repo.owner,
-                            repo: context.repo.repo,
-                            head: syncBranchName,
-                            base: repo.default_branch,
-                            title: pullRequestTitle,
-                            body: "Template repository changes."
-                                + "\n\nIf you close this PR, it will be recreated automatically.",
-                            maintainer_can_modify: true,
-                        })
-                    ).data
-                    await octokit.issues.addLabels({
+        if (commitsCount > 0 && !hasAtLeastOneOpenedPullRequest) {
+            await core.group("Creating pull request", async () => {
+                const pullRequest = (
+                    await octokit.pulls.create({
                         owner: context.repo.owner,
                         repo: context.repo.repo,
-                        issue_number: pullRequest.number,
-                        labels: [pullRequestLabel]
+                        head: syncBranchName,
+                        base: repo.default_branch,
+                        title: pullRequestTitle,
+                        body: "Template repository changes."
+                            + "\n\nIf you close this PR, it will be recreated automatically.",
+                        maintainer_can_modify: true,
                     })
-                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+                ).data
+                await octokit.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pullRequest.number,
+                    labels: [pullRequestLabel]
                 })
-            }
-
-        } else {
-            core.info("No commits were cherry-picked from template repository")
+                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+            })
         }
+
 
     } catch (error) {
         core.setFailed(error)
