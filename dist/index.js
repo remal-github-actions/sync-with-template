@@ -251,18 +251,18 @@ function run() {
             }));
             const lastSynchronizedCommitDate = yield core.group("Retrieving last synchronized commit date", () => __awaiter(this, void 0, void 0, function* () {
                 if (lastCommitLogItem != null) {
-                    core.info(`Last synchronized commit is: ${repo.html_url}/commit/${lastCommitLogItem.hash}: ${lastCommitLogItem.message}`);
+                    core.info(`Last synchronized commit is: ${repo.html_url}/commit/${lastCommitLogItem.hash} (${lastCommitLogItem.date}): ${lastCommitLogItem.message}`);
                     return new Date(lastCommitLogItem.date);
                 }
                 const syncBranchLog = yield git.log();
                 for (const logItem of syncBranchLog.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
-                        core.info(`Last synchronized commit is: ${repo.html_url}/commit/${logItem.hash}: ${logItem.message}`);
+                        core.info(`Last synchronized commit is: ${repo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`);
                         return new Date(logItem.date);
                     }
                 }
                 const latestLogItem = syncBranchLog.latest;
-                core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestLogItem.hash}: ${latestLogItem.message}`);
+                core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestLogItem.hash} (${latestLogItem.date}): ${latestLogItem.message}`);
                 return new Date(latestLogItem.date);
             }));
             const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000;
@@ -276,7 +276,7 @@ function run() {
                     `remotes/template/${templateBranchName}`
                 ]);
                 for (const logItem of templateBranchLog.all) {
-                    core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash}: ${logItem.message}`);
+                    core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`);
                     yield git.raw([
                         'cherry-pick',
                         '--no-commit',
@@ -288,7 +288,7 @@ function run() {
                         logItem.hash
                     ]);
                     let message = logItem.message
-                        .replace(/ \(#\d+\)$/, '')
+                        .replace(/( \(#\d+\))+$/, '')
                         .trim();
                     if (message.length === 0) {
                         message = `Cherry-pick ${logItem.hash}`;
