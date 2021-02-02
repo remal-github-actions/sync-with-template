@@ -200,9 +200,7 @@ function run() {
                 yield git.raw(['lfs', 'install', '--local']);
             }));
             const originBranches = yield gitRemoteBranches(git, 'origin');
-            core.info(`originBranches='${originBranches.join("', '")}'`);
             const doesOriginHasSyncBranch = originBranches.indexOf(`refs/heads/${syncBranchName}`) >= 0;
-            core.info(`doesOriginHasSyncBranch=${doesOriginHasSyncBranch}`);
             const lastCommitLogItem = yield core.group("Fetching sync branch", () => __awaiter(this, void 0, void 0, function* () {
                 if (doesOriginHasSyncBranch) {
                     yield git.fetch('origin', syncBranchName);
@@ -367,11 +365,11 @@ function run() {
                             state: 'closed',
                         });
                     }
+                    if (doesOriginHasSyncBranch) {
+                        core.info(`Removing '${syncBranchName}' branch from origin remote`);
+                        yield git.raw(['push', '--delete', 'origin', syncBranchName]);
+                    }
                 }));
-                if (doesOriginHasSyncBranch) {
-                    core.info(`Removing '${syncBranchName}' branch from origin remote`);
-                    yield git.raw(['push', '--delete', 'origin', syncBranchName]);
-                }
                 return;
             }
             let pullRequestTitle = "Merge template repository changes";
