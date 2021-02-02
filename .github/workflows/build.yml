@@ -60,6 +60,13 @@ jobs:
         git config user.name "${{ github.event.head_commit.committer.name }}"
         git config user.email "${{ github.event.head_commit.committer.email }}"
 
+        echo "::group::dist"
+        git add --all dist
+        if git commit --quiet --no-status --no-edit --only -m "[push-back] dist" dist ; then
+          git push origin "HEAD:${{ github.ref }}"
+        fi
+        echo "::endgroup::"
+
         echo "::group::README.md"
         git add --all README.md
         if git commit --quiet --no-status --no-edit --only -m "[push-back] README.md" README.md ; then
