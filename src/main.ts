@@ -168,7 +168,7 @@ async function run(): Promise<void> {
                 `remotes/template/${templateBranchName}`
             ])
             for (const logItem of templateBranchLog.all) {
-                core.info(`Cherry-picking ${logItem.hash}: ${logItem.message}`)
+                core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash}: ${logItem.message}`)
 
                 await git.raw([
                     'cherry-pick',
@@ -233,11 +233,12 @@ async function run(): Promise<void> {
         core.info(`isDiffEmpty=${isDiffEmpty}`)
 
 
+        await git.raw(['push', 'origin', syncBranchName])
         if (cherryPickedCommits.length > 0) {
-            //if (!isDiffEmpty || doesOriginHasSyncBranch) {
-            core.info(`Pushing ${cherryPickedCommits.length} commits`)
-            await git.raw(['push', 'origin', syncBranchName])
-            //}
+            if (!isDiffEmpty || doesOriginHasSyncBranch) {
+                core.info(`Pushing ${cherryPickedCommits.length} commits`)
+                await git.raw(['push', 'origin', syncBranchName])
+            }
         }
 
 
