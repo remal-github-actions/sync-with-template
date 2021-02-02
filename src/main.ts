@@ -301,10 +301,9 @@ async function run(): Promise<void> {
                         `remotes/origin/${repo.default_branch}`,
                         logItem.hash
                     ]).then(text => text.trim())
-                    core.info(`diff=${diff}`)
                     if (diff !== '') {
                         diffCommits.push(logItem)
-                        core.info(`diffCommitMessages[]=${logItem.message}`)
+                        core.info(`diffCommits[]=${logItem.message}`)
                     }
                 }
             }
