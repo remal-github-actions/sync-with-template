@@ -292,7 +292,7 @@ async function run(): Promise<void> {
 
         const diffCommits: DefaultLogFields[] = []
         if (mergeBase !== '') {
-            const log = await git.log({from: mergeBase, to: syncBranchName})
+            const log = await git.log({from: mergeBase, to: syncBranchName, '--reverse': null})
             for (const logItem of log.all) {
                 if (logItem.author_email.endsWith(emailSuffix)) {
                     const diff = await git.raw([
