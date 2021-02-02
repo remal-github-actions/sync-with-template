@@ -158,7 +158,8 @@ async function run(): Promise<void> {
         const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000
 
 
-        const commitsCount: number = await core.group("Cherry-picking template commits", async () => {
+        const cherryPickedCommits: CherryPickedCommit[] = []
+        await core.group("Cherry-picking template commits", async () => {
             const templateBranchName = templateRepo.default_branch
             await git.fetch('template', templateBranchName)
             const templateBranchLog = await git.log([
@@ -166,9 +167,7 @@ async function run(): Promise<void> {
                 `--since=${lastSynchronizedCommitTimestamp + 1}`,
                 `remotes/template/${templateBranchName}`
             ])
-            let counter = 0
             for (const logItem of templateBranchLog.all) {
-                ++counter
                 core.info(`Cherry-picking ${logItem.hash}: ${logItem.message}`)
 
                 await git.raw([
@@ -201,14 +200,17 @@ async function run(): Promise<void> {
                     .commit(message, {
                         '--allow-empty': null,
                     })
-            }
 
-            if (counter === 0) {
-                core.info("No commits were cherry-picked from template repository")
+                cherryPickedCommits.push({
+                    templateCommit: logItem,
+                    message,
+                    hash: await git.raw(['rev-parse', 'HEAD']).then(text => text.trim())
+                })
             }
-
-            return counter
         })
+        if (cherryPickedCommits.length === 0) {
+            core.info("No commits were cherry-picked from template repository")
+        }
 
 
         let isDiffEmpty = false
@@ -230,9 +232,9 @@ async function run(): Promise<void> {
         core.info(`isDiffEmpty=${isDiffEmpty}`)
 
 
-        if (commitsCount > 0) {
+        if (cherryPickedCommits.length > 0) {
             if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                core.info(`Pushing ${commitsCount} commits`)
+                core.info(`Pushing ${cherryPickedCommits.length} commits`)
                 await git.raw(['push', 'origin', syncBranchName])
             }
         }
@@ -290,14 +292,11 @@ async function run(): Promise<void> {
             pullRequestTitle = `chore(template): ${pullRequestTitle}`
         }
 
-        const allCommitMessages = new Set<string>()
-        const diffCommitMessages = new Set<string>()
+        const diffCommits: DefaultLogFields[] = []
         if (mergeBase !== '') {
             const log = await git.log({from: mergeBase, to: syncBranchName})
             for (const logItem of log.all) {
                 if (logItem.author_email.endsWith(emailSuffix)) {
-                    allCommitMessages.add(logItem.message)
-
                     const diff = await git.raw([
                         'merge-tree',
                         mergeBase,
@@ -305,17 +304,29 @@ async function run(): Promise<void> {
                         logItem.hash
                     ]).then(text => text.trim())
                     if (diff !== '') {
-                        diffCommitMessages.add(logItem.message)
+                        diffCommits.push(logItem)
+                        core.info(`diffCommitMessages[]=${logItem.message}`)
                     }
                 }
             }
         }
-        if (diffCommitMessages.size === 1) {
-            pullRequestTitle = diffCommitMessages.values().next().value
+        if (diffCommits.length === 1) {
+            pullRequestTitle = diffCommits.values().next().value
         }
 
-        const pullRequestBody = "Template repository changes."
+        let pullRequestBody = "Template repository changes."
             + "\n\nIf you close this PR, it will be recreated automatically."
+        if (diffCommits.length > 0) {
+            pullRequestBody += "\n\nCommits to merge:"
+            for (const diffCommit of diffCommits) {
+                const cherryPickedCommit = cherryPickedCommits.find(commit => commit.hash === diffCommit.hash)
+                if (cherryPickedCommit != null) {
+                    pullRequestBody += `\n* [${diffCommit.message}](${templateRepo.html_url}/commit/${cherryPickedCommit.templateCommit.hash})`
+                } else {
+                    pullRequestBody += `\n* ${diffCommit.message}`
+                }
+            }
+        }
 
         const hasAtLeastOneOpenedPullRequest = await core.group("Process opened pull requests", async () => {
             const pullRequests = (
@@ -377,7 +388,7 @@ async function run(): Promise<void> {
         })
 
 
-        if (commitsCount > 0 && !hasAtLeastOneOpenedPullRequest) {
+        if (cherryPickedCommits.length > 0 && !hasAtLeastOneOpenedPullRequest) {
             await core.group("Creating pull request", async () => {
                 const pullRequest = (
                     await octokit.pulls.create({
@@ -411,6 +422,12 @@ run()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+type CherryPickedCommit = {
+    templateCommit: DefaultLogFields,
+    message: string,
+    hash: string,
+}
+
 function getSyncBranchName(): string {
     const name = core.getInput('syncBranchName', {required: true})
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
@@ -419,8 +436,6 @@ function getSyncBranchName(): string {
         return `chore/${name}`
     }
 }
-
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 async function gitRemoteBranches(git: SimpleGit, remoteName: string): Promise<string[]> {
     return git.listRemote(['--exit-code', '--heads', remoteName]).then(content => {
@@ -435,7 +450,7 @@ async function gitRemoteBranches(git: SimpleGit, remoteName: string): Promise<st
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-type     Repo = RestEndpointMethodTypes['repos']['get']['response']['data']
+type Repo = RestEndpointMethodTypes['repos']['get']['response']['data']
 
 async function getCurrentRepo(): Promise<Repo> {
     return getRepo(context.repo.owner, context.repo.repo)
