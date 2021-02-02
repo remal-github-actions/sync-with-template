@@ -1,0 +1,20 @@
+name: Sync with template repository
+
+on:
+  schedule:
+  - cron: '15 * * * *'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  sync-with-template:
+    env:
+      PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
+    if: ${{ env.PUSH_BACK_TOKEN }}
+
+    steps:
+    - uses: remal-github-actions/sync-with-template@v1
+      with:
+        githubToken: '${{ env.PUSH_BACK_TOKEN }}'
