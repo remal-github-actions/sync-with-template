@@ -77,7 +77,7 @@ jobs:
           echo "Version from package.json: $FULL_VERSION"
           MAJOR_VERSION=$(echo "$FULL_VERSION" | cut -f1 -d".")
           echo "Major version: $MAJOR_VERSION"
-          git tag --force "$MAJOR_VERSION"
-          git push --force origin "$MAJOR_VERSION"
+          git tag --force "v$MAJOR_VERSION"
+          git push --force origin "v$MAJOR_VERSION"
           echo "::endgroup::"
         fi
