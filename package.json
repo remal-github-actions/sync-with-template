@@ -9,7 +9,7 @@
   "main": "dist/main.js",
   "scripts": {
     "lint": "eslint --fix src/**/*.[jt]s",
-    "compile": "npm run lint && rimraf build && tsc",
+    "compile": "npm run lint && rimraf build && tsc --rootDir src --outDir build",
     "dist": "npm run compile && rimraf dist && ncc build build/main.js --out dist",
     "build": "npm run dist"
   },
