@@ -30,6 +30,8 @@ pull_request_rules:
 - name: Auto approve dependencies
   conditions:
   - author~=^(dependabot(-preview)?|renovate)\[bot\]$
+  - label!=dependencies-ci
+  - label!=sync-with-template
   - -status-neutral=renovate/stability-days
   - -status-failure=renovate/stability-days
   - -closed
@@ -52,6 +54,7 @@ pull_request_rules:
 - name: Merge by authors automatically
   conditions:
   - author=remal
+  - label!=dependencies-ci
   - label!=sync-with-template
   - -closed
   - -merged
