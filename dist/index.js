@@ -231,11 +231,11 @@ function run() {
                 });
                 if (sortedPullRequests.length > 0) {
                     const pullRequest = sortedPullRequests[0];
-                    core.info(`Creating '${syncBranchName}' branch from merge commit of #${pullRequest.number}: ${pullRequest.merge_commit_sha}`);
-                    yield git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha);
-                    core.info(`Fetching last commit of pull request #${pullRequest.number}: ${pullRequest.head.sha}`);
+                    core.info(`Fetching last commit of pull request: ${pullRequest.html_url}`);
                     const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`;
                     yield git.fetch('origin', pullRequestBranchName);
+                    //await git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha!)
+                    yield git.checkoutBranch(syncBranchName, pullRequest.head.sha);
                     const log = yield git.log([pullRequest.head.sha]);
                     for (const logItem of log.all) {
                         if (logItem.author_email.endsWith(emailSuffix)) {
