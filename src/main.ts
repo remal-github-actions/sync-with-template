@@ -289,7 +289,10 @@ async function run(): Promise<void> {
             const log = await git.log({from: mergeBase})
             for (const logItem of log.all) {
                 if (logItem.author_email.endsWith(emailSuffix)) {
-                    commitMessages.add(logItem.message)
+                    const diff = await git.raw(['diff', `${mergeBase}..${logItem.hash}`]).then(text => text.trim())
+                    if (diff !== '') {
+                        commitMessages.add(logItem.message)
+                    }
                 }
             }
         }
