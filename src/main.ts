@@ -210,30 +210,31 @@ async function run(): Promise<void> {
                 await git.raw(['push', 'origin', syncBranchName])
             })
 
-            await core.group("Creating pull request", async () => {
-                const commitMessages = new Set<string>()
-                const mergeBase = await git.raw([
-                    'merge-base',
-                    `remotes/origin/${repo.default_branch}`,
-                    syncBranchName
-                ]).then(text => text.trim())
-                if (mergeBase !== '') {
-                    const log = await git.log({from: mergeBase})
-                    for (const logItem of log.all) {
-                        if (logItem.author_email.endsWith(emailSuffix)) {
-                            commitMessages.add(logItem.message)
-                        }
+
+            let pullRequestTitle = "Merge template repository changes"
+            if (conventionalCommits) {
+                pullRequestTitle = `chore(template): ${pullRequestTitle}`
+            }
+
+            const commitMessages = new Set<string>()
+            const mergeBase = await git.raw([
+                'merge-base',
+                `remotes/origin/${repo.default_branch}`,
+                syncBranchName
+            ]).then(text => text.trim())
+            if (mergeBase !== '') {
+                const log = await git.log({from: mergeBase})
+                for (const logItem of log.all) {
+                    if (logItem.author_email.endsWith(emailSuffix)) {
+                        commitMessages.add(logItem.message)
                     }
                 }
+            }
+            if (commitMessages.size === 1) {
+                pullRequestTitle = commitMessages.values().next().value
+            }
 
-                let pullRequestTitle = "Merge template repository changes"
-                if (conventionalCommits) {
-                    pullRequestTitle = `chore(template): ${pullRequestTitle}`
-                }
-                if (commitMessages.size === 1) {
-                    pullRequestTitle = commitMessages.values().next().value
-                }
-
+            const hasAtLeastOneOpenedPullRequest = await core.group("Process opened pull requests", async () => {
                 const allPullRequests = await octokit.paginate(octokit.pulls.list, {
                     owner: context.repo.owner,
                     repo: context.repo.repo,
@@ -242,13 +243,15 @@ async function run(): Promise<void> {
                 })
                 const filteredPullRequests = allPullRequests
                     .filter(pr => pr.head.ref === syncBranchName)
-                if (filteredPullRequests.length > 0) {
-                    for (const filteredPullRequest of filteredPullRequests) {
-                        if (filteredPullRequest.title === pullRequestTitle) {
-                            continue
-                        }
 
-                        if (commitMessages.size >= 2) {
+                if (filteredPullRequests.length === 0) {
+                    core.info(`No opened pull requests found for '${syncBranchName}' branch`)
+                    return false
+                }
+
+                for (const filteredPullRequest of filteredPullRequests) {
+                    await core.group(`Processing #${filteredPullRequest.number}`, async () => {
+                        if (filteredPullRequest.title !== pullRequestTitle) {
                             const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
                                 owner: context.repo.owner,
                                 repo: context.repo.repo,
@@ -274,31 +277,35 @@ async function run(): Promise<void> {
                                 })
                             }
                         }
-                    }
-                    core.info(`Skip creating, as there is an opened pull request for '${syncBranchName}' branch: ${filteredPullRequests[0].html_url}`)
-                    return
+                    })
                 }
 
-                const pullRequest = (
-                    await octokit.pulls.create({
+                return true
+            })
+
+            if (!hasAtLeastOneOpenedPullRequest) {
+                await core.group("Creating pull request", async () => {
+                    const pullRequest = (
+                        await octokit.pulls.create({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            head: syncBranchName,
+                            base: repo.default_branch,
+                            title: pullRequestTitle,
+                            body: "Template repository changes."
+                                + "\n\nIf you close this PR, it will be recreated automatically.",
+                            maintainer_can_modify: true,
+                        })
+                    ).data
+                    await octokit.issues.addLabels({
                         owner: context.repo.owner,
                         repo: context.repo.repo,
-                        head: syncBranchName,
-                        base: repo.default_branch,
-                        title: pullRequestTitle,
-                        body: "Template repository changes."
-                            + "\n\nIf you close this PR, it will be recreated automatically.",
-                        maintainer_can_modify: true,
+                        issue_number: pullRequest.number,
+                        labels: [pullRequestLabel]
                     })
-                ).data
-                await octokit.issues.addLabels({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: pullRequest.number,
-                    labels: [pullRequestLabel]
+                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
                 })
-                core.info(`Pull request for '${syncBranchName}' branch has already been created: ${pullRequest.html_url}`)
-            })
+            }
 
         } else {
             core.info("No commits were cherry-picked from template repository")
