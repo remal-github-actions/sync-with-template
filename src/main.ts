@@ -217,10 +217,17 @@ async function run(): Promise<void> {
             `remotes/origin/${repo.default_branch}`,
             syncBranchName
         ]).then(text => text.trim())
+        core.info(`mergeBase=${mergeBase}`)
         if (mergeBase !== '') {
-            const diff = await git.raw(['diff', `${mergeBase}..HEAD`]).then(text => text.trim())
+            const diff = await git.raw([
+                'merge-tree',
+                mergeBase,
+                `remotes/origin/${repo.default_branch}`,
+                syncBranchName
+            ]).then(text => text.trim())
             isDiffEmpty = diff === ''
         }
+        core.info(`isDiffEmpty=${isDiffEmpty}`)
 
 
         if (commitsCount > 0) {
@@ -286,11 +293,17 @@ async function run(): Promise<void> {
         const allCommitMessages = new Set<string>()
         const diffCommitMessages = new Set<string>()
         if (mergeBase !== '') {
-            const log = await git.log({from: mergeBase})
+            const log = await git.log({from: mergeBase, to: syncBranchName})
             for (const logItem of log.all) {
                 if (logItem.author_email.endsWith(emailSuffix)) {
                     allCommitMessages.add(logItem.message)
-                    const diff = await git.raw(['diff', `${mergeBase}..${logItem.hash}`]).then(text => text.trim())
+
+                    const diff = await git.raw([
+                        'merge-tree',
+                        mergeBase,
+                        `remotes/origin/${repo.default_branch}`,
+                        logItem.hash
+                    ]).then(text => text.trim())
                     if (diff !== '') {
                         diffCommitMessages.add(logItem.message)
                     }
@@ -300,6 +313,9 @@ async function run(): Promise<void> {
         if (diffCommitMessages.size === 1) {
             pullRequestTitle = diffCommitMessages.values().next().value
         }
+
+        const pullRequestBody = "Template repository changes."
+            + "\n\nIf you close this PR, it will be recreated automatically."
 
         const hasAtLeastOneOpenedPullRequest = await core.group("Process opened pull requests", async () => {
             const pullRequests = (
@@ -317,7 +333,7 @@ async function run(): Promise<void> {
             }
 
             for (const pullRequest of pullRequests) {
-                await core.group(`Processing opened pull request #${pullRequest.number}`, async () => {
+                await core.group(`Processing opened pull request: ${pullRequest.html_url}`, async () => {
                     if (pullRequest.title !== pullRequestTitle) {
                         const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
                             owner: context.repo.owner,
@@ -344,6 +360,16 @@ async function run(): Promise<void> {
                             })
                         }
                     }
+
+                    if (pullRequest.body !== pullRequestBody) {
+                        core.info("Changing pull request body")
+                        await octokit.pulls.update({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            pull_number: pullRequest.number,
+                            body: pullRequestBody,
+                        })
+                    }
                 })
             }
 
@@ -360,8 +386,7 @@ async function run(): Promise<void> {
                         head: syncBranchName,
                         base: repo.default_branch,
                         title: pullRequestTitle,
-                        body: "Template repository changes."
-                            + "\n\nIf you close this PR, it will be recreated automatically.",
+                        body: pullRequestBody,
                         maintainer_can_modify: true,
                     })
                 ).data
