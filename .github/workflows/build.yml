@@ -67,15 +67,17 @@ jobs:
         fi
         echo "::endgroup::"
 
-        echo "${{github.ref}}"
-        echo "${{github.ref == 'ref/heads/main'}}"
-        echo "::group::Update tag"
-        FULL_VERSION=$(jq -r '.version' package.json)
-        if [ "$FULL_VERSION" == "null" ]; then
-          echo "::error::Version can't be read from package.json file"
-          exit 1
+        if [ "${{github.ref == 'refs/heads/main'}}" == "true" ]; then
+          echo "::group::Update tag"
+          FULL_VERSION=$(jq -r '.version' package.json)
+          if [ "$FULL_VERSION" == "null" ]; then
+            echo "::error::Version can't be read from package.json file"
+            exit 1
+          fi
+          echo "Version from package.json: $FULL_VERSION"
+          MAJOR_VERSION=$(echo "$FULL_VERSION" | cut -f1 -d".")
+          echo "Major version: $MAJOR_VERSION"
+          git tag --force "$MAJOR_VERSION"
+          git push --force origin "$MAJOR_VERSION"
+          echo "::endgroup::"
         fi
-        echo "Version from package.json: $FULL_VERSION"
-        MAJOR_VERSION=$(echo "$FULL_VERSION" | cut -f1 -d".")
-        echo "Major version: $MAJOR_VERSION"
-        echo "::endgroup::"
