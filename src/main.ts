@@ -234,10 +234,10 @@ async function run(): Promise<void> {
 
 
         if (cherryPickedCommits.length > 0) {
-            if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                core.info(`Pushing ${cherryPickedCommits.length} commits`)
-                await git.raw(['push', 'origin', syncBranchName])
-            }
+            //if (!isDiffEmpty || doesOriginHasSyncBranch) {
+            core.info(`Pushing ${cherryPickedCommits.length} commits`)
+            await git.raw(['push', 'origin', syncBranchName])
+            //}
         }
 
 
@@ -280,7 +280,7 @@ async function run(): Promise<void> {
 
                 if (doesOriginHasSyncBranch) {
                     core.info(`Removing '${syncBranchName}' branch from origin remote`)
-                    await git.raw(['push', '--delete', 'origin', syncBranchName])
+                    //await git.raw(['push', '--delete', 'origin', syncBranchName])
                 }
             })
 
