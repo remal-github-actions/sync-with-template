@@ -320,10 +320,17 @@ function run() {
                 `remotes/origin/${repo.default_branch}`,
                 syncBranchName
             ]).then(text => text.trim());
+            core.info(`mergeBase=${mergeBase}`);
             if (mergeBase !== '') {
-                const diff = yield git.raw(['diff', `${mergeBase}..HEAD`]).then(text => text.trim());
+                const diff = yield git.raw([
+                    'merge-tree',
+                    mergeBase,
+                    `remotes/origin/${repo.default_branch}`,
+                    syncBranchName
+                ]).then(text => text.trim());
                 isDiffEmpty = diff === '';
             }
+            core.info(`isDiffEmpty=${isDiffEmpty}`);
             if (commitsCount > 0) {
                 if (!isDiffEmpty || doesOriginHasSyncBranch) {
                     core.info(`Pushing ${commitsCount} commits`);
@@ -375,21 +382,30 @@ function run() {
             if (conventionalCommits) {
                 pullRequestTitle = `chore(template): ${pullRequestTitle}`;
             }
-            const commitMessages = new Set();
+            const allCommitMessages = new Set();
+            const diffCommitMessages = new Set();
             if (mergeBase !== '') {
-                const log = yield git.log({ from: mergeBase });
+                const log = yield git.log({ from: mergeBase, to: syncBranchName });
                 for (const logItem of log.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
-                        const diff = yield git.raw(['diff', `${mergeBase}..${logItem.hash}`]).then(text => text.trim());
+                        allCommitMessages.add(logItem.message);
+                        const diff = yield git.raw([
+                            'merge-tree',
+                            mergeBase,
+                            `remotes/origin/${repo.default_branch}`,
+                            logItem.hash
+                        ]).then(text => text.trim());
                         if (diff !== '') {
-                            commitMessages.add(logItem.message);
+                            diffCommitMessages.add(logItem.message);
                         }
                     }
                 }
             }
-            if (commitMessages.size === 1) {
-                pullRequestTitle = commitMessages.values().next().value;
+            if (diffCommitMessages.size === 1) {
+                pullRequestTitle = diffCommitMessages.values().next().value;
             }
+            const pullRequestBody = "Template repository changes."
+                + "\n\nIf you close this PR, it will be recreated automatically.";
             const hasAtLeastOneOpenedPullRequest = yield core.group("Process opened pull requests", () => __awaiter(this, void 0, void 0, function* () {
                 const pullRequests = (yield octokit.paginate(octokit.pulls.list, {
                     owner: github_1.context.repo.owner,
@@ -402,7 +418,7 @@ function run() {
                     return false;
                 }
                 for (const pullRequest of pullRequests) {
-                    yield core.group(`Processing opened pull request #${pullRequest.number}`, () => __awaiter(this, void 0, void 0, function* () {
+                    yield core.group(`Processing opened pull request: ${pullRequest.html_url}`, () => __awaiter(this, void 0, void 0, function* () {
                         var e_1, _a;
                         if (pullRequest.title !== pullRequestTitle) {
                             const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
@@ -439,6 +455,15 @@ function run() {
                                 });
                             }
                         }
+                        if (pullRequest.body !== pullRequestBody) {
+                            core.info("Changing pull request body");
+                            yield octokit.pulls.update({
+                                owner: github_1.context.repo.owner,
+                                repo: github_1.context.repo.repo,
+                                pull_number: pullRequest.number,
+                                body: pullRequestBody,
+                            });
+                        }
                     }));
                 }
                 return true;
@@ -451,8 +476,7 @@ function run() {
                         head: syncBranchName,
                         base: repo.default_branch,
                         title: pullRequestTitle,
-                        body: "Template repository changes."
-                            + "\n\nIf you close this PR, it will be recreated automatically.",
+                        body: pullRequestBody,
                         maintainer_can_modify: true,
                     })).data;
                     yield octokit.issues.addLabels({
