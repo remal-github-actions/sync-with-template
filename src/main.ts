@@ -2,7 +2,7 @@ import * as core from '@actions/core'
 import {newOctokitInstance} from './internal/octokit'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
-import simpleGit, {GitError, SimpleGit} from 'simple-git'
+import simpleGit, {SimpleGit} from 'simple-git'
 import {isConventionalCommit} from './internal/conventional-commits'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 
@@ -75,32 +75,27 @@ async function run(): Promise<void> {
         })
 
 
+        const originBranches = await gitRemoteBranches(git, 'origin')
+        const doesOriginHasSyncBranch = originBranches.indexOf(syncBranchName) >= 0
+
+
         const lastCommitLogItem: DefaultLogFields | null = await core.group("Fetching sync branch", async () => {
-            let isFetchExecutedSuccessfully = true
-            try {
+            if (doesOriginHasSyncBranch) {
                 await git.fetch('origin', syncBranchName)
-            } catch (e) {
-                if (e instanceof GitError) {
-                    isFetchExecutedSuccessfully = false
-                } else {
-                    throw e
-                }
-            }
-            if (isFetchExecutedSuccessfully) {
                 await git.checkout(syncBranchName)
                 return null
             }
 
-            const allPullRequests = await octokit.paginate(octokit.pulls.list, {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'closed',
-                head: `${context.repo.owner}:${syncBranchName}`
-            })
-            const filteredPullRequests = allPullRequests
+            const mergedPullRequests = (
+                await octokit.paginate(octokit.pulls.list, {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    state: 'closed',
+                    head: `${context.repo.owner}:${syncBranchName}`
+                })
+            )
                 .filter(pr => pr.head.ref === syncBranchName)
                 .filter(pr => pr.head.sha !== pr.base.sha)
-            const mergedPullRequests = filteredPullRequests
                 .filter(pr => pr.merged_at != null)
             const sortedPullRequests = [...mergedPullRequests].sort((pr1, pr2) => {
                 const mergedAt1 = new Date(pr1.merged_at!).getTime()
@@ -227,8 +222,13 @@ async function run(): Promise<void> {
         }
 
 
-        const listRemote = await gitListRemoteBranches(git, 'origin')
-        core.info(listRemote.join(', '))
+        if (commitsCount > 0) {
+            if (!isDiffEmpty || doesOriginHasSyncBranch) {
+                await core.group(`Pushing ${commitsCount} commits`, async () => {
+                    await git.raw(['push', 'origin', syncBranchName])
+                })
+            }
+        }
 
 
         if (isDiffEmpty) {
@@ -268,13 +268,12 @@ async function run(): Promise<void> {
                     })
                 }
             })
-        }
 
+            if (doesOriginHasSyncBranch) {
+                await git.raw(['push', '--delete', 'origin', syncBranchName])
+            }
 
-        if (commitsCount > 0) {
-            await core.group(`Pushing ${commitsCount} commits`, async () => {
-                await git.raw(['push', 'origin', syncBranchName])
-            })
+            return
         }
 
 
@@ -392,7 +391,7 @@ function getSyncBranchName(): string {
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-async function gitListRemoteBranches(git: SimpleGit, remoteName: string): Promise<string[]> {
+async function gitRemoteBranches(git: SimpleGit, remoteName: string): Promise<string[]> {
     return git.listRemote(['--exit-code', '--heads', remoteName]).then(content => {
         return content.split('\n')
             .map(line => line.trim())
