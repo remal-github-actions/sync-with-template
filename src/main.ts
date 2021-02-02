@@ -206,16 +206,75 @@ async function run(): Promise<void> {
                         '--allow-empty': null,
                     })
             }
+
+            if (counter === 0) {
+                core.info("No commits were cherry-picked from template repository")
+            }
+
             return counter
         })
+
+
+        let isDiffEmpty = false
+        const mergeBase = await git.raw([
+            'merge-base',
+            `remotes/origin/${repo.default_branch}`,
+            syncBranchName
+        ]).then(text => text.trim())
+        if (mergeBase !== '') {
+            const diff = await git.raw(['diff', `${mergeBase}..HEAD`]).then(text => text.trim())
+            isDiffEmpty = diff === ''
+        }
+
+
+        const listRemote = await git.listRemote(['--heads', 'origin'])
+        core.info(listRemote)
+
+
+        if (isDiffEmpty) {
+            core.group(`Diff is empty, removing '${syncBranchName}' branch`, async () => {
+                const pullRequests = (
+                    await octokit.paginate(octokit.pulls.list, {
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        state: 'open',
+                        head: `${context.repo.owner}:${syncBranchName}`
+                    })
+                ).filter(pr => pr.head.ref === syncBranchName)
+                for (const pullRequest of pullRequests) {
+                    core.info(`Closing empty pull request: ${pullRequest.html_url}`)
+                    await octokit.issues.createComment({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: pullRequest.number,
+                        body: "Closing empty pull request",
+                    })
+                    const autoclosedSuffix = ' - autoclosed'
+                    let newTitle = pullRequest.title
+                    if (!newTitle.endsWith(autoclosedSuffix)) {
+                        newTitle = `${newTitle}${autoclosedSuffix}`
+                    }
+                    await octokit.pulls.update({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        pull_number: pullRequest.number,
+                        title: newTitle,
+                    })
+                    await octokit.issues.update({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: pullRequest.number,
+                        state: 'closed',
+                    })
+                }
+            })
+        }
 
 
         if (commitsCount > 0) {
             await core.group(`Pushing ${commitsCount} commits`, async () => {
                 await git.raw(['push', 'origin', syncBranchName])
             })
-        } else {
-            core.info("No commits were cherry-picked from template repository")
         }
 
 
@@ -225,11 +284,6 @@ async function run(): Promise<void> {
         }
 
         const commitMessages = new Set<string>()
-        const mergeBase = await git.raw([
-            'merge-base',
-            `remotes/origin/${repo.default_branch}`,
-            syncBranchName
-        ]).then(text => text.trim())
         if (mergeBase !== '') {
             const log = await git.log({from: mergeBase})
             for (const logItem of log.all) {
@@ -243,21 +297,21 @@ async function run(): Promise<void> {
         }
 
         const hasAtLeastOneOpenedPullRequest = await core.group("Process opened pull requests", async () => {
-            const allPullRequests = await octokit.paginate(octokit.pulls.list, {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'open',
-                head: `${context.repo.owner}:${syncBranchName}`
-            })
-            const filteredPullRequests = allPullRequests
-                .filter(pr => pr.head.ref === syncBranchName)
+            const pullRequests = (
+                await octokit.paginate(octokit.pulls.list, {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    state: 'open',
+                    head: `${context.repo.owner}:${syncBranchName}`
+                })
+            ).filter(pr => pr.head.ref === syncBranchName)
 
-            if (filteredPullRequests.length === 0) {
+            if (pullRequests.length === 0) {
                 core.info(`No opened pull requests found for '${syncBranchName}' branch`)
                 return false
             }
 
-            for (const pullRequest of filteredPullRequests) {
+            for (const pullRequest of pullRequests) {
                 await core.group(`Processing opened pull request #${pullRequest.number}`, async () => {
                     const pullRequestFiles = await octokit.pulls.listFiles({
                         owner: context.repo.owner,
