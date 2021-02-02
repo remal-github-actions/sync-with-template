@@ -301,32 +301,30 @@ async function run(): Promise<void> {
                 return
             }
 
-            await core.group("Creating pull request", async () => {
-                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
-                if (conventionalCommits) {
-                    pullRequestTitle = `chore(template): ${pullRequestTitle}`
-                }
+            let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
+            if (conventionalCommits) {
+                pullRequestTitle = `chore(template): ${pullRequestTitle}`
+            }
 
-                const pullRequest = (
-                    await octokit.pulls.create({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        head: syncBranchName,
-                        base: repo.default_branch,
-                        title: pullRequestTitle,
-                        body: "Template repository changes."
-                            + "\n\nIf you close this PR, it will be recreated automatically.",
-                        maintainer_can_modify: true,
-                    })
-                ).data
-                await octokit.issues.addLabels({
+            const pullRequest = (
+                await octokit.pulls.create({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
-                    issue_number: pullRequest.number,
-                    labels: [pullRequestLabel]
+                    head: syncBranchName,
+                    base: repo.default_branch,
+                    title: pullRequestTitle,
+                    body: "Template repository changes."
+                        + "\n\nIf you close this PR, it will be recreated automatically.",
+                    maintainer_can_modify: true,
                 })
-                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+            ).data
+            await octokit.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullRequest.number,
+                labels: [pullRequestLabel]
             })
+            core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
         }
 
 
