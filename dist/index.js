@@ -326,9 +326,8 @@ function run() {
             }
             if (commitsCount > 0) {
                 if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                    yield core.group(`Pushing ${commitsCount} commits`, () => __awaiter(this, void 0, void 0, function* () {
-                        yield git.raw(['push', 'origin', syncBranchName]);
-                    }));
+                    core.info(`Pushing ${commitsCount} commits`);
+                    yield git.raw(['push', 'origin', syncBranchName]);
                 }
             }
             if (isDiffEmpty) {
@@ -381,7 +380,10 @@ function run() {
                 const log = yield git.log({ from: mergeBase });
                 for (const logItem of log.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
-                        commitMessages.add(logItem.message);
+                        const diff = yield git.raw(['diff', `${mergeBase}..${logItem.hash}`]).then(text => text.trim());
+                        if (diff !== '') {
+                            commitMessages.add(logItem.message);
+                        }
                     }
                 }
             }
