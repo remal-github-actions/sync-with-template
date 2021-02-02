@@ -276,7 +276,7 @@ function run() {
                     `remotes/template/${templateBranchName}`
                 ]);
                 for (const logItem of templateBranchLog.all) {
-                    core.info(`Cherry-picking ${logItem.hash}: ${logItem.message}`);
+                    core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash}: ${logItem.message}`);
                     yield git.raw([
                         'cherry-pick',
                         '--no-commit',
@@ -335,11 +335,12 @@ function run() {
                 isDiffEmpty = diff === '';
             }
             core.info(`isDiffEmpty=${isDiffEmpty}`);
+            yield git.raw(['push', 'origin', syncBranchName]);
             if (cherryPickedCommits.length > 0) {
-                //if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                core.info(`Pushing ${cherryPickedCommits.length} commits`);
-                yield git.raw(['push', 'origin', syncBranchName]);
-                //}
+                if (!isDiffEmpty || doesOriginHasSyncBranch) {
+                    core.info(`Pushing ${cherryPickedCommits.length} commits`);
+                    yield git.raw(['push', 'origin', syncBranchName]);
+                }
             }
             if (isDiffEmpty) {
                 yield core.group(`Diff is empty, clearing '${syncBranchName}' branch`, () => __awaiter(this, void 0, void 0, function* () {
