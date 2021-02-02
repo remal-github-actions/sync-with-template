@@ -39,7 +39,7 @@ async function run(): Promise<void> {
 
 
         const workspacePath = require('tmp').dirSync().name
-        //require('debug').enable('simple-git')
+        require('debug').enable('simple-git')
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
@@ -111,7 +111,7 @@ async function run(): Promise<void> {
             if (sortedPullRequests.length > 0) {
                 const pullRequest = sortedPullRequests[0]
 
-                core.info(`Fetching last commit of pull request: ${pullRequest.html_url}`)
+                core.info(`Fetching last commit of pull request #${pullRequest.number}: ${repo.html_url}/commit/${pullRequest.head.sha}`)
                 const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`
                 await git.fetch('origin', pullRequestBranchName)
 
