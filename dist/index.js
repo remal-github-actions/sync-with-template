@@ -266,7 +266,8 @@ function run() {
                 return new Date(latestLogItem.date);
             }));
             const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000;
-            const commitsCount = yield core.group("Cherry-picking template commits", () => __awaiter(this, void 0, void 0, function* () {
+            const cherryPickedCommits = [];
+            yield core.group("Cherry-picking template commits", () => __awaiter(this, void 0, void 0, function* () {
                 const templateBranchName = templateRepo.default_branch;
                 yield git.fetch('template', templateBranchName);
                 const templateBranchLog = yield git.log([
@@ -274,9 +275,7 @@ function run() {
                     `--since=${lastSynchronizedCommitTimestamp + 1}`,
                     `remotes/template/${templateBranchName}`
                 ]);
-                let counter = 0;
                 for (const logItem of templateBranchLog.all) {
-                    ++counter;
                     core.info(`Cherry-picking ${logItem.hash}: ${logItem.message}`);
                     yield git.raw([
                         'cherry-pick',
@@ -308,12 +307,16 @@ function run() {
                         .commit(message, {
                         '--allow-empty': null,
                     });
+                    cherryPickedCommits.push({
+                        templateCommit: logItem,
+                        message,
+                        hash: yield git.raw(['rev-parse', 'HEAD']).then(text => text.trim())
+                    });
                 }
-                if (counter === 0) {
-                    core.info("No commits were cherry-picked from template repository");
-                }
-                return counter;
             }));
+            if (cherryPickedCommits.length === 0) {
+                core.info("No commits were cherry-picked from template repository");
+            }
             let isDiffEmpty = false;
             const mergeBase = yield git.raw([
                 'merge-base',
@@ -331,9 +334,9 @@ function run() {
                 isDiffEmpty = diff === '';
             }
             core.info(`isDiffEmpty=${isDiffEmpty}`);
-            if (commitsCount > 0) {
+            if (cherryPickedCommits.length > 0) {
                 if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                    core.info(`Pushing ${commitsCount} commits`);
+                    core.info(`Pushing ${cherryPickedCommits.length} commits`);
                     yield git.raw(['push', 'origin', syncBranchName]);
                 }
             }
@@ -382,13 +385,11 @@ function run() {
             if (conventionalCommits) {
                 pullRequestTitle = `chore(template): ${pullRequestTitle}`;
             }
-            const allCommitMessages = new Set();
-            const diffCommitMessages = new Set();
+            const diffCommits = [];
             if (mergeBase !== '') {
                 const log = yield git.log({ from: mergeBase, to: syncBranchName });
                 for (const logItem of log.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
-                        allCommitMessages.add(logItem.message);
                         const diff = yield git.raw([
                             'merge-tree',
                             mergeBase,
@@ -396,16 +397,29 @@ function run() {
                             logItem.hash
                         ]).then(text => text.trim());
                         if (diff !== '') {
-                            diffCommitMessages.add(logItem.message);
+                            diffCommits.push(logItem);
+                            core.info(`diffCommitMessages[]=${logItem.message}`);
                         }
                     }
                 }
             }
-            if (diffCommitMessages.size === 1) {
-                pullRequestTitle = diffCommitMessages.values().next().value;
+            if (diffCommits.length === 1) {
+                pullRequestTitle = diffCommits.values().next().value;
             }
-            const pullRequestBody = "Template repository changes."
+            let pullRequestBody = "Template repository changes."
                 + "\n\nIf you close this PR, it will be recreated automatically.";
+            if (diffCommits.length > 0) {
+                pullRequestBody += "\n\nCommits to merge:";
+                for (const diffCommit of diffCommits) {
+                    const cherryPickedCommit = cherryPickedCommits.find(commit => commit.hash === diffCommit.hash);
+                    if (cherryPickedCommit != null) {
+                        pullRequestBody += `\n* [${diffCommit.message}](${templateRepo.html_url}/commit/${cherryPickedCommit.templateCommit.hash})`;
+                    }
+                    else {
+                        pullRequestBody += `\n* ${diffCommit.message}`;
+                    }
+                }
+            }
             const hasAtLeastOneOpenedPullRequest = yield core.group("Process opened pull requests", () => __awaiter(this, void 0, void 0, function* () {
                 const pullRequests = (yield octokit.paginate(octokit.pulls.list, {
                     owner: github_1.context.repo.owner,
@@ -468,7 +482,7 @@ function run() {
                 }
                 return true;
             }));
-            if (commitsCount > 0 && !hasAtLeastOneOpenedPullRequest) {
+            if (cherryPickedCommits.length > 0 && !hasAtLeastOneOpenedPullRequest) {
                 yield core.group("Creating pull request", () => __awaiter(this, void 0, void 0, function* () {
                     const pullRequest = (yield octokit.pulls.create({
                         owner: github_1.context.repo.owner,
@@ -496,7 +510,6 @@ function run() {
 }
 //noinspection JSIgnoredPromiseFromCall
 run();
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 function getSyncBranchName() {
     const name = core.getInput('syncBranchName', { required: true });
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
@@ -506,7 +519,6 @@ function getSyncBranchName() {
         return `chore/${name}`;
     }
 }
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 function gitRemoteBranches(git, remoteName) {
     return __awaiter(this, void 0, void 0, function* () {
         return git.listRemote(['--exit-code', '--heads', remoteName]).then(content => {
