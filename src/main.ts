@@ -112,7 +112,8 @@ async function run(): Promise<void> {
                 const pullRequest = sortedPullRequests[0]
 
                 core.info(`Creating '${syncBranchName}' branch from merge commit of #${pullRequest.number}: ${pullRequest.merge_commit_sha}`)
-                await git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha!)
+                //await git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha!)
+                await git.checkoutBranch(syncBranchName, pullRequest.head.sha)
 
                 core.info(`Fetching last commit of pull request #${pullRequest.number}: ${pullRequest.head.sha}`)
                 const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`
