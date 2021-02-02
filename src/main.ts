@@ -37,6 +37,7 @@ async function run(): Promise<void> {
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
+
         const workspacePath = require('tmp').dirSync().name
         //require('debug').enable('simple-git')
         const git = simpleGit(workspacePath)
@@ -72,6 +73,7 @@ async function run(): Promise<void> {
             core.info("Installing LFS")
             await git.raw(['lfs', 'install', '--local'])
         })
+
 
         const lastCommitLogItem: DefaultLogFields | null = await core.group("Fetching sync branch", async () => {
             let isFetchExecutedSuccessfully = true
@@ -135,6 +137,7 @@ async function run(): Promise<void> {
             return null
         })
 
+
         const lastSynchronizedCommitDate: Date = await core.group(
             "Retrieving last synchronized commit date",
             async () => {
@@ -157,6 +160,7 @@ async function run(): Promise<void> {
             }
         )
         const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000
+
 
         const commitsCount: number = await core.group("Cherry-picking template commits", async () => {
             const templateBranchName = templateRepo.default_branch
@@ -205,107 +209,111 @@ async function run(): Promise<void> {
             return counter
         })
 
+
         if (commitsCount > 0) {
             await core.group(`Pushing ${commitsCount} commits`, async () => {
                 await git.raw(['push', 'origin', syncBranchName])
             })
+        }
 
 
-            let pullRequestTitle = "Merge template repository changes"
-            if (conventionalCommits) {
-                pullRequestTitle = `chore(template): ${pullRequestTitle}`
-            }
+        let pullRequestTitle = "Merge template repository changes"
+        if (conventionalCommits) {
+            pullRequestTitle = `chore(template): ${pullRequestTitle}`
+        }
 
-            const commitMessages = new Set<string>()
-            const mergeBase = await git.raw([
-                'merge-base',
-                `remotes/origin/${repo.default_branch}`,
-                syncBranchName
-            ]).then(text => text.trim())
-            if (mergeBase !== '') {
-                const log = await git.log({from: mergeBase})
-                for (const logItem of log.all) {
-                    if (logItem.author_email.endsWith(emailSuffix)) {
-                        commitMessages.add(logItem.message)
-                    }
+        const commitMessages = new Set<string>()
+        const mergeBase = await git.raw([
+            'merge-base',
+            `remotes/origin/${repo.default_branch}`,
+            syncBranchName
+        ]).then(text => text.trim())
+        if (mergeBase !== '') {
+            const log = await git.log({from: mergeBase})
+            for (const logItem of log.all) {
+                if (logItem.author_email.endsWith(emailSuffix)) {
+                    commitMessages.add(logItem.message)
                 }
             }
-            if (commitMessages.size === 1) {
-                pullRequestTitle = commitMessages.values().next().value
+        }
+        if (commitMessages.size === 1) {
+            pullRequestTitle = commitMessages.values().next().value
+        }
+
+        const hasAtLeastOneOpenedPullRequest = await core.group("Process opened pull requests", async () => {
+            const allPullRequests = await octokit.paginate(octokit.pulls.list, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                head: `${context.repo.owner}:${syncBranchName}`
+            })
+            const filteredPullRequests = allPullRequests
+                .filter(pr => pr.head.ref === syncBranchName)
+
+            if (filteredPullRequests.length === 0) {
+                core.info(`No opened pull requests found for '${syncBranchName}' branch`)
+                return false
             }
 
-            const hasAtLeastOneOpenedPullRequest = await core.group("Process opened pull requests", async () => {
-                const allPullRequests = await octokit.paginate(octokit.pulls.list, {
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    state: 'open',
-                    head: `${context.repo.owner}:${syncBranchName}`
-                })
-                const filteredPullRequests = allPullRequests
-                    .filter(pr => pr.head.ref === syncBranchName)
-
-                if (filteredPullRequests.length === 0) {
-                    core.info(`No opened pull requests found for '${syncBranchName}' branch`)
-                    return false
-                }
-
-                for (const pullRequest of filteredPullRequests) {
-                    await core.group(`Processing #${pullRequest.number}`, async () => {
-                        const pullRequestFiles = await octokit.pulls.listFiles({
+            for (const pullRequest of filteredPullRequests) {
+                await core.group(`Processing #${pullRequest.number}`, async () => {
+                    const pullRequestFiles = await octokit.pulls.listFiles({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        pull_number: pullRequest.number,
+                        per_page: 1,
+                    })
+                    if (pullRequestFiles.data.length === 0) {
+                        core.info("Closing empty pull request")
+                        await octokit.issues.createComment({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            issue_number: pullRequest.number,
+                            body: "Closing empty pull request",
+                        })
+                        await octokit.pulls.update({
                             owner: context.repo.owner,
                             repo: context.repo.repo,
                             pull_number: pullRequest.number,
-                            per_page: 1,
+                            title: `${pullRequest.title} - autoclosed`,
                         })
-                        if (pullRequestFiles.data.length === 0) {
-                            core.info("Closing empty pull request")
-                            await octokit.issues.createComment({
-                                owner: context.repo.owner,
-                                repo: context.repo.repo,
-                                issue_number: pullRequest.number,
-                                body: "Closing empty pull request",
-                            })
+                        return
+                    }
+
+                    if (pullRequest.title !== pullRequestTitle) {
+                        const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            issue_number: pullRequest.number,
+                        })
+                        let wasRenamed = false
+                        allEvents: for await (const eventsResponse of eventsIterator) {
+                            for (const event of eventsResponse.data) {
+                                if (event.event === 'renamed') {
+                                    wasRenamed = true
+                                    break allEvents
+                                }
+                            }
+                        }
+
+                        if (!wasRenamed) {
+                            core.info(`Renaming from '${pullRequest.title}' to '${pullRequestTitle}'`)
                             await octokit.pulls.update({
                                 owner: context.repo.owner,
                                 repo: context.repo.repo,
                                 pull_number: pullRequest.number,
-                                title: `${pullRequest.title} - autoclosed`,
+                                title: pullRequestTitle,
                             })
-                            return
                         }
+                    }
+                })
+            }
 
-                        if (pullRequest.title !== pullRequestTitle) {
-                            const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
-                                owner: context.repo.owner,
-                                repo: context.repo.repo,
-                                issue_number: pullRequest.number,
-                            })
-                            let wasRenamed = false
-                            allEvents: for await (const eventsResponse of eventsIterator) {
-                                for (const event of eventsResponse.data) {
-                                    if (event.event === 'renamed') {
-                                        wasRenamed = true
-                                        break allEvents
-                                    }
-                                }
-                            }
+            return true
+        })
 
-                            if (!wasRenamed) {
-                                core.info(`Renaming from '${pullRequest.title}' to '${pullRequestTitle}'`)
-                                await octokit.pulls.update({
-                                    owner: context.repo.owner,
-                                    repo: context.repo.repo,
-                                    pull_number: pullRequest.number,
-                                    title: pullRequestTitle,
-                                })
-                            }
-                        }
-                    })
-                }
 
-                return true
-            })
-
+        if (commitsCount > 0) {
             if (!hasAtLeastOneOpenedPullRequest) {
                 await core.group("Creating pull request", async () => {
                     const pullRequest = (
