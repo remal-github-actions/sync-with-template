@@ -270,6 +270,7 @@ async function run(): Promise<void> {
             })
 
             if (doesOriginHasSyncBranch) {
+                core.info(`Removing '${syncBranchName}' branch from origin remote`)
                 await git.raw(['push', '--delete', 'origin', syncBranchName])
             }
 
