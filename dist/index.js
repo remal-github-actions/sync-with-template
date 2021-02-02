@@ -323,7 +323,6 @@ function run() {
                 `remotes/origin/${repo.default_branch}`,
                 syncBranchName
             ]).then(text => text.trim());
-            core.info(`mergeBase=${mergeBase}`);
             if (mergeBase !== '') {
                 const diff = yield git.raw([
                     'merge-tree',
@@ -331,11 +330,8 @@ function run() {
                     `remotes/origin/${repo.default_branch}`,
                     syncBranchName
                 ]).then(text => text.trim());
-                core.info(`diff=${diff}`);
                 isDiffEmpty = diff === '';
             }
-            core.info(`isDiffEmpty=${isDiffEmpty}`);
-            yield git.raw(['push', 'origin', syncBranchName]);
             if (cherryPickedCommits.length > 0) {
                 if (!isDiffEmpty || doesOriginHasSyncBranch) {
                     core.info(`Pushing ${cherryPickedCommits.length} commits`);
@@ -378,7 +374,7 @@ function run() {
                     }
                     if (doesOriginHasSyncBranch) {
                         core.info(`Removing '${syncBranchName}' branch from origin remote`);
-                        //await git.raw(['push', '--delete', 'origin', syncBranchName])
+                        yield git.raw(['push', '--delete', 'origin', syncBranchName]);
                     }
                 }));
                 return;
@@ -398,6 +394,7 @@ function run() {
                             `remotes/origin/${repo.default_branch}`,
                             logItem.hash
                         ]).then(text => text.trim());
+                        core.info(`diff=${diff}`);
                         if (diff !== '') {
                             diffCommits.push(logItem);
                             core.info(`diffCommitMessages[]=${logItem.message}`);
