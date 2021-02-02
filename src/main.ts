@@ -76,7 +76,7 @@ async function run(): Promise<void> {
 
 
         const originBranches = await gitRemoteBranches(git, 'origin')
-        core.info(`originBranches='${originBranches.join("', ")}'`)
+        core.info(`originBranches='${originBranches.join("', '")}'`)
         const doesOriginHasSyncBranch = originBranches.indexOf(syncBranchName) >= 0
         core.info(`doesOriginHasSyncBranch=${doesOriginHasSyncBranch}`)
 
