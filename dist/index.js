@@ -323,29 +323,28 @@ function run() {
                 yield core.group(`Pushing ${commitsCount} commits`, () => __awaiter(this, void 0, void 0, function* () {
                     yield git.raw(['push', 'origin', syncBranchName]);
                 }));
-                yield core.group("Creating pull request", () => __awaiter(this, void 0, void 0, function* () {
-                    var e_1, _a;
-                    const commitMessages = new Set();
-                    const mergeBase = yield git.raw([
-                        'merge-base',
-                        `remotes/origin/${repo.default_branch}`,
-                        syncBranchName
-                    ]).then(text => text.trim());
-                    if (mergeBase !== '') {
-                        const log = yield git.log({ from: mergeBase });
-                        for (const logItem of log.all) {
-                            if (logItem.author_email.endsWith(emailSuffix)) {
-                                commitMessages.add(logItem.message);
-                            }
+                let pullRequestTitle = "Merge template repository changes";
+                if (conventionalCommits) {
+                    pullRequestTitle = `chore(template): ${pullRequestTitle}`;
+                }
+                const commitMessages = new Set();
+                const mergeBase = yield git.raw([
+                    'merge-base',
+                    `remotes/origin/${repo.default_branch}`,
+                    syncBranchName
+                ]).then(text => text.trim());
+                if (mergeBase !== '') {
+                    const log = yield git.log({ from: mergeBase });
+                    for (const logItem of log.all) {
+                        if (logItem.author_email.endsWith(emailSuffix)) {
+                            commitMessages.add(logItem.message);
                         }
                     }
-                    let pullRequestTitle = "Merge template repository changes";
-                    if (conventionalCommits) {
-                        pullRequestTitle = `chore(template): ${pullRequestTitle}`;
-                    }
-                    if (commitMessages.size === 1) {
-                        pullRequestTitle = commitMessages.values().next().value;
-                    }
+                }
+                if (commitMessages.size === 1) {
+                    pullRequestTitle = commitMessages.values().next().value;
+                }
+                const hasAtLeastOneOpenedPullRequest = yield core.group("Process opened pull requests", () => __awaiter(this, void 0, void 0, function* () {
                     const allPullRequests = yield octokit.paginate(octokit.pulls.list, {
                         owner: github_1.context.repo.owner,
                         repo: github_1.context.repo.repo,
@@ -354,12 +353,14 @@ function run() {
                     });
                     const filteredPullRequests = allPullRequests
                         .filter(pr => pr.head.ref === syncBranchName);
-                    if (filteredPullRequests.length > 0) {
-                        for (const filteredPullRequest of filteredPullRequests) {
-                            if (filteredPullRequest.title === pullRequestTitle) {
-                                continue;
-                            }
-                            if (commitMessages.size >= 2) {
+                    if (filteredPullRequests.length === 0) {
+                        core.info(`No opened pull requests found for '${syncBranchName}' branch`);
+                        return false;
+                    }
+                    for (const filteredPullRequest of filteredPullRequests) {
+                        yield core.group(`Processing #${filteredPullRequest.number}`, () => __awaiter(this, void 0, void 0, function* () {
+                            var e_1, _a;
+                            if (filteredPullRequest.title !== pullRequestTitle) {
                                 const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
                                     owner: github_1.context.repo.owner,
                                     repo: github_1.context.repo.repo,
@@ -367,7 +368,7 @@ function run() {
                                 });
                                 let wasRenamed = false;
                                 try {
-                                    allEvents: for (var eventsIterator_1 = (e_1 = void 0, __asyncValues(eventsIterator)), eventsIterator_1_1; eventsIterator_1_1 = yield eventsIterator_1.next(), !eventsIterator_1_1.done;) {
+                                    allEvents: for (var eventsIterator_1 = __asyncValues(eventsIterator), eventsIterator_1_1; eventsIterator_1_1 = yield eventsIterator_1.next(), !eventsIterator_1_1.done;) {
                                         const eventsResponse = eventsIterator_1_1.value;
                                         for (const event of eventsResponse.data) {
                                             if (event.event === 'renamed') {
@@ -394,28 +395,31 @@ function run() {
                                     });
                                 }
                             }
-                        }
-                        core.info(`Skip creating, as there is an opened pull request for '${syncBranchName}' branch: ${filteredPullRequests[0].html_url}`);
-                        return;
+                        }));
                     }
-                    const pullRequest = (yield octokit.pulls.create({
-                        owner: github_1.context.repo.owner,
-                        repo: github_1.context.repo.repo,
-                        head: syncBranchName,
-                        base: repo.default_branch,
-                        title: pullRequestTitle,
-                        body: "Template repository changes."
-                            + "\n\nIf you close this PR, it will be recreated automatically.",
-                        maintainer_can_modify: true,
-                    })).data;
-                    yield octokit.issues.addLabels({
-                        owner: github_1.context.repo.owner,
-                        repo: github_1.context.repo.repo,
-                        issue_number: pullRequest.number,
-                        labels: [pullRequestLabel]
-                    });
-                    core.info(`Pull request for '${syncBranchName}' branch has already been created: ${pullRequest.html_url}`);
+                    return true;
                 }));
+                if (!hasAtLeastOneOpenedPullRequest) {
+                    yield core.group("Creating pull request", () => __awaiter(this, void 0, void 0, function* () {
+                        const pullRequest = (yield octokit.pulls.create({
+                            owner: github_1.context.repo.owner,
+                            repo: github_1.context.repo.repo,
+                            head: syncBranchName,
+                            base: repo.default_branch,
+                            title: pullRequestTitle,
+                            body: "Template repository changes."
+                                + "\n\nIf you close this PR, it will be recreated automatically.",
+                            maintainer_can_modify: true,
+                        })).data;
+                        yield octokit.issues.addLabels({
+                            owner: github_1.context.repo.owner,
+                            repo: github_1.context.repo.repo,
+                            issue_number: pullRequest.number,
+                            labels: [pullRequestLabel]
+                        });
+                        core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
+                    }));
+                }
             }
             else {
                 core.info("No commits were cherry-picked from template repository");
