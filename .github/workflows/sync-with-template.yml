@@ -9,11 +9,13 @@ defaults:
   run:
     shell: bash
 
+env:
+  PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
+
 jobs:
   sync-with-template:
     steps:
     - uses: remal-github-actions/sync-with-template@v1
-      env: { PUSH_BACK_TOKEN: ${ { secrets.PUSH_BACK_TOKEN } } }
       if: ${{ env.PUSH_BACK_TOKEN }}
       with:
         githubToken: '${{ env.PUSH_BACK_TOKEN }}'
