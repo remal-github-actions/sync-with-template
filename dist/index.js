@@ -168,7 +168,7 @@ function run() {
             }
             core.info(`Using ${templateRepo.full_name} as a template repository`);
             const workspacePath = __nccwpck_require__(8517).dirSync().name;
-            //require('debug').enable('simple-git')
+            __nccwpck_require__(8231).enable('simple-git');
             const git = simple_git_1.default(workspacePath);
             yield core.group("Initializing the repository", () => __awaiter(this, void 0, void 0, function* () {
                 yield git.init();
@@ -231,7 +231,7 @@ function run() {
                 });
                 if (sortedPullRequests.length > 0) {
                     const pullRequest = sortedPullRequests[0];
-                    core.info(`Fetching last commit of pull request: ${pullRequest.html_url}`);
+                    core.info(`Fetching last commit of pull request #${pullRequest.number}: ${repo.html_url}/commit/${pullRequest.head.sha}`);
                     const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`;
                     yield git.fetch('origin', pullRequestBranchName);
                     //await git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha!)
