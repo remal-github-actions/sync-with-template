@@ -249,13 +249,36 @@ async function run(): Promise<void> {
                     return false
                 }
 
-                for (const filteredPullRequest of filteredPullRequests) {
-                    await core.group(`Processing #${filteredPullRequest.number}`, async () => {
-                        if (filteredPullRequest.title !== pullRequestTitle) {
+                for (const pullRequest of filteredPullRequests) {
+                    await core.group(`Processing #${pullRequest.number}`, async () => {
+                        const pullRequestFiles = await octokit.pulls.listFiles({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            pull_number: pullRequest.number,
+                            per_page: 1,
+                        })
+                        if (pullRequestFiles.data.length === 0) {
+                            core.info("Closing empty pull request")
+                            await octokit.issues.createComment({
+                                owner: context.repo.owner,
+                                repo: context.repo.repo,
+                                issue_number: pullRequest.number,
+                                body: "Closing empty pull request",
+                            })
+                            await octokit.pulls.update({
+                                owner: context.repo.owner,
+                                repo: context.repo.repo,
+                                pull_number: pullRequest.number,
+                                title: `${pullRequest.title} - autoclosed`,
+                            })
+                            return
+                        }
+
+                        if (pullRequest.title !== pullRequestTitle) {
                             const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
                                 owner: context.repo.owner,
                                 repo: context.repo.repo,
-                                issue_number: filteredPullRequest.number,
+                                issue_number: pullRequest.number,
                             })
                             let wasRenamed = false
                             allEvents: for await (const eventsResponse of eventsIterator) {
@@ -268,11 +291,11 @@ async function run(): Promise<void> {
                             }
 
                             if (!wasRenamed) {
-                                core.info(`Renaming pull request #${filteredPullRequest.number} from '${filteredPullRequest.title}' to '${pullRequestTitle}'`)
+                                core.info(`Renaming from '${pullRequest.title}' to '${pullRequestTitle}'`)
                                 await octokit.pulls.update({
                                     owner: context.repo.owner,
                                     repo: context.repo.repo,
-                                    pull_number: filteredPullRequest.number,
+                                    pull_number: pullRequest.number,
                                     title: pullRequestTitle,
                                 })
                             }
