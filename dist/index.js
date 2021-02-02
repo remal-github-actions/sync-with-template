@@ -385,29 +385,27 @@ function run() {
                         + `, as there is an opened one: ${openedPullRequest.html_url}`);
                     return;
                 }
-                yield core.group("Creating pull request", () => __awaiter(this, void 0, void 0, function* () {
-                    let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`;
-                    if (conventionalCommits) {
-                        pullRequestTitle = `chore(template): ${pullRequestTitle}`;
-                    }
-                    const pullRequest = (yield octokit.pulls.create({
-                        owner: github_1.context.repo.owner,
-                        repo: github_1.context.repo.repo,
-                        head: syncBranchName,
-                        base: repo.default_branch,
-                        title: pullRequestTitle,
-                        body: "Template repository changes."
-                            + "\n\nIf you close this PR, it will be recreated automatically.",
-                        maintainer_can_modify: true,
-                    })).data;
-                    yield octokit.issues.addLabels({
-                        owner: github_1.context.repo.owner,
-                        repo: github_1.context.repo.repo,
-                        issue_number: pullRequest.number,
-                        labels: [pullRequestLabel]
-                    });
-                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
-                }));
+                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`;
+                if (conventionalCommits) {
+                    pullRequestTitle = `chore(template): ${pullRequestTitle}`;
+                }
+                const pullRequest = (yield octokit.pulls.create({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    head: syncBranchName,
+                    base: repo.default_branch,
+                    title: pullRequestTitle,
+                    body: "Template repository changes."
+                        + "\n\nIf you close this PR, it will be recreated automatically.",
+                    maintainer_can_modify: true,
+                })).data;
+                yield octokit.issues.addLabels({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    issue_number: pullRequest.number,
+                    labels: [pullRequestLabel]
+                });
+                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
             }
         }
         catch (error) {
