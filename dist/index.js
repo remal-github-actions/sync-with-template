@@ -385,7 +385,7 @@ function run() {
             }
             const diffCommits = [];
             if (mergeBase !== '') {
-                const log = yield git.log({ from: mergeBase, to: syncBranchName });
+                const log = yield git.log({ from: mergeBase, to: syncBranchName, '--reverse': null });
                 for (const logItem of log.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
                         const diff = yield git.raw([
