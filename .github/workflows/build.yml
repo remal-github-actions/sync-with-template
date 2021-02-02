@@ -61,9 +61,9 @@ jobs:
         git config user.name "${{ github.event.head_commit.committer.name }}"
         git config user.email "${{ github.event.head_commit.committer.email }}"
 
-        echo "::group::Updated files during build"
+        echo "::group::Commit updated files during build"
         git add --all
-        if git commit --quiet --no-status --no-edit -m "[push-back] Updated files during build" ; then
+        if git commit --quiet --no-status --no-edit -m "[push-back] Commit updated files during build" ; then
           git push origin "HEAD:${{ github.ref }}"
         fi
         echo "::endgroup::"
