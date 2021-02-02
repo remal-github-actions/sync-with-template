@@ -336,10 +336,10 @@ function run() {
             }
             core.info(`isDiffEmpty=${isDiffEmpty}`);
             if (cherryPickedCommits.length > 0) {
-                if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                    core.info(`Pushing ${cherryPickedCommits.length} commits`);
-                    yield git.raw(['push', 'origin', syncBranchName]);
-                }
+                //if (!isDiffEmpty || doesOriginHasSyncBranch) {
+                core.info(`Pushing ${cherryPickedCommits.length} commits`);
+                yield git.raw(['push', 'origin', syncBranchName]);
+                //}
             }
             if (isDiffEmpty) {
                 yield core.group(`Diff is empty, clearing '${syncBranchName}' branch`, () => __awaiter(this, void 0, void 0, function* () {
@@ -377,7 +377,7 @@ function run() {
                     }
                     if (doesOriginHasSyncBranch) {
                         core.info(`Removing '${syncBranchName}' branch from origin remote`);
-                        yield git.raw(['push', '--delete', 'origin', syncBranchName]);
+                        //await git.raw(['push', '--delete', 'origin', syncBranchName])
                     }
                 }));
                 return;
