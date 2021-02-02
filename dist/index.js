@@ -332,10 +332,10 @@ function run() {
                 const diff = yield git.raw(['diff', `${mergeBase}..HEAD`]).then(text => text.trim());
                 isDiffEmpty = diff === '';
             }
-            const listRemote = yield git.listRemote(['--heads', 'origin']);
-            core.info(listRemote);
+            const listRemote = yield gitListRemoteBranches(git, 'origin');
+            core.info(listRemote.join(', '));
             if (isDiffEmpty) {
-                core.group(`Diff is empty, removing '${syncBranchName}' branch`, () => __awaiter(this, void 0, void 0, function* () {
+                yield core.group(`Diff is empty, clearing '${syncBranchName}' branch`, () => __awaiter(this, void 0, void 0, function* () {
                     const pullRequests = (yield octokit.paginate(octokit.pulls.list, {
                         owner: github_1.context.repo.owner,
                         repo: github_1.context.repo.repo,
@@ -405,39 +405,6 @@ function run() {
                 for (const pullRequest of pullRequests) {
                     yield core.group(`Processing opened pull request #${pullRequest.number}`, () => __awaiter(this, void 0, void 0, function* () {
                         var e_1, _a;
-                        const pullRequestFiles = yield octokit.pulls.listFiles({
-                            owner: github_1.context.repo.owner,
-                            repo: github_1.context.repo.repo,
-                            pull_number: pullRequest.number,
-                            per_page: 1,
-                        });
-                        if (pullRequestFiles.data.length === 0) {
-                            core.info("Closing empty pull request");
-                            yield octokit.issues.createComment({
-                                owner: github_1.context.repo.owner,
-                                repo: github_1.context.repo.repo,
-                                issue_number: pullRequest.number,
-                                body: "Closing empty pull request",
-                            });
-                            const autoclosedSuffix = ' - autoclosed';
-                            let newTitle = pullRequest.title;
-                            if (!newTitle.endsWith(autoclosedSuffix)) {
-                                newTitle = `${newTitle}${autoclosedSuffix}`;
-                            }
-                            yield octokit.pulls.update({
-                                owner: github_1.context.repo.owner,
-                                repo: github_1.context.repo.repo,
-                                pull_number: pullRequest.number,
-                                title: newTitle,
-                            });
-                            yield octokit.issues.update({
-                                owner: github_1.context.repo.owner,
-                                repo: github_1.context.repo.repo,
-                                issue_number: pullRequest.number,
-                                state: 'closed',
-                            });
-                            return;
-                        }
                         if (pullRequest.title !== pullRequestTitle) {
                             const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
                                 owner: github_1.context.repo.owner,
@@ -515,6 +482,19 @@ function getSyncBranchName() {
     else {
         return `chore/${name}`;
     }
+}
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+function gitListRemoteBranches(git, remoteName) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return git.listRemote(['--exit-code', '--heads', remoteName]).then(content => {
+            return content.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0)
+                .map(line => line.split('\t')[1])
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+        });
+    });
 }
 function getCurrentRepo() {
     return __awaiter(this, void 0, void 0, function* () {
