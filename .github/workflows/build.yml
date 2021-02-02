@@ -67,6 +67,7 @@ jobs:
         fi
         echo "::endgroup::"
 
+        echo "${{github.ref}}"
         echo "${{github.ref == 'ref/heads/main'}}"
         echo "::group::Update tag"
         FULL_VERSION=$(jq -r '.version' package.json)
