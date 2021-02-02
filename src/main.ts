@@ -138,20 +138,20 @@ async function run(): Promise<void> {
             "Retrieving last synchronized commit date",
             async () => {
                 if (lastCommitLogItem != null) {
-                    core.info(`Last synchronized commit is: ${repo.html_url}/commit/${lastCommitLogItem.hash}: ${lastCommitLogItem.message}`)
+                    core.info(`Last synchronized commit is: ${repo.html_url}/commit/${lastCommitLogItem.hash} (${lastCommitLogItem.date}): ${lastCommitLogItem.message}`)
                     return new Date(lastCommitLogItem.date)
                 }
 
                 const syncBranchLog = await git.log()
                 for (const logItem of syncBranchLog.all) {
                     if (logItem.author_email.endsWith(emailSuffix)) {
-                        core.info(`Last synchronized commit is: ${repo.html_url}/commit/${logItem.hash}: ${logItem.message}`)
+                        core.info(`Last synchronized commit is: ${repo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`)
                         return new Date(logItem.date)
                     }
                 }
 
                 const latestLogItem = syncBranchLog.latest!
-                core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestLogItem.hash}: ${latestLogItem.message}`)
+                core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestLogItem.hash} (${latestLogItem.date}): ${latestLogItem.message}`)
                 return new Date(latestLogItem.date)
             }
         )
@@ -168,7 +168,7 @@ async function run(): Promise<void> {
                 `remotes/template/${templateBranchName}`
             ])
             for (const logItem of templateBranchLog.all) {
-                core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash}: ${logItem.message}`)
+                core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`)
 
                 await git.raw([
                     'cherry-pick',
@@ -182,7 +182,7 @@ async function run(): Promise<void> {
                 ])
 
                 let message = logItem.message
-                    .replace(/ \(#\d+\)$/, '')
+                    .replace(/( \(#\d+\))+$/, '')
                     .trim()
                 if (message.length === 0) {
                     message = `Cherry-pick ${logItem.hash}`
