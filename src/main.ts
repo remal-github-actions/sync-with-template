@@ -76,7 +76,9 @@ async function run(): Promise<void> {
 
 
         const originBranches = await gitRemoteBranches(git, 'origin')
+        core.info(`originBranches='${originBranches.join("', ")}'`)
         const doesOriginHasSyncBranch = originBranches.indexOf(syncBranchName) >= 0
+        core.inf(`doesOriginHasSyncBranch=${doesOriginHasSyncBranch}`)
 
 
         const lastCommitLogItem: DefaultLogFields | null = await core.group("Fetching sync branch", async () => {
