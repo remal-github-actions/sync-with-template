@@ -46,20 +46,8 @@ jobs:
     - name: Push back
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
-      if: ${{ env.PUSH_BACK_TOKEN && github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') }}
+      if: ${{ env.PUSH_BACK_TOKEN && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') }}
       run: |
-        echo "::group::Update tag"
-        FULL_VERSION=$(jq -r '.version' package.json)
-        if [ "$FULL_VERSION" == "null" ]; then
-          echo "::error::Version can't be read from package.json file"
-          exit 1
-        fi
-        echo "Version from package.json: $FULL_VERSION"
-        MAJOR_VERSION=$(echo "$FULL_VERSION" | cut -f1 -d".")
-        echo "Major version: $MAJOR_VERSION"
-        echo "::endgroup::"
-        exit
-
         REMOTE_URL=$(git config --get remote.origin.url)
         REMOTE_HEAD_COMMIT_SHA=$(git ls-remote "$REMOTE_URL" "${{ github.ref }}" | awk '{ print $1}')
         if [ "$REMOTE_HEAD_COMMIT_SHA" != "${{ github.sha }}" ]; then
@@ -77,4 +65,16 @@ jobs:
         if git commit --quiet --no-status --no-edit --only -m "[push-back] README.md" README.md ; then
           git push origin "HEAD:${{ github.ref }}"
         fi
+        echo "::endgroup::"
+
+        echo "${{github.ref == 'ref/heads/main'}}"
+        echo "::group::Update tag"
+        FULL_VERSION=$(jq -r '.version' package.json)
+        if [ "$FULL_VERSION" == "null" ]; then
+          echo "::error::Version can't be read from package.json file"
+          exit 1
+        fi
+        echo "Version from package.json: $FULL_VERSION"
+        MAJOR_VERSION=$(echo "$FULL_VERSION" | cut -f1 -d".")
+        echo "Major version: $MAJOR_VERSION"
         echo "::endgroup::"
