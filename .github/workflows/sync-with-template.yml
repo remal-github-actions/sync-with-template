@@ -2,7 +2,8 @@ name: Sync with template repository
 
 on:
   schedule:
-  - cron: '15 * * * *'
+  - cron: '47 * * * *'
+  workflow_dispatch: { }
 
 defaults:
   run:
