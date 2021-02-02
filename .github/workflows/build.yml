@@ -76,9 +76,20 @@ jobs:
             exit 1
           fi
           echo "Version from package.json: $FULL_VERSION"
+
           MAJOR_VERSION=$(echo "$FULL_VERSION" | cut -f1 -d".")
           echo "Major version: $MAJOR_VERSION"
           git tag --force "v$MAJOR_VERSION"
           git push --force origin "v$MAJOR_VERSION"
+
+          MINOR_VERSION=$(echo "$FULL_VERSION" | cut -f1-2 -d".")
+          echo "Minor version: $MINOR_VERSION"
+          git tag --force "v$MINOR_VERSION"
+          git push --force origin "v$MINOR_VERSION"
+
+          PATCH_VERSION=$(echo "$FULL_VERSION" | cut -f1-3 -d".")
+          echo "Major version: $PATCH_VERSION"
+          git tag --force "v$PATCH_VERSION"
+          git push --force origin "v$PATCH_VERSION"
           echo "::endgroup::"
         fi
