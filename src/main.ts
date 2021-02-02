@@ -256,7 +256,7 @@ async function run(): Promise<void> {
             }
 
             for (const pullRequest of filteredPullRequests) {
-                await core.group(`Processing #${pullRequest.number}`, async () => {
+                await core.group(`Processing opened pull request #${pullRequest.number}`, async () => {
                     const pullRequestFiles = await octokit.pulls.listFiles({
                         owner: context.repo.owner,
                         repo: context.repo.repo,
@@ -271,11 +271,22 @@ async function run(): Promise<void> {
                             issue_number: pullRequest.number,
                             body: "Closing empty pull request",
                         })
+                        const autoclosedSuffix = ' - autoclosed'
+                        let newTitle = pullRequest.title
+                        if (!newTitle.endsWith(autoclosedSuffix)) {
+                            newTitle = `${newTitle}${autoclosedSuffix}`
+                        }
                         await octokit.pulls.update({
                             owner: context.repo.owner,
                             repo: context.repo.repo,
                             pull_number: pullRequest.number,
-                            title: `${pullRequest.title} - autoclosed`,
+                            title: newTitle,
+                        })
+                        await octokit.issues.update({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            issue_number: pullRequest.number,
+                            state: 'closed',
                         })
                         return
                     }
