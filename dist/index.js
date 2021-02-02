@@ -201,7 +201,7 @@ function run() {
             }));
             const originBranches = yield gitRemoteBranches(git, 'origin');
             core.info(`originBranches='${originBranches.join("', '")}'`);
-            const doesOriginHasSyncBranch = originBranches.indexOf(syncBranchName) >= 0;
+            const doesOriginHasSyncBranch = originBranches.indexOf(`refs/heads/${syncBranchName}`) >= 0;
             core.info(`doesOriginHasSyncBranch=${doesOriginHasSyncBranch}`);
             const lastCommitLogItem = yield core.group("Fetching sync branch", () => __awaiter(this, void 0, void 0, function* () {
                 if (doesOriginHasSyncBranch) {
