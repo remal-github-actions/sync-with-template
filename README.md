@@ -1,2 +1,2 @@
-# oss-template
-Template repository for open-source projects
+# sync-with-template
+Synchronize repository with template repository
