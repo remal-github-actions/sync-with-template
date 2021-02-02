@@ -2,7 +2,7 @@ import * as core from '@actions/core'
 import {newOctokitInstance} from './internal/octokit'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
-import simpleGit, {GitError} from 'simple-git'
+import simpleGit, {GitError, SimpleGit} from 'simple-git'
 import {isConventionalCommit} from './internal/conventional-commits'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 
@@ -227,12 +227,12 @@ async function run(): Promise<void> {
         }
 
 
-        const listRemote = await git.listRemote(['--heads', 'origin'])
-        core.info(listRemote)
+        const listRemote = await gitListRemoteBranches(git, 'origin')
+        core.info(listRemote.join(', '))
 
 
         if (isDiffEmpty) {
-            core.group(`Diff is empty, removing '${syncBranchName}' branch`, async () => {
+            await core.group(`Diff is empty, clearing '${syncBranchName}' branch`, async () => {
                 const pullRequests = (
                     await octokit.paginate(octokit.pulls.list, {
                         owner: context.repo.owner,
@@ -313,40 +313,6 @@ async function run(): Promise<void> {
 
             for (const pullRequest of pullRequests) {
                 await core.group(`Processing opened pull request #${pullRequest.number}`, async () => {
-                    const pullRequestFiles = await octokit.pulls.listFiles({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        pull_number: pullRequest.number,
-                        per_page: 1,
-                    })
-                    if (pullRequestFiles.data.length === 0) {
-                        core.info("Closing empty pull request")
-                        await octokit.issues.createComment({
-                            owner: context.repo.owner,
-                            repo: context.repo.repo,
-                            issue_number: pullRequest.number,
-                            body: "Closing empty pull request",
-                        })
-                        const autoclosedSuffix = ' - autoclosed'
-                        let newTitle = pullRequest.title
-                        if (!newTitle.endsWith(autoclosedSuffix)) {
-                            newTitle = `${newTitle}${autoclosedSuffix}`
-                        }
-                        await octokit.pulls.update({
-                            owner: context.repo.owner,
-                            repo: context.repo.repo,
-                            pull_number: pullRequest.number,
-                            title: newTitle,
-                        })
-                        await octokit.issues.update({
-                            owner: context.repo.owner,
-                            repo: context.repo.repo,
-                            issue_number: pullRequest.number,
-                            state: 'closed',
-                        })
-                        return
-                    }
-
                     if (pullRequest.title !== pullRequestTitle) {
                         const eventsIterator = octokit.paginate.iterator(octokit.issues.listEvents, {
                             owner: context.repo.owner,
@@ -426,7 +392,20 @@ function getSyncBranchName(): string {
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-type Repo = RestEndpointMethodTypes['repos']['get']['response']['data']
+async function gitListRemoteBranches(git: SimpleGit, remoteName: string): Promise<string[]> {
+    return git.listRemote(['--exit-code', '--heads', remoteName]).then(content => {
+        return content.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .map(line => line.split('\t')[1])
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+    })
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+type     Repo = RestEndpointMethodTypes['repos']['get']['response']['data']
 
 async function getCurrentRepo(): Promise<Repo> {
     return getRepo(context.repo.owner, context.repo.repo)
