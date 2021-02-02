@@ -283,20 +283,22 @@ async function run(): Promise<void> {
             pullRequestTitle = `chore(template): ${pullRequestTitle}`
         }
 
-        const commitMessages = new Set<string>()
+        const allCommitMessages = new Set<string>()
+        const diffCommitMessages = new Set<string>()
         if (mergeBase !== '') {
             const log = await git.log({from: mergeBase})
             for (const logItem of log.all) {
                 if (logItem.author_email.endsWith(emailSuffix)) {
+                    allCommitMessages.add(logItem.message)
                     const diff = await git.raw(['diff', `${mergeBase}..${logItem.hash}`]).then(text => text.trim())
                     if (diff !== '') {
-                        commitMessages.add(logItem.message)
+                        diffCommitMessages.add(logItem.message)
                     }
                 }
             }
         }
-        if (commitMessages.size === 1) {
-            pullRequestTitle = commitMessages.values().next().value
+        if (diffCommitMessages.size === 1) {
+            pullRequestTitle = diffCommitMessages.values().next().value
         }
 
         const hasAtLeastOneOpenedPullRequest = await core.group("Process opened pull requests", async () => {
