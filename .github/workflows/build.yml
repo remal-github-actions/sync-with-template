@@ -84,8 +84,7 @@ jobs:
         fi
 
 
-    - name: Sync with template repository
-      uses: remal-github-actions/sync-with-template@v1
+    - uses: ./
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
       if: ${{ env.PUSH_BACK_TOKEN && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') }}
