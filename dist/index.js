@@ -165,6 +165,7 @@ function run() {
             const git = simple_git_1.default(workspacePath);
             yield core.group("Initializing the repository", () => __awaiter(this, void 0, void 0, function* () {
                 yield git.init();
+                yield git.addConfig('user.useConfigOnly', 'true');
                 if (repo.owner != null) {
                     yield git.addConfig('user.name', repo.owner.login);
                     yield git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${emailSuffix}`);
