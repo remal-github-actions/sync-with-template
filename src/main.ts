@@ -43,6 +43,7 @@ async function run(): Promise<void> {
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
+            await git.addConfig('user.useConfigOnly', 'true')
             if (repo.owner != null) {
                 await git.addConfig('user.name', repo.owner.login)
                 await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${emailSuffix}`)
