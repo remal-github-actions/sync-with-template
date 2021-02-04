@@ -8,13 +8,13 @@ import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-const pushToken = core.getInput('githubToken', {required: true})
-core.setSecret(pushToken)
+const githubToken = core.getInput('githubToken', {required: true})
+core.setSecret(githubToken)
 
 const conventionalCommits = core.getInput('conventionalCommits', {required: true}).toLowerCase() === 'true'
 const syncBranchName = getSyncBranchName()
 
-const octokit = newOctokitInstance(pushToken)
+const octokit = newOctokitInstance(githubToken)
 
 const pullRequestLabel = 'sync-with-template'
 const emailSuffix = '+sync-with-template@users.noreply.github.com'
@@ -59,7 +59,7 @@ async function run(): Promise<void> {
             await git.addConfig('fetch.recurseSubmodules', 'no')
 
             core.info("Setting up credentials")
-            const basicCredentials = Buffer.from(`x-access-token:${pushToken}`, 'utf8').toString('base64')
+            const basicCredentials = Buffer.from(`x-access-token:${githubToken}`, 'utf8').toString('base64')
             core.setSecret(basicCredentials)
             for (const origin of [new URL(repo.svn_url).origin, new URL(templateRepo.svn_url).origin]) {
                 await git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`)
