@@ -44,6 +44,12 @@ jobs:
         npm run build
 
 
+    - name: Test
+      uses: ./
+      with:
+        githubToken: ${{ secrets.PUSH_BACK_TOKEN }}
+
+
     - name: Push back
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
