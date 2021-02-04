@@ -44,7 +44,7 @@ jobs:
         npm run build
 
 
-    - name: Test
+    - name: Run current action
       uses: ./
       with:
         githubToken: ${{ secrets.PUSH_BACK_TOKEN }}
