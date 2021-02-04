@@ -63,6 +63,7 @@ const OctokitWithPlugins = utils_1.GitHub
     ]
 });
 function newOctokitInstance(token) {
+    var _a;
     const baseOptions = utils_1.getOctokitOptions(token);
     const throttleOptions = {
         throttle: {
@@ -83,9 +84,10 @@ function newOctokitInstance(token) {
             doNotRetry: ['429']
         }
     };
-    const logOptions = {
-    //log: require('console-log-level')({level: 'trace'})
-    };
+    const logOptions = {};
+    if (((_a = process.env.ACTIONS_STEP_DEBUG) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === 'true') {
+        logOptions.log = __nccwpck_require__(385)({ level: 'trace' });
+    }
     const allOptions = Object.assign(Object.assign(Object.assign(Object.assign({}, baseOptions), throttleOptions), retryOptions), logOptions);
     return new OctokitWithPlugins(allOptions);
 }
@@ -146,6 +148,7 @@ const pullRequestLabel = 'sync-with-template';
 const emailSuffix = '+sync-with-template@users.noreply.github.com';
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 function run() {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const repo = yield getCurrentRepo();
@@ -161,7 +164,9 @@ function run() {
             }
             core.info(`Using ${templateRepo.full_name} as a template repository`);
             const workspacePath = __nccwpck_require__(8517).dirSync().name;
-            //require('debug').enable('simple-git')
+            if (((_a = process.env.ACTIONS_STEP_DEBUG) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === 'true') {
+                __nccwpck_require__(8231).enable('simple-git');
+            }
             const git = simple_git_1.default(workspacePath);
             yield core.group("Initializing the repository", () => __awaiter(this, void 0, void 0, function* () {
                 yield git.init();
@@ -6515,6 +6520,60 @@ module.exports = function (xs, fn) {
 var isArray = Array.isArray || function (xs) {
     return Object.prototype.toString.call(xs) === '[object Array]';
 };
+
+
+/***/ }),
+
+/***/ 385:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+var util = __nccwpck_require__(1669)
+
+var levels = ['trace', 'debug', 'info', 'warn', 'error', 'fatal']
+var noop = function () {}
+
+module.exports = function (opts) {
+  opts = opts || {}
+  opts.level = opts.level || 'info'
+
+  var logger = {}
+
+  var shouldLog = function (level) {
+    return levels.indexOf(level) >= levels.indexOf(opts.level)
+  }
+
+  levels.forEach(function (level) {
+    logger[level] = shouldLog(level) ? log : noop
+
+    function log () {
+      var prefix = opts.prefix
+      var normalizedLevel
+
+      if (opts.stderr) {
+        normalizedLevel = 'error'
+      } else {
+        switch (level) {
+          case 'trace': normalizedLevel = 'info'; break
+          case 'debug': normalizedLevel = 'info'; break
+          case 'fatal': normalizedLevel = 'error'; break
+          default: normalizedLevel = level
+        }
+      }
+
+      if (prefix) {
+        if (typeof prefix === 'function') prefix = prefix(level)
+        arguments[0] = util.format(prefix, arguments[0])
+      }
+
+      console[normalizedLevel](util.format.apply(util, arguments))
+    }
+  })
+
+  return logger
+}
 
 
 /***/ }),
