@@ -139,11 +139,11 @@ const github_1 = __nccwpck_require__(5438);
 const simple_git_1 = __importDefault(__nccwpck_require__(1477));
 const conventional_commits_1 = __nccwpck_require__(6421);
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-const pushToken = core.getInput('githubToken', { required: true });
-core.setSecret(pushToken);
+const githubToken = core.getInput('githubToken', { required: true });
+core.setSecret(githubToken);
 const conventionalCommits = core.getInput('conventionalCommits', { required: true }).toLowerCase() === 'true';
 const syncBranchName = getSyncBranchName();
-const octokit = octokit_1.newOctokitInstance(pushToken);
+const octokit = octokit_1.newOctokitInstance(githubToken);
 const pullRequestLabel = 'sync-with-template';
 const emailSuffix = '+sync-with-template@users.noreply.github.com';
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -184,7 +184,7 @@ function run() {
                 yield git.addConfig('gc.auto', '0');
                 yield git.addConfig('fetch.recurseSubmodules', 'no');
                 core.info("Setting up credentials");
-                const basicCredentials = Buffer.from(`x-access-token:${pushToken}`, 'utf8').toString('base64');
+                const basicCredentials = Buffer.from(`x-access-token:${githubToken}`, 'utf8').toString('base64');
                 core.setSecret(basicCredentials);
                 for (const origin of [new URL(repo.svn_url).origin, new URL(templateRepo.svn_url).origin]) {
                     yield git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`);
