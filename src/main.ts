@@ -39,7 +39,9 @@ async function run(): Promise<void> {
 
 
         const workspacePath = require('tmp').dirSync().name
-        //require('debug').enable('simple-git')
+        if (process.env.ACTIONS_STEP_DEBUG?.toLowerCase() === 'true') {
+            require('debug').enable('simple-git')
+        }
         const git = simpleGit(workspacePath)
         await core.group("Initializing the repository", async () => {
             await git.init()
