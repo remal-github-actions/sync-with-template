@@ -134,10 +134,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const octokit_1 = __nccwpck_require__(8093);
 const github_1 = __nccwpck_require__(5438);
 const simple_git_1 = __importDefault(__nccwpck_require__(1477));
 const conventional_commits_1 = __nccwpck_require__(6421);
+const octokit_1 = __nccwpck_require__(8093);
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 const githubToken = core.getInput('githubToken', { required: true });
 core.setSecret(githubToken);
@@ -152,6 +152,10 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const repo = yield getCurrentRepo();
+            if (repo.archived) {
+                core.info(`Skipping template synchronization, as current repository is archived`);
+                return;
+            }
             if (repo.fork) {
                 core.info(`Skipping template synchronization, as current repository is a fork`);
                 return;
