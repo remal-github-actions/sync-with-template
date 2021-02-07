@@ -1,10 +1,10 @@
 import * as core from '@actions/core'
-import {newOctokitInstance} from './internal/octokit'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
 import simpleGit, {SimpleGit} from 'simple-git'
-import {isConventionalCommit} from './internal/conventional-commits'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
+import {isConventionalCommit} from './internal/conventional-commits'
+import {newOctokitInstance} from './internal/octokit'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -24,6 +24,10 @@ const emailSuffix = '+sync-with-template@users.noreply.github.com'
 async function run(): Promise<void> {
     try {
         const repo = await getCurrentRepo()
+        if (repo.archived) {
+            core.info(`Skipping template synchronization, as current repository is archived`)
+            return
+        }
         if (repo.fork) {
             core.info(`Skipping template synchronization, as current repository is a fork`)
             return
