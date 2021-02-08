@@ -76,6 +76,7 @@ jobs:
             exit 1
           fi
           echo "Version from package.json: $FULL_VERSION"
+
           MAJOR_VERSION=$(echo "$FULL_VERSION" | cut -f1 -d".")
           echo "Major version: $MAJOR_VERSION"
           git tag --force "v$MAJOR_VERSION"

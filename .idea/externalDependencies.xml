@@ -3,5 +3,6 @@
   <component name="ExternalDependencies">
     <plugin id="JavaScript" />
     <plugin id="NodeJS" />
+    <plugin id="org.editorconfig.editorconfigjetbrains" />
   </component>
 </project>
