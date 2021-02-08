@@ -31,7 +31,8 @@ pull_request_rules:
   - -closed
   - -merged
   actions:
-    review: { }
+    review:
+      message: 'Approved automatically by @Mergifyio.'
 
 - name: Update all PRs to master
   conditions:
