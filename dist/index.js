@@ -18,7 +18,7 @@ function isConventionalCommit(commitMessage) {
     return type.length > 0 && type !== 'unknown';
 }
 exports.isConventionalCommit = isConventionalCommit;
-//# sourceMappingURL=conventional-commits.js.map
+
 
 /***/ }),
 
@@ -50,9 +50,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.newOctokitInstance = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(3030);
+const plugin_request_log_1 = __nccwpck_require__(8883);
 const plugin_retry_1 = __nccwpck_require__(6298);
 const plugin_throttling_1 = __nccwpck_require__(9968);
-const plugin_request_log_1 = __nccwpck_require__(8883);
 const OctokitWithPlugins = utils_1.GitHub
     .plugin(plugin_retry_1.retry)
     .plugin(plugin_throttling_1.throttling)
@@ -92,7 +92,7 @@ function newOctokitInstance(token) {
     return new OctokitWithPlugins(allOptions);
 }
 exports.newOctokitInstance = newOctokitInstance;
-//# sourceMappingURL=octokit.js.map
+
 
 /***/ }),
 
@@ -477,7 +477,7 @@ function getRepo(owner, repo) {
         return octokit.repos.get({ owner, repo }).then(it => it.data);
     });
 }
-//# sourceMappingURL=main.js.map
+
 
 /***/ }),
 
@@ -12871,6 +12871,8 @@ rimraf.sync = rimrafSync
 
 const Git = __nccwpck_require__(4966);
 const {GitConstructError} = __nccwpck_require__(4732);
+const {PluginStore} = __nccwpck_require__(5067);
+const {commandConfigPrefixingPlugin} = __nccwpck_require__(2581);
 const {createInstanceConfig, folderExists} = __nccwpck_require__(847);
 
 const api = Object.create(null);
@@ -12904,6 +12906,7 @@ module.exports.gitExportFactory = function gitExportFactory (factory, extra) {
 };
 
 module.exports.gitInstanceFactory = function gitInstanceFactory (baseDir, options) {
+   const plugins = new PluginStore();
    const config = createInstanceConfig(
       baseDir && (typeof baseDir === 'string' ? {baseDir} : baseDir),
       options
@@ -12913,7 +12916,11 @@ module.exports.gitInstanceFactory = function gitInstanceFactory (baseDir, option
       throw new GitConstructError(config, `Cannot use simple-git on a directory that does not exist`);
    }
 
-   return new Git(config);
+   if (config.config) {
+      plugins.add(commandConfigPrefixingPlugin(config.config));
+   }
+
+   return new Git(config, plugins);
 };
 
 
@@ -12923,14 +12930,27 @@ module.exports.gitInstanceFactory = function gitInstanceFactory (baseDir, option
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const {GitExecutor} = __nccwpck_require__(4701);
+const {SimpleGitApi} = __nccwpck_require__(999);
 
 const {Scheduler} = __nccwpck_require__(3421);
 const {GitLogger} = __nccwpck_require__(7178);
 const {adhocExecTask, configurationErrorTask} = __nccwpck_require__(2815);
-const {NOOP, appendTaskOptions, asArray, filterArray, filterPrimitives, filterString, filterStringOrStringArray, filterType, folderExists, getTrailingOptions, trailingFunctionArgument, trailingOptionsArgument} = __nccwpck_require__(847);
+const {
+   NOOP,
+   asArray,
+   filterArray,
+   filterPrimitives,
+   filterString,
+   filterStringOrStringArray,
+   filterType,
+   folderExists,
+   getTrailingOptions,
+   trailingFunctionArgument,
+   trailingOptionsArgument
+} = __nccwpck_require__(847);
 const {applyPatchTask} = __nccwpck_require__(4931)
 const {branchTask, branchLocalTask, deleteBranchesTask, deleteBranchTask} = __nccwpck_require__(17);
-const {taskCallback} = __nccwpck_require__(8850);
+const {checkIgnoreTask} = __nccwpck_require__(3293);
 const {checkIsRepoTask} = __nccwpck_require__(221);
 const {cloneTask, cloneMirrorTask} = __nccwpck_require__(3173);
 const {addConfigTask, listConfigTask} = __nccwpck_require__(7597);
@@ -12944,39 +12964,24 @@ const {logTask, parseLogOptions} = __nccwpck_require__(8627);
 const {mergeTask} = __nccwpck_require__(8829);
 const {moveTask} = __nccwpck_require__(6520);
 const {pullTask} = __nccwpck_require__(4636);
-const {pushTagsTask, pushTask} = __nccwpck_require__(1435);
+const {pushTagsTask} = __nccwpck_require__(1435);
 const {addRemoteTask, getRemotesTask, listRemotesTask, remoteTask, removeRemoteTask} = __nccwpck_require__(9866);
 const {getResetMode, resetTask} = __nccwpck_require__(2377);
 const {stashListTask} = __nccwpck_require__(810);
 const {statusTask} = __nccwpck_require__(9197);
 const {addSubModuleTask, initSubModuleTask, subModuleTask, updateSubModuleTask} = __nccwpck_require__(8772);
 const {addAnnotatedTagTask, addTagTask, tagListTask} = __nccwpck_require__(8540);
-const {straightThroughStringTask} = __nccwpck_require__(2815);
-const {parseCheckIgnore} = __nccwpck_require__(9926);
+const {straightThroughBufferTask, straightThroughStringTask} = __nccwpck_require__(2815);
 
-const ChainedExecutor = Symbol('ChainedExecutor');
-
-/**
- * Git handling for node. All public functions can be chained and all `then` handlers are optional.
- *
- * @param {SimpleGitOptions} options Configuration settings for this instance
- *
- * @constructor
- */
-function Git (options) {
+function Git (options, plugins) {
    this._executor = new GitExecutor(
       options.binary, options.baseDir,
-      new Scheduler(options.maxConcurrentProcesses)
+      new Scheduler(options.maxConcurrentProcesses), plugins,
    );
    this._logger = new GitLogger();
 }
 
-/**
- * The executor that runs each of the added commands
- * @type {GitExecutor}
- * @private
- */
-Git.prototype._executor = null;
+(Git.prototype = Object.create(SimpleGitApi.prototype)).constructor = Git;
 
 /**
  * Logging utility for printing out info or error messages to the user
@@ -13158,16 +13163,6 @@ Git.prototype.checkoutLatestTag = function (then) {
 };
 
 /**
- * Adds one or more files to source control
- */
-Git.prototype.add = function (files) {
-   return this._run(
-      ['add'].concat(files),
-      trailingFunctionArgument(arguments),
-   );
-};
-
-/**
  * Commits changes in the current working directory - when specific file paths are supplied, only changes on those
  * files will be committed.
  *
@@ -13182,8 +13177,7 @@ Git.prototype.commit = function (message, files, options, then) {
 
    if (filterStringOrStringArray(message)) {
       messages.push(...asArray(message));
-   }
-   else {
+   } else {
       console.warn('simple-git deprecation notice: git.commit: requires the commit message to be supplied as a string/string[], this will be an error in version 3');
    }
 
@@ -13232,6 +13226,7 @@ Git.prototype.fetch = function (remote, branch) {
  * @returns {Git}
  */
 Git.prototype.silent = function (silence) {
+   console.warn('simple-git deprecation notice: git.silent: logging should be configured using the `debug` library / `DEBUG` environment variable, this will be an error in version 3');
    this._logger.silent(!!silence);
    return this;
 };
@@ -13257,20 +13252,16 @@ Git.prototype.tags = function (options, then) {
  * to be sent to the `git rebase` command, or a standard options object.
  */
 Git.prototype.rebase = function () {
-   return this._run(
-      ['rebase'].concat(getTrailingOptions(arguments)),
+   return this._runTask(
+      straightThroughStringTask(['rebase', ...getTrailingOptions(arguments)]),
       trailingFunctionArgument(arguments)
    );
 };
 
 /**
  * Reset a repo
- *
- * @param {string|string[]} [mode=soft] Either an array of arguments supported by the 'git reset' command, or the
- *                                        string value 'soft' or 'hard' to set the reset mode.
- * @param {Function} [then]
  */
-Git.prototype.reset = function (mode, then) {
+Git.prototype.reset = function (mode) {
    return this._runTask(
       resetTask(getResetMode(mode), getTrailingOptions(arguments)),
       trailingFunctionArgument(arguments),
@@ -13290,20 +13281,16 @@ Git.prototype.revert = function (commit) {
       );
    }
 
-   return this._run([
-      'revert',
-      ...getTrailingOptions(arguments, 0, true),
-      commit
-   ], next);
+   return this._runTask(
+      straightThroughStringTask(['revert', ...getTrailingOptions(arguments, 0, true), commit]),
+      next
+   );
 };
 
 /**
  * Add a lightweight tag to the head of the current branch
- *
- * @param {string} name
- * @param {Function} [then]
  */
-Git.prototype.addTag = function (name, then) {
+Git.prototype.addTag = function (name) {
    const task = (typeof name === 'string')
       ? addTagTask(name)
       : configurationErrorTask('Git.addTag requires a tag name');
@@ -13313,12 +13300,8 @@ Git.prototype.addTag = function (name, then) {
 
 /**
  * Add an annotated tag to the head of the current branch
- *
- * @param {string} tagName
- * @param {string} tagMessage
- * @param {Function} [then]
  */
-Git.prototype.addAnnotatedTag = function (tagName, tagMessage, then) {
+Git.prototype.addAnnotatedTag = function (tagName, tagMessage) {
    return this._runTask(
       addAnnotatedTagTask(tagName, tagMessage),
       trailingFunctionArgument(arguments),
@@ -13327,12 +13310,9 @@ Git.prototype.addAnnotatedTag = function (tagName, tagMessage, then) {
 
 /**
  * Check out a tag or revision, any number of additional arguments can be passed to the `git checkout` command
- * by supplying either a string or array of strings as the `what` parameter.
- *
- * @param {string|string[]} what One or more commands to pass to `git checkout`
- * @param {Function} [then]
+ * by supplying either a string or array of strings as the first argument.
  */
-Git.prototype.checkout = function (what, then) {
+Git.prototype.checkout = function () {
    const commands = ['checkout', ...getTrailingOptions(arguments, true)];
    return this._runTask(
       straightThroughStringTask(commands),
@@ -13449,7 +13429,7 @@ Git.prototype.raw = function (commands) {
       );
    }
 
-   return this._run(command, next);
+   return this._runTask(straightThroughStringTask(command), next);
 };
 
 Git.prototype.submoduleAdd = function (repo, path, then) {
@@ -13597,7 +13577,10 @@ Git.prototype.tag = function (options, then) {
       command.unshift('tag');
    }
 
-   return this._run(command, trailingFunctionArgument(arguments));
+   return this._runTask(
+      straightThroughStringTask(command),
+      trailingFunctionArgument(arguments)
+   );
 };
 
 /**
@@ -13606,19 +13589,10 @@ Git.prototype.tag = function (options, then) {
  * @param {Function} [then]
  */
 Git.prototype.updateServerInfo = function (then) {
-   return this._run(["update-server-info"], trailingFunctionArgument(arguments));
-};
-
-/**
- * Pushes the current committed changes to a remote, optionally specify the names of the remote and branch to use
- * when pushing. Supply multiple options as an array of strings in the first argument - see examples below.
- */
-Git.prototype.push = function (remote, branch, then) {
-   const task = pushTask(
-      {remote: filterType(remote, filterString), branch: filterType(branch, filterString)},
-      getTrailingOptions(arguments),
+   return this._runTask(
+      straightThroughStringTask(['update-server-info']),
+      trailingFunctionArgument(arguments),
    );
-   return this._runTask(task, trailingFunctionArgument(arguments));
 };
 
 /**
@@ -13636,12 +13610,12 @@ Git.prototype.pushTags = function (remote, then) {
 
 /**
  * Removes the named files from source control.
- *
- * @param {string|string[]} files
- * @param {Function} [then]
  */
-Git.prototype.rm = function (files, then) {
-   return this._rm(files, '-f', then);
+Git.prototype.rm = function (files) {
+   return this._runTask(
+      straightThroughStringTask(['rm', '-f', ...asArray(files)]),
+      trailingFunctionArgument(arguments)
+   );
 };
 
 /**
@@ -13649,10 +13623,12 @@ Git.prototype.rm = function (files, then) {
  * completely remove the files, use `rm`.
  *
  * @param {string|string[]} files
- * @param {Function} [then]
  */
-Git.prototype.rmKeepLocal = function (files, then) {
-   return this._rm(files, '--cached', then);
+Git.prototype.rmKeepLocal = function (files) {
+   return this._runTask(
+      straightThroughStringTask(['rm', '--cached', ...asArray(files)]),
+      trailingFunctionArgument(arguments)
+   );
 };
 
 /**
@@ -13668,13 +13644,7 @@ Git.prototype.catFile = function (options, then) {
    return this._catFile('utf-8', arguments);
 };
 
-/**
- * Equivalent to `catFile` but will return the native `Buffer` of content from the git command's stdout.
- *
- * @param {string[]} options
- * @param then
- */
-Git.prototype.binaryCatFile = function (options, then) {
+Git.prototype.binaryCatFile = function () {
    return this._catFile('buffer', arguments);
 };
 
@@ -13685,7 +13655,7 @@ Git.prototype._catFile = function (format, args) {
 
    if (typeof options === 'string') {
       return this._runTask(
-         configurationErrorTask('Git#catFile: options must be supplied as an array of strings'),
+         configurationErrorTask('Git.catFile: options must be supplied as an array of strings'),
          handler,
       );
    }
@@ -13694,9 +13664,11 @@ Git.prototype._catFile = function (format, args) {
       command.push.apply(command, options);
    }
 
-   return this._run(command, handler, {
-      format: format
-   });
+   const task = format === 'buffer'
+      ? straightThroughBufferTask(command)
+      : straightThroughStringTask(command);
+
+   return this._runTask(task, handler);
 };
 
 Git.prototype.diff = function (options, then) {
@@ -13720,7 +13692,7 @@ Git.prototype.diffSummary = function () {
    );
 };
 
-Git.prototype.applyPatch = function(patches) {
+Git.prototype.applyPatch = function (patches) {
    const task = !filterStringOrStringArray(patches)
       ? configurationErrorTask(`git.applyPatch requires one or more string patches as the first argument`)
       : applyPatchTask(asArray(patches), getTrailingOptions([].slice.call(arguments, 1)));
@@ -13833,13 +13805,10 @@ Git.prototype.clearQueue = function () {
  * @param {Function} [then]
  */
 Git.prototype.checkIgnore = function (pathnames, then) {
-   return this._run(
-      ["check-ignore", ...asArray((filterType(pathnames, filterStringOrStringArray, [])))],
+   return this._runTask(
+      checkIgnoreTask(asArray((filterType(pathnames, filterStringOrStringArray, [])))),
       trailingFunctionArgument(arguments),
-      {
-         parser: parseCheckIgnore
-      }
-   )
+   );
 };
 
 Git.prototype.checkIsRepo = function (checkType, then) {
@@ -13847,63 +13816,6 @@ Git.prototype.checkIsRepo = function (checkType, then) {
       checkIsRepoTask(filterType(checkType, filterString)),
       trailingFunctionArgument(arguments),
    );
-};
-
-Git.prototype._rm = function (_files, options, then) {
-   var files = [].concat(_files);
-   var args = ['rm', options];
-   args.push.apply(args, files);
-
-   return this._run(args, trailingFunctionArgument(arguments));
-};
-
-/**
- * Schedules the supplied command to be run, the command should not include the name of the git binary and should
- * be an array of strings passed as the arguments to the git binary.
- *
- * @param {string[]} command
- * @param {Function} then
- * @param {Object} [opt]
- * @param {boolean} [opt.concatStdErr=false] Optionally concatenate stderr output into the stdout
- * @param {boolean} [opt.format="utf-8"] The format to use when reading the content of stdout
- * @param {Function} [opt.onError] Optional error handler for this command - can be used to allow non-clean exits
- *                                  without killing the remaining stack of commands
- * @param {Function} [opt.parser] Optional parser function
- * @param {number} [opt.onError.exitCode]
- * @param {string} [opt.onError.stdErr]
- *
- * @returns {Git}
- */
-Git.prototype._run = function (command, then, opt) {
-
-   const task = Object.assign({
-      concatStdErr: false,
-      onError: undefined,
-      format: 'utf-8',
-      parser (data) {
-         return data;
-      }
-   }, opt || {}, {
-      commands: command,
-   });
-
-   return this._runTask(task, then);
-};
-
-Git.prototype._runTask = function (task, then) {
-   const executor = this[ChainedExecutor] || this._executor.chain();
-   const promise = executor.push(task);
-
-   taskCallback(
-      task,
-      promise,
-      then);
-
-   return Object.create(this, {
-      then: {value: promise.then.bind(promise)},
-      catch: {value: promise.catch.bind(promise)},
-      [ChainedExecutor]: {value: executor},
-   });
 };
 
 module.exports = Git;
@@ -14763,6 +14675,61 @@ exports.remoteMessagesObjectParsers = [
 
 /***/ }),
 
+/***/ 2581:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.commandConfigPrefixingPlugin = void 0;
+const utils_1 = __nccwpck_require__(847);
+function commandConfigPrefixingPlugin(configuration) {
+    const prefix = utils_1.prefixedArray(configuration, '-c');
+    return {
+        type: 'spawn.args',
+        action(data) {
+            return [...prefix, ...data];
+        },
+    };
+}
+exports.commandConfigPrefixingPlugin = commandConfigPrefixingPlugin;
+//# sourceMappingURL=command-config-prefixing-plugin.js.map
+
+/***/ }),
+
+/***/ 5067:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PluginStore = void 0;
+class PluginStore {
+    constructor() {
+        this.plugins = new Set();
+    }
+    add(plugin) {
+        this.plugins.add(plugin);
+        return () => {
+            this.plugins.delete(plugin);
+        };
+    }
+    exec(type, data, context) {
+        let output = data;
+        const contextual = Object.freeze(Object.create(context));
+        for (const plugin of this.plugins) {
+            if (plugin.type === type) {
+                output = plugin.action(output, contextual);
+            }
+        }
+        return output;
+    }
+}
+exports.PluginStore = PluginStore;
+//# sourceMappingURL=plugin-store.js.map
+
+/***/ }),
+
 /***/ 3755:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -15390,23 +15357,27 @@ const task_1 = __nccwpck_require__(2815);
 const tasks_pending_queue_1 = __nccwpck_require__(6676);
 const utils_1 = __nccwpck_require__(847);
 class GitExecutorChain {
-    constructor(_executor, _scheduler) {
+    constructor(_executor, _scheduler, _plugins) {
         this._executor = _executor;
         this._scheduler = _scheduler;
+        this._plugins = _plugins;
         this._chain = Promise.resolve();
         this._queue = new tasks_pending_queue_1.TasksPendingQueue();
     }
     get binary() {
         return this._executor.binary;
     }
-    get outputHandler() {
-        return this._executor.outputHandler;
-    }
     get cwd() {
         return this._executor.cwd;
     }
     get env() {
         return this._executor.env;
+    }
+    get outputHandler() {
+        return this._executor.outputHandler;
+    }
+    chain() {
+        return this;
     }
     push(task) {
         this._queue.push(task);
@@ -15439,7 +15410,8 @@ class GitExecutorChain {
     }
     attemptRemoteTask(task, logger) {
         return __awaiter(this, void 0, void 0, function* () {
-            const raw = yield this.gitResponse(this.binary, task.commands, this.outputHandler, logger.step('SPAWN'));
+            const args = this._plugins.exec('spawn.args', task.commands, {});
+            const raw = yield this.gitResponse(this.binary, args, this.outputHandler, logger.step('SPAWN'));
             const outputStreams = yield this.handleTaskData(task, raw, logger.step('HANDLE'));
             logger(`passing response to task's parser as a %s`, task.format);
             if (task_1.isBufferTask(task)) {
@@ -15553,14 +15525,15 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GitExecutor = void 0;
 const git_executor_chain_1 = __nccwpck_require__(8543);
 class GitExecutor {
-    constructor(binary = 'git', cwd, _scheduler) {
+    constructor(binary = 'git', cwd, _scheduler, _plugins) {
         this.binary = binary;
         this.cwd = cwd;
         this._scheduler = _scheduler;
-        this._chain = new git_executor_chain_1.GitExecutorChain(this, this._scheduler);
+        this._plugins = _plugins;
+        this._chain = new git_executor_chain_1.GitExecutorChain(this, this._scheduler, this._plugins);
     }
     chain() {
-        return new git_executor_chain_1.GitExecutorChain(this, this._scheduler);
+        return new git_executor_chain_1.GitExecutorChain(this, this._scheduler, this._plugins);
     }
     push(task) {
         return this._chain.push(task);
@@ -15838,6 +15811,49 @@ TasksPendingQueue.counter = 0;
 
 /***/ }),
 
+/***/ 999:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SimpleGitApi = void 0;
+const task_callback_1 = __nccwpck_require__(8850);
+const push_1 = __nccwpck_require__(1435);
+const task_1 = __nccwpck_require__(2815);
+const utils_1 = __nccwpck_require__(847);
+class SimpleGitApi {
+    constructor(_executor) {
+        this._executor = _executor;
+    }
+    _runTask(task, then) {
+        const chain = this._executor.chain();
+        const promise = chain.push(task);
+        if (then) {
+            task_callback_1.taskCallback(task, promise, then);
+        }
+        return Object.create(this, {
+            then: { value: promise.then.bind(promise) },
+            catch: { value: promise.catch.bind(promise) },
+            _executor: { value: chain },
+        });
+    }
+    add(files) {
+        return this._runTask(task_1.straightThroughStringTask(['add', ...utils_1.asArray(files)]), utils_1.trailingFunctionArgument(arguments));
+    }
+    push() {
+        const task = push_1.pushTask({
+            remote: utils_1.filterType(arguments[0], utils_1.filterString),
+            branch: utils_1.filterType(arguments[1], utils_1.filterString),
+        }, utils_1.getTrailingOptions(arguments));
+        return this._runTask(task, utils_1.trailingFunctionArgument(arguments));
+    }
+}
+exports.SimpleGitApi = SimpleGitApi;
+//# sourceMappingURL=simple-git-api.js.map
+
+/***/ }),
+
 /***/ 8850:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -15984,6 +16000,26 @@ function deleteBranchTask(branch, forceDelete = false) {
 }
 exports.deleteBranchTask = deleteBranchTask;
 //# sourceMappingURL=branch.js.map
+
+/***/ }),
+
+/***/ 3293:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.checkIgnoreTask = void 0;
+const CheckIgnore_1 = __nccwpck_require__(9926);
+function checkIgnoreTask(paths) {
+    return {
+        commands: ['check-ignore', ...paths],
+        format: 'utf-8',
+        parser: CheckIgnore_1.parseCheckIgnore,
+    };
+}
+exports.checkIgnoreTask = checkIgnoreTask;
+//# sourceMappingURL=check-ignore.js.map
 
 /***/ }),
 
@@ -16774,7 +16810,7 @@ exports.addAnnotatedTagTask = addAnnotatedTagTask;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isEmptyTask = exports.isBufferTask = exports.straightThroughStringTask = exports.configurationErrorTask = exports.adhocExecTask = exports.EMPTY_COMMANDS = void 0;
+exports.isEmptyTask = exports.isBufferTask = exports.straightThroughBufferTask = exports.straightThroughStringTask = exports.configurationErrorTask = exports.adhocExecTask = exports.EMPTY_COMMANDS = void 0;
 const task_configuration_error_1 = __nccwpck_require__(740);
 exports.EMPTY_COMMANDS = [];
 function adhocExecTask(parser) {
@@ -16805,6 +16841,16 @@ function straightThroughStringTask(commands, trimmed = false) {
     };
 }
 exports.straightThroughStringTask = straightThroughStringTask;
+function straightThroughBufferTask(commands) {
+    return {
+        commands,
+        format: 'buffer',
+        parser(buffer) {
+            return buffer;
+        },
+    };
+}
+exports.straightThroughBufferTask = straightThroughBufferTask;
 function isBufferTask(task) {
     return task.format === 'buffer';
 }
@@ -17010,6 +17056,7 @@ exports.createInstanceConfig = void 0;
 const defaultOptions = {
     binary: 'git',
     maxConcurrentProcesses: 5,
+    config: [],
 };
 function createInstanceConfig(...options) {
     const baseDir = process.cwd();
@@ -17124,7 +17171,7 @@ exports.parseStringResponse = parseStringResponse;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.asNumber = exports.asStringArray = exports.asArray = exports.objectToString = exports.remove = exports.append = exports.folderExists = exports.forEachLineWithContent = exports.toLinesWithContent = exports.last = exports.first = exports.splitOn = exports.isUserFunction = exports.asFunction = exports.NOOP = void 0;
+exports.prefixedArray = exports.asNumber = exports.asStringArray = exports.asArray = exports.objectToString = exports.remove = exports.append = exports.folderExists = exports.forEachLineWithContent = exports.toLinesWithContent = exports.last = exports.first = exports.splitOn = exports.isUserFunction = exports.asFunction = exports.NOOP = void 0;
 const file_exists_1 = __nccwpck_require__(4751);
 const NOOP = () => {
 };
@@ -17233,6 +17280,14 @@ function asNumber(source, onNaN = 0) {
     return isNaN(num) ? onNaN : num;
 }
 exports.asNumber = asNumber;
+function prefixedArray(input, prefix) {
+    const output = [];
+    for (let i = 0, max = input.length; i < max; i++) {
+        output.push(prefix, input[i]);
+    }
+    return output;
+}
+exports.prefixedArray = prefixedArray;
 //# sourceMappingURL=util.js.map
 
 /***/ }),
