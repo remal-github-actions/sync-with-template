@@ -51,7 +51,7 @@ jobs:
       uses: remal-github-actions/push-back@v1
       with:
         githubToken: ${{ env.PUSH_BACK_TOKEN }}
-        message: Push-back updated files during build
+        message: [push-back] Push-back updated files during build
 
 
     - name: Create tag
