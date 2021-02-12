@@ -291,6 +291,7 @@ function run() {
                         '-Xours',
                         logItem.hash
                     ]);
+                    yield git.raw(['add', '--all']);
                     let message = logItem.message
                         .replace(/( \(#\d+\))+$/, '')
                         .trim();
