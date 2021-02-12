@@ -54,6 +54,10 @@ jobs:
         message: [push-back] Push-back updated files during build
 
 
+    - name: Read version
+      id: readVersion
+      uses: remal-github-actions/read-nodejs-package-version@v1
+
     - name: Create tag
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
@@ -72,16 +76,9 @@ jobs:
         git config user.name "${{ github.event.head_commit.committer.name }}"
         git config user.email "${{ github.event.head_commit.committer.email }}"
 
-        echo "::group::Update tag"
-        FULL_VERSION=$(jq -r '.version' package.json)
-        if [ "$FULL_VERSION" == "null" ]; then
-          echo "::error::Version can't be read from package.json file"
-          exit 1
-        fi
-        echo "Version from package.json: $FULL_VERSION"
-
-        MAJOR_VERSION=$(echo "$FULL_VERSION" | cut -f1 -d".")
-        echo "Major version: $MAJOR_VERSION"
-        git tag --force "v$MAJOR_VERSION"
-        git push --force origin "v$MAJOR_VERSION"
+        echo "::group::Create version tag"
+        TAG="v${{ steps.readVersion.majorVersion }}"
+        echo "Creating Git tag: $TAG"
+        git tag --force "$TAG"
+        git push --force origin "$TAG"
         echo "::endgroup::"
