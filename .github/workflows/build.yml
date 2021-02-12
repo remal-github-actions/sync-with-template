@@ -62,23 +62,8 @@ jobs:
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
       if: ${{ env.PUSH_BACK_TOKEN && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      run: |
-        REMOTE_URL=$(git config --get remote.origin.url)
-        HEAD_COMMIT_SHA=$(git rev-parse HEAD)
-        REMOTE_HEAD_COMMIT_SHA=$(git ls-remote "$REMOTE_URL" "${{ github.ref }}" | awk '{ print $1}')
-        if [ "$REMOTE_HEAD_COMMIT_SHA" != "$HEAD_COMMIT_SHA" ]; then
-          echo "::warning::Remote repository branch has been changed, skipping tag creation"
-          exit 0
-        fi
-
-        git config --unset-all "http.https://github.com/.extraheader"
-        git remote set-url origin "https://${{ env.PUSH_BACK_TOKEN }}@github.com/${{ github.repository }}"
-        git config user.name "${{ github.event.head_commit.committer.name }}"
-        git config user.email "${{ github.event.head_commit.committer.email }}"
-
-        echo "::group::Create version tag"
-        TAG="v${{ steps.readVersion.outputs.majorVersion }}"
-        echo "Creating Git tag: $TAG"
-        git tag --force "$TAG"
-        git push --force origin "$TAG"
-        echo "::endgroup::"
+      uses: remal-github-actions/create-tag@v1
+      with:
+        githubToken: ${{ env.PUSH_BACK_TOKEN }}
+        tagName: 'v${{ steps.readVersion.outputs.majorVersion }}'
+        forcePush: 'true'
