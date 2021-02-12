@@ -77,7 +77,7 @@ jobs:
         git config user.email "${{ github.event.head_commit.committer.email }}"
 
         echo "::group::Create version tag"
-        TAG="v${{ steps.readVersion.majorVersion }}"
+        TAG="v${{ steps.readVersion.outputs.majorVersion }}"
         echo "Creating Git tag: $TAG"
         git tag --force "$TAG"
         git push --force origin "$TAG"
