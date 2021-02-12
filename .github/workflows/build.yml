@@ -44,6 +44,15 @@ jobs:
         npm run build
 
 
+    - name: Run current action
+      env:
+        PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
+      if: ${{ env.PUSH_BACK_TOKEN && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      uses: ./
+      with:
+        githubToken: ${{ env.PUSH_BACK_TOKEN }}
+
+
     - name: Push back
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
