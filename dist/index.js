@@ -276,6 +276,10 @@ function run() {
                 ]);
                 let count = 0;
                 for (const logItem of templateBranchLog.all) {
+                    const logDate = new Date(logItem.date);
+                    if (logDate.getTime() <= lastSynchronizedCommitDate.getTime()) {
+                        continue;
+                    }
                     ++count;
                     core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`);
                     try {
