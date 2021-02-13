@@ -310,10 +310,10 @@ function run() {
                                         continue;
                                     }
                                 }
+                                core.error(`Unresolved conflict: ${conflictedPath}`);
                                 unresolvedConflictedFiles.push(conflictedPath);
                             }
-                            if (unresolvedConflictedFiles) {
-                                core.error(`Some conflicts left unresolved: \n  ${unresolvedConflictedFiles.join('\n  ')}`);
+                            if (unresolvedConflictedFiles.length > 0) {
                                 throw reason;
                             }
                         }
