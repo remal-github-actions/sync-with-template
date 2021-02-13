@@ -293,7 +293,6 @@ function run() {
                     catch (reason) {
                         if (reason instanceof simple_git_1.GitError
                             && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)) {
-                            core.info('Resolving conflicts');
                             const status = yield git.status();
                             const unresolvedConflictedFiles = [];
                             for (const conflictedPath of status.conflicted) {
