@@ -295,6 +295,7 @@ function run() {
                             && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)) {
                             core.info('Resolving conflicts');
                             const status = yield git.status();
+                            core.info(JSON.stringify(status, null, 2));
                             const unresolvedConflictedFiles = [];
                             for (const conflictedFile of status.conflicted) {
                                 if (status.created.includes(conflictedFile)) {
