@@ -129,13 +129,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github_1 = __nccwpck_require__(5438);
-const simple_git_1 = __importDefault(__nccwpck_require__(1477));
+const simple_git_1 = __importStar(__nccwpck_require__(1477));
 const conventional_commits_1 = __nccwpck_require__(6421);
 const octokit_1 = __nccwpck_require__(8093);
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -290,7 +287,12 @@ function run() {
                         '--strategy=recursive',
                         '-Xours',
                         logItem.hash
-                    ]);
+                    ])
+                        .catch(reason => {
+                        core.warning(`GitError: ${reason instanceof simple_git_1.GitError}`);
+                        core.warning(`GitResponseError: ${reason instanceof simple_git_1.GitResponseError}`);
+                        throw reason;
+                    });
                     let message = logItem.message
                         .replace(/( \(#\d+\))+$/, '')
                         .trim();

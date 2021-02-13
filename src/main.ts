@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
-import simpleGit, {SimpleGit} from 'simple-git'
+import simpleGit, {GitError, GitResponseError, SimpleGit} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 import {isConventionalCommit} from './internal/conventional-commits'
 import {newOctokitInstance} from './internal/octokit'
@@ -188,6 +188,11 @@ async function run(): Promise<void> {
                     '-Xours',
                     logItem.hash
                 ])
+                    .catch(reason => {
+                        core.warning(`GitError: ${reason instanceof GitError}`)
+                        core.warning(`GitResponseError: ${reason instanceof GitResponseError}`)
+                        throw reason
+                    })
 
                 let message = logItem.message
                     .replace(/( \(#\d+\))+$/, '')
