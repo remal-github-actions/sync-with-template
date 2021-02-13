@@ -193,7 +193,6 @@ async function run(): Promise<void> {
                     if (reason instanceof GitError
                         && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)
                     ) {
-                        core.info('Resolving conflicts')
                         const status = await git.status()
                         const unresolvedConflictedFiles: string[] = []
                         for (const conflictedPath of status.conflicted) {
