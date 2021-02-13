@@ -195,6 +195,7 @@ async function run(): Promise<void> {
                     ) {
                         core.info('Resolving conflicts')
                         const status = await git.status()
+                        core.info(JSON.stringify(status, null, 2))
                         const unresolvedConflictedFiles: string[] = []
                         for (const conflictedFile of status.conflicted) {
                             if (status.created.includes(conflictedFile)) {
