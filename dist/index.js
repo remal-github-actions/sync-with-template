@@ -278,21 +278,46 @@ function run() {
                 for (const logItem of templateBranchLog.all) {
                     ++count;
                     core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`);
-                    yield git.raw([
-                        'cherry-pick',
-                        '--no-commit',
-                        '-r',
-                        '--allow-empty',
-                        '--allow-empty-message',
-                        '--strategy=recursive',
-                        '-Xours',
-                        logItem.hash
-                    ])
-                        .catch(reason => {
-                        core.warning(`GitError: ${reason instanceof simple_git_1.GitError}`);
-                        core.warning(`GitResponseError: ${reason instanceof simple_git_1.GitResponseError}`);
-                        throw reason;
-                    });
+                    try {
+                        yield git.raw([
+                            'cherry-pick',
+                            '--no-commit',
+                            '-r',
+                            '--allow-empty',
+                            '--allow-empty-message',
+                            '--strategy=recursive',
+                            '-Xours',
+                            logItem.hash
+                        ]);
+                    }
+                    catch (reason) {
+                        if (reason instanceof simple_git_1.GitError
+                            && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)) {
+                            core.info('Resolving conflicts');
+                            const status = yield git.status();
+                            const unresolvedConflictedFiles = [];
+                            for (const conflictedFile of status.conflicted) {
+                                if (status.created.includes(conflictedFile)) {
+                                    core.info(`Resolving conflict: adding file: ${conflictedFile}`);
+                                    yield git.add(conflictedFile);
+                                }
+                                else if (status.deleted.includes(conflictedFile)) {
+                                    core.info(`Resolving conflict: removing file: ${conflictedFile}`);
+                                    yield git.rm(conflictedFile);
+                                }
+                                else {
+                                    unresolvedConflictedFiles.push(conflictedFile);
+                                }
+                            }
+                            if (unresolvedConflictedFiles) {
+                                core.error(`Some conflicts left unresolved: \n  ${unresolvedConflictedFiles.join('\n  ')}`);
+                                throw reason;
+                            }
+                        }
+                        else {
+                            throw reason;
+                        }
+                    }
                     let message = logItem.message
                         .replace(/( \(#\d+\))+$/, '')
                         .trim();
