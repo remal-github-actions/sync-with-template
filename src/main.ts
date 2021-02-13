@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
-import simpleGit, {GitError, GitResponseError, SimpleGit} from 'simple-git'
+import simpleGit, {GitError, SimpleGit} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 import {isConventionalCommit} from './internal/conventional-commits'
 import {newOctokitInstance} from './internal/octokit'
@@ -178,21 +178,43 @@ async function run(): Promise<void> {
                 ++count
                 core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`)
 
-                await git.raw([
-                    'cherry-pick',
-                    '--no-commit',
-                    '-r',
-                    '--allow-empty',
-                    '--allow-empty-message',
-                    '--strategy=recursive',
-                    '-Xours',
-                    logItem.hash
-                ])
-                    .catch(reason => {
-                        core.warning(`GitError: ${reason instanceof GitError}`)
-                        core.warning(`GitResponseError: ${reason instanceof GitResponseError}`)
+                try {
+                    await git.raw([
+                        'cherry-pick',
+                        '--no-commit',
+                        '-r',
+                        '--allow-empty',
+                        '--allow-empty-message',
+                        '--strategy=recursive',
+                        '-Xours',
+                        logItem.hash
+                    ])
+                } catch (reason) {
+                    if (reason instanceof GitError
+                        && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)
+                    ) {
+                        core.info('Resolving conflicts')
+                        const status = await git.status()
+                        const unresolvedConflictedFiles: string[] = []
+                        for (const conflictedFile of status.conflicted) {
+                            if (status.created.includes(conflictedFile)) {
+                                core.info(`Resolving conflict: adding file: ${conflictedFile}`)
+                                await git.add(conflictedFile)
+                            } else if (status.deleted.includes(conflictedFile)) {
+                                core.info(`Resolving conflict: removing file: ${conflictedFile}`)
+                                await git.rm(conflictedFile)
+                            } else {
+                                unresolvedConflictedFiles.push(conflictedFile)
+                            }
+                        }
+                        if (unresolvedConflictedFiles) {
+                            core.error(`Some conflicts left unresolved: \n  ${unresolvedConflictedFiles.join('\n  ')}`)
+                            throw reason
+                        }
+                    } else {
                         throw reason
-                    })
+                    }
+                }
 
                 let message = logItem.message
                     .replace(/( \(#\d+\))+$/, '')
