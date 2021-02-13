@@ -189,8 +189,6 @@ async function run(): Promise<void> {
                     logItem.hash
                 ])
 
-                await git.raw(['add', '--all'])
-
                 let message = logItem.message
                     .replace(/( \(#\d+\))+$/, '')
                     .trim()
