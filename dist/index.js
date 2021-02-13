@@ -295,20 +295,22 @@ function run() {
                             && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)) {
                             core.info('Resolving conflicts');
                             const status = yield git.status();
-                            core.info(JSON.stringify(status, null, 2));
                             const unresolvedConflictedFiles = [];
-                            for (const conflictedFile of status.conflicted) {
-                                if (status.created.includes(conflictedFile)) {
-                                    core.info(`Resolving conflict: adding file: ${conflictedFile}`);
-                                    yield git.add(conflictedFile);
+                            for (const conflictedPath of status.conflicted) {
+                                const fileInfo = status.files.find(file => file.path === conflictedPath);
+                                if (fileInfo !== undefined && fileInfo.working_dir === 'U') {
+                                    if (fileInfo.index === 'A') {
+                                        core.info(`Resolving conflict: adding file: ${conflictedPath}`);
+                                        yield git.add(conflictedPath);
+                                        continue;
+                                    }
+                                    else if (fileInfo.index === 'D') {
+                                        core.info(`Resolving conflict: removing file: ${conflictedPath}`);
+                                        yield git.rm(conflictedPath);
+                                        continue;
+                                    }
                                 }
-                                else if (status.deleted.includes(conflictedFile)) {
-                                    core.info(`Resolving conflict: removing file: ${conflictedFile}`);
-                                    yield git.rm(conflictedFile);
-                                }
-                                else {
-                                    unresolvedConflictedFiles.push(conflictedFile);
-                                }
+                                unresolvedConflictedFiles.push(conflictedPath);
                             }
                             if (unresolvedConflictedFiles) {
                                 core.error(`Some conflicts left unresolved: \n  ${unresolvedConflictedFiles.join('\n  ')}`);
@@ -367,7 +369,7 @@ function run() {
                 }
             }
             if (isDiffEmpty) {
-                yield core.group(`Diff is empty, clearing '${syncBranchName}' branch`, () => __awaiter(this, void 0, void 0, function* () {
+                yield core.group(`Diff is empty, removing '${syncBranchName}' branch`, () => __awaiter(this, void 0, void 0, function* () {
                     const pullRequests = (yield octokit.paginate(octokit.pulls.list, {
                         owner: github_1.context.repo.owner,
                         repo: github_1.context.repo.repo,
@@ -382,17 +384,16 @@ function run() {
                             issue_number: pullRequest.number,
                             body: "Closing empty pull request",
                         });
-                        const autoclosedSuffix = ' - autoclosed';
-                        let newTitle = pullRequest.title;
-                        if (!newTitle.endsWith(autoclosedSuffix)) {
-                            newTitle = `${newTitle}${autoclosedSuffix}`;
+                        const autoclosedTitleSuffix = ' - autoclosed';
+                        if (!pullRequest.title.endsWith(autoclosedTitleSuffix)) {
+                            const newTitle = `${pullRequest.title}${autoclosedTitleSuffix}`;
+                            yield octokit.pulls.update({
+                                owner: github_1.context.repo.owner,
+                                repo: github_1.context.repo.repo,
+                                pull_number: pullRequest.number,
+                                title: newTitle,
+                            });
                         }
-                        yield octokit.pulls.update({
-                            owner: github_1.context.repo.owner,
-                            repo: github_1.context.repo.repo,
-                            pull_number: pullRequest.number,
-                            title: newTitle,
-                        });
                         yield octokit.issues.update({
                             owner: github_1.context.repo.owner,
                             repo: github_1.context.repo.repo,
