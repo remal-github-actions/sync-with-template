@@ -195,18 +195,21 @@ async function run(): Promise<void> {
                     ) {
                         core.info('Resolving conflicts')
                         const status = await git.status()
-                        core.info(JSON.stringify(status, null, 2))
                         const unresolvedConflictedFiles: string[] = []
-                        for (const conflictedFile of status.conflicted) {
-                            if (status.created.includes(conflictedFile)) {
-                                core.info(`Resolving conflict: adding file: ${conflictedFile}`)
-                                await git.add(conflictedFile)
-                            } else if (status.deleted.includes(conflictedFile)) {
-                                core.info(`Resolving conflict: removing file: ${conflictedFile}`)
-                                await git.rm(conflictedFile)
-                            } else {
-                                unresolvedConflictedFiles.push(conflictedFile)
+                        for (const conflictedPath of status.conflicted) {
+                            const fileInfo = status.files.find(file => file.path === conflictedPath)
+                            if (fileInfo !== undefined && fileInfo.working_dir === 'U') {
+                                if (fileInfo.index === 'A') {
+                                    core.info(`Resolving conflict: adding file: ${conflictedPath}`)
+                                    await git.add(conflictedPath)
+                                    continue
+                                } else if (fileInfo.index === 'D') {
+                                    core.info(`Resolving conflict: removing file: ${conflictedPath}`)
+                                    await git.rm(conflictedPath)
+                                    continue
+                                }
                             }
+                            unresolvedConflictedFiles.push(conflictedPath)
                         }
                         if (unresolvedConflictedFiles) {
                             core.error(`Some conflicts left unresolved: \n  ${unresolvedConflictedFiles.join('\n  ')}`)
@@ -270,7 +273,7 @@ async function run(): Promise<void> {
 
 
         if (isDiffEmpty) {
-            await core.group(`Diff is empty, clearing '${syncBranchName}' branch`, async () => {
+            await core.group(`Diff is empty, removing '${syncBranchName}' branch`, async () => {
                 const pullRequests = (
                     await octokit.paginate(octokit.pulls.list, {
                         owner: context.repo.owner,
@@ -287,17 +290,16 @@ async function run(): Promise<void> {
                         issue_number: pullRequest.number,
                         body: "Closing empty pull request",
                     })
-                    const autoclosedSuffix = ' - autoclosed'
-                    let newTitle = pullRequest.title
-                    if (!newTitle.endsWith(autoclosedSuffix)) {
-                        newTitle = `${newTitle}${autoclosedSuffix}`
+                    const autoclosedTitleSuffix = ' - autoclosed'
+                    if (!pullRequest.title.endsWith(autoclosedTitleSuffix)) {
+                        const newTitle = `${pullRequest.title}${autoclosedTitleSuffix}`
+                        await octokit.pulls.update({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            pull_number: pullRequest.number,
+                            title: newTitle,
+                        })
                     }
-                    await octokit.pulls.update({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        pull_number: pullRequest.number,
-                        title: newTitle,
-                    })
                     await octokit.issues.update({
                         owner: context.repo.owner,
                         repo: context.repo.repo,
