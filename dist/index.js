@@ -12902,9 +12902,11 @@ rimraf.sync = rimrafSync
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const Git = __nccwpck_require__(4966);
+
 const {GitConstructError} = __nccwpck_require__(4732);
 const {PluginStore} = __nccwpck_require__(5067);
 const {commandConfigPrefixingPlugin} = __nccwpck_require__(2581);
+const {progressMonitorPlugin} = __nccwpck_require__(1738);
 const {createInstanceConfig, folderExists} = __nccwpck_require__(847);
 
 const api = Object.create(null);
@@ -12948,9 +12950,11 @@ module.exports.gitInstanceFactory = function gitInstanceFactory (baseDir, option
       throw new GitConstructError(config, `Cannot use simple-git on a directory that does not exist`);
    }
 
-   if (config.config) {
+   if (Array.isArray(config.config)) {
       plugins.add(commandConfigPrefixingPlugin(config.config));
    }
+
+   config.progress && plugins.add(progressMonitorPlugin(config.progress));
 
    return new Git(config, plugins);
 };
@@ -14730,20 +14734,22 @@ exports.commandConfigPrefixingPlugin = commandConfigPrefixingPlugin;
 /***/ }),
 
 /***/ 5067:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PluginStore = void 0;
+const utils_1 = __nccwpck_require__(847);
 class PluginStore {
     constructor() {
         this.plugins = new Set();
     }
     add(plugin) {
-        this.plugins.add(plugin);
+        const plugins = utils_1.asArray(plugin);
+        plugins.forEach(plugin => this.plugins.add(plugin));
         return () => {
-            this.plugins.delete(plugin);
+            plugins.forEach(plugin => this.plugins.delete(plugin));
         };
     }
     exec(type, data, context) {
@@ -14759,6 +14765,58 @@ class PluginStore {
 }
 exports.PluginStore = PluginStore;
 //# sourceMappingURL=plugin-store.js.map
+
+/***/ }),
+
+/***/ 1738:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.progressMonitorPlugin = void 0;
+const utils_1 = __nccwpck_require__(847);
+function progressMonitorPlugin(progress) {
+    const progressCommand = '--progress';
+    const progressMethods = ['checkout', 'clone', 'pull', 'push'];
+    const onProgress = {
+        type: 'spawn.after',
+        action(_data, context) {
+            var _a;
+            if (!context.commands.includes(progressCommand)) {
+                return;
+            }
+            (_a = context.spawned.stderr) === null || _a === void 0 ? void 0 : _a.on('data', (chunk) => {
+                const message = /^([a-zA-Z ]+):\s*(\d+)% \((\d+)\/(\d+)\)/.exec(chunk.toString('utf8'));
+                if (!message) {
+                    return;
+                }
+                progress({
+                    method: context.method,
+                    stage: progressEventStage(message[1]),
+                    progress: utils_1.asNumber(message[2]),
+                    processed: utils_1.asNumber(message[3]),
+                    total: utils_1.asNumber(message[4]),
+                });
+            });
+        }
+    };
+    const onArgs = {
+        type: 'spawn.args',
+        action(args, context) {
+            if (!progressMethods.includes(context.method)) {
+                return args;
+            }
+            return utils_1.including(args, progressCommand);
+        }
+    };
+    return [onArgs, onProgress];
+}
+exports.progressMonitorPlugin = progressMonitorPlugin;
+function progressEventStage(input) {
+    return String(input.toLowerCase().split(' ', 1)) || 'unknown';
+}
+//# sourceMappingURL=progress-monitor-plugin.js.map
 
 /***/ }),
 
@@ -15386,8 +15444,8 @@ exports.GitExecutorChain = void 0;
 const child_process_1 = __nccwpck_require__(3129);
 const api_1 = __nccwpck_require__(4732);
 const task_1 = __nccwpck_require__(2815);
-const tasks_pending_queue_1 = __nccwpck_require__(6676);
 const utils_1 = __nccwpck_require__(847);
+const tasks_pending_queue_1 = __nccwpck_require__(6676);
 class GitExecutorChain {
     constructor(_executor, _scheduler, _plugins) {
         this._executor = _executor;
@@ -15442,8 +15500,8 @@ class GitExecutorChain {
     }
     attemptRemoteTask(task, logger) {
         return __awaiter(this, void 0, void 0, function* () {
-            const args = this._plugins.exec('spawn.args', task.commands, {});
-            const raw = yield this.gitResponse(this.binary, args, this.outputHandler, logger.step('SPAWN'));
+            const args = this._plugins.exec('spawn.args', [...task.commands], pluginContext(task, task.commands));
+            const raw = yield this.gitResponse(task, this.binary, args, this.outputHandler, logger.step('SPAWN'));
             const outputStreams = yield this.handleTaskData(task, raw, logger.step('HANDLE'));
             logger(`passing response to task's parser as a %s`, task.format);
             if (task_1.isBufferTask(task)) {
@@ -15483,7 +15541,7 @@ class GitExecutorChain {
             done(new utils_1.GitOutputStreams(Buffer.concat(stdOut), Buffer.concat(stdErr)));
         });
     }
-    gitResponse(command, args, outputHandler, logger) {
+    gitResponse(task, command, args, outputHandler, logger) {
         return __awaiter(this, void 0, void 0, function* () {
             const outputLogger = logger.sibling('output');
             const spawnOptions = {
@@ -15526,11 +15584,18 @@ class GitExecutorChain {
                     logger(`Passing child process stdOut/stdErr to custom outputHandler`);
                     outputHandler(command, spawned.stdout, spawned.stderr, [...args]);
                 }
+                this._plugins.exec('spawn.after', undefined, Object.assign(Object.assign({}, pluginContext(task, args)), { spawned }));
             });
         });
     }
 }
 exports.GitExecutorChain = GitExecutorChain;
+function pluginContext(task, commands) {
+    return {
+        method: utils_1.first(task.commands) || '',
+        commands,
+    };
+}
 function onErrorReceived(target, logger) {
     return (err) => {
         logger(`[ERROR] child process exception %o`, err);
@@ -17203,7 +17268,7 @@ exports.parseStringResponse = parseStringResponse;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.prefixedArray = exports.asNumber = exports.asStringArray = exports.asArray = exports.objectToString = exports.remove = exports.append = exports.folderExists = exports.forEachLineWithContent = exports.toLinesWithContent = exports.last = exports.first = exports.splitOn = exports.isUserFunction = exports.asFunction = exports.NOOP = void 0;
+exports.prefixedArray = exports.asNumber = exports.asStringArray = exports.asArray = exports.objectToString = exports.remove = exports.including = exports.append = exports.folderExists = exports.forEachLineWithContent = exports.toLinesWithContent = exports.last = exports.first = exports.splitOn = exports.isUserFunction = exports.asFunction = exports.NOOP = void 0;
 const file_exists_1 = __nccwpck_require__(4751);
 const NOOP = () => {
 };
@@ -17268,7 +17333,7 @@ function folderExists(path) {
 }
 exports.folderExists = folderExists;
 /**
- * Adds `item` into the `target` `Array` or `Set` when it is not already present.
+ * Adds `item` into the `target` `Array` or `Set` when it is not already present and returns the `item`.
  */
 function append(target, item) {
     if (Array.isArray(target)) {
@@ -17282,6 +17347,16 @@ function append(target, item) {
     return item;
 }
 exports.append = append;
+/**
+ * Adds `item` into the `target` `Array` when it is not already present and returns the `target`.
+ */
+function including(target, item) {
+    if (Array.isArray(target) && !target.includes(item)) {
+        target.push(item);
+    }
+    return target;
+}
+exports.including = including;
 function remove(target, item) {
     if (Array.isArray(target)) {
         const index = target.indexOf(item);
