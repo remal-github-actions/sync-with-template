@@ -12,6 +12,7 @@ const githubToken = core.getInput('githubToken', {required: true})
 core.setSecret(githubToken)
 
 const conventionalCommits = core.getInput('conventionalCommits', {required: true}).toLowerCase() === 'true'
+const lfs = core.getInput('lfs', {required: true}).toLowerCase() === 'true'
 const syncBranchName = getSyncBranchName()
 
 const octokit = newOctokitInstance(githubToken)
@@ -77,8 +78,10 @@ async function run(): Promise<void> {
             await git.addRemote('template', templateRepo.svn_url)
             await git.fetch('template', templateRepo.default_branch)
 
-            core.info("Installing LFS")
-            await git.raw(['lfs', 'install', '--local'])
+            if (lfs) {
+                core.info("Installing LFS")
+                await git.raw(['lfs', 'install', '--local'])
+            }
         })
 
 
