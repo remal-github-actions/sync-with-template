@@ -139,6 +139,7 @@ const octokit_1 = __nccwpck_require__(8093);
 const githubToken = core.getInput('githubToken', { required: true });
 core.setSecret(githubToken);
 const conventionalCommits = core.getInput('conventionalCommits', { required: true }).toLowerCase() === 'true';
+const lfs = core.getInput('lfs', { required: true }).toLowerCase() === 'true';
 const syncBranchName = getSyncBranchName();
 const octokit = octokit_1.newOctokitInstance(githubToken);
 const pullRequestLabel = 'sync-with-template';
@@ -196,8 +197,10 @@ function run() {
                 core.info(`Adding 'template' remote: ${templateRepo.svn_url}`);
                 yield git.addRemote('template', templateRepo.svn_url);
                 yield git.fetch('template', templateRepo.default_branch);
-                core.info("Installing LFS");
-                yield git.raw(['lfs', 'install', '--local']);
+                if (lfs) {
+                    core.info("Installing LFS");
+                    yield git.raw(['lfs', 'install', '--local']);
+                }
             }));
             const originBranches = yield gitRemoteBranches(git, 'origin');
             const doesOriginHasSyncBranch = originBranches.indexOf(`refs/heads/${syncBranchName}`) >= 0;
