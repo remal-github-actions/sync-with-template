@@ -8,7 +8,10 @@
     "strictNullChecks": true,
     "noImplicitAny": false,
     "esModuleInterop": true,
-    "moduleResolution": "Node"
+    "moduleResolution": "Node",
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "src"
