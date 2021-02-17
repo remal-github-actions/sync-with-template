@@ -1,6 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/eslintrc",
   "plugins": [
+    "jest",
     "@typescript-eslint"
   ],
   "extends": [
@@ -16,7 +17,8 @@
   },
   "env": {
     "node": true,
-    "es6": true
+    "es6": true,
+    "jest/globals": true
   },
   "rules": {
     "eslint-comments/no-use": "off",

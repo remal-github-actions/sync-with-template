@@ -14,6 +14,9 @@ build-cache/
 # NodeJS
 /node_modules
 
+# Jest
+/coverage
+
 # Intellij
 /.idea/*
 !/.idea/.editorconfig
