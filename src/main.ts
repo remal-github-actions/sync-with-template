@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
-import simpleGit, {GitError, GitResponseError, SimpleGit} from 'simple-git'
+import simpleGit, {GitError, SimpleGit} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 import {isConventionalCommit} from './internal/conventional-commits'
 import {newOctokitInstance} from './internal/octokit'
@@ -12,6 +12,7 @@ const githubToken = core.getInput('githubToken', {required: true})
 core.setSecret(githubToken)
 
 const conventionalCommits = core.getInput('conventionalCommits', {required: true}).toLowerCase() === 'true'
+const lfs = core.getInput('lfs', {required: true}).toLowerCase() === 'true'
 const syncBranchName = getSyncBranchName()
 
 const octokit = newOctokitInstance(githubToken)
@@ -77,8 +78,10 @@ async function run(): Promise<void> {
             await git.addRemote('template', templateRepo.svn_url)
             await git.fetch('template', templateRepo.default_branch)
 
-            core.info("Installing LFS")
-            await git.raw(['lfs', 'install', '--local'])
+            if (lfs) {
+                core.info("Installing LFS")
+                await git.raw(['lfs', 'install', '--local'])
+            }
         })
 
 
@@ -175,24 +178,54 @@ async function run(): Promise<void> {
             ])
             let count = 0
             for (const logItem of templateBranchLog.all) {
+                const logDate = new Date(logItem.date)
+                if (logDate.getTime() <= lastSynchronizedCommitDate.getTime()) {
+                    continue
+                }
+
                 ++count
                 core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`)
 
-                await git.raw([
-                    'cherry-pick',
-                    '--no-commit',
-                    '-r',
-                    '--allow-empty',
-                    '--allow-empty-message',
-                    '--strategy=recursive',
-                    '-Xours',
-                    logItem.hash
-                ])
-                    .catch(reason => {
-                        core.warning(`GitError: ${reason instanceof GitError}`)
-                        core.warning(`GitResponseError: ${reason instanceof GitResponseError}`)
+                try {
+                    await git.raw([
+                        'cherry-pick',
+                        '--no-commit',
+                        '-r',
+                        '--allow-empty',
+                        '--allow-empty-message',
+                        '--strategy=recursive',
+                        '-Xours',
+                        logItem.hash
+                    ])
+                } catch (reason) {
+                    if (reason instanceof GitError
+                        && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)
+                    ) {
+                        const status = await git.status()
+                        const unresolvedConflictedFiles: string[] = []
+                        for (const conflictedPath of status.conflicted) {
+                            const fileInfo = status.files.find(file => file.path === conflictedPath)
+                            if (fileInfo !== undefined && fileInfo.working_dir === 'U') {
+                                if (fileInfo.index === 'A') {
+                                    core.info(`Resolving conflict: adding file: ${conflictedPath}`)
+                                    await git.add(conflictedPath)
+                                    continue
+                                } else if (fileInfo.index === 'D') {
+                                    core.info(`Resolving conflict: removing file: ${conflictedPath}`)
+                                    await git.rm(conflictedPath)
+                                    continue
+                                }
+                            }
+                            core.error(`Unresolved conflict: ${conflictedPath}`)
+                            unresolvedConflictedFiles.push(conflictedPath)
+                        }
+                        if (unresolvedConflictedFiles.length > 0) {
+                            throw reason
+                        }
+                    } else {
                         throw reason
-                    })
+                    }
+                }
 
                 let message = logItem.message
                     .replace(/( \(#\d+\))+$/, '')
@@ -247,7 +280,7 @@ async function run(): Promise<void> {
 
 
         if (isDiffEmpty) {
-            await core.group(`Diff is empty, clearing '${syncBranchName}' branch`, async () => {
+            await core.group(`Diff is empty, removing '${syncBranchName}' branch`, async () => {
                 const pullRequests = (
                     await octokit.paginate(octokit.pulls.list, {
                         owner: context.repo.owner,
@@ -264,17 +297,16 @@ async function run(): Promise<void> {
                         issue_number: pullRequest.number,
                         body: "Closing empty pull request",
                     })
-                    const autoclosedSuffix = ' - autoclosed'
-                    let newTitle = pullRequest.title
-                    if (!newTitle.endsWith(autoclosedSuffix)) {
-                        newTitle = `${newTitle}${autoclosedSuffix}`
+                    const autoclosedTitleSuffix = ' - autoclosed'
+                    if (!pullRequest.title.endsWith(autoclosedTitleSuffix)) {
+                        const newTitle = `${pullRequest.title}${autoclosedTitleSuffix}`
+                        await octokit.pulls.update({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            pull_number: pullRequest.number,
+                            title: newTitle,
+                        })
                     }
-                    await octokit.pulls.update({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        pull_number: pullRequest.number,
-                        title: newTitle,
-                    })
                     await octokit.issues.update({
                         owner: context.repo.owner,
                         repo: context.repo.repo,
