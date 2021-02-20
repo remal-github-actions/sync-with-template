@@ -47,12 +47,14 @@ jobs:
     - name: Run current action
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
+        ACTIONS_STEP_DEBUG: 'true'
       if: ${{ env.PUSH_BACK_TOKEN && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       uses: ./
       with:
         githubToken: ${{ env.PUSH_BACK_TOKEN }}
         ignorePaths: |
-          *.lock
+          package-lock.lock
+          yarn.lock
 
 
     - name: Push back
