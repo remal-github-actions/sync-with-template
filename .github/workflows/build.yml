@@ -51,6 +51,9 @@ jobs:
       uses: ./
       with:
         githubToken: ${{ env.PUSH_BACK_TOKEN }}
+        ignorePaths: |
+          package-lock.lock
+          yarn.lock
 
 
     - name: Push back

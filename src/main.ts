@@ -1,6 +1,10 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
+import fs from 'fs'
+import isWindows from 'is-windows'
+import path from 'path'
+import picomatch from 'picomatch'
 import simpleGit, {GitError, SimpleGit} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 import {isConventionalCommit} from './internal/conventional-commits'
@@ -42,12 +46,47 @@ async function run(): Promise<void> {
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
+        const ignorePathMatcher: GlobMatcher | undefined = (function () {
+            const patterns = core.getInput('ignorePaths').split('\n')
+                .map(line => line.replace(/#.*/, '').trim())
+                .filter(line => line.length > 0)
+            if (patterns.length === 0) {
+                return undefined
+            }
+
+            return picomatch(patterns, {windows: isWindows()})
+        })()
+
 
         const workspacePath = require('tmp').dirSync().name
         if (process.env.ACTIONS_STEP_DEBUG?.toLowerCase() === 'true') {
             require('debug').enable('simple-git')
         }
         const git = simpleGit(workspacePath)
+
+        const unstageIgnoredFiles: () => Promise<string[]> = async () => {
+            const unstagedFiles: string[] = []
+            if (ignorePathMatcher) {
+                const status = await git.status()
+                for (const filePath of status.staged) {
+                    if (ignorePathMatcher(filePath)) {
+                        core.info(`Ignored file: unstaging: ${filePath}`)
+                        await git.raw('reset', '-q', 'HEAD', '--', filePath)
+                        if (status.created.includes(filePath)) {
+                            core.info(`Ignored file: removing created: ${filePath}`)
+                            const absoluteFilePath = path.resolve(workspacePath, filePath)
+                            fs.unlinkSync(absoluteFilePath)
+                        } else if (status.modified.includes(filePath)) {
+                            core.info(`Ignored file: reverting modified: ${filePath}`)
+                            await git.raw('checkout', '--', filePath)
+                        }
+                        unstagedFiles.push(filePath)
+                    }
+                }
+            }
+            return unstagedFiles
+        }
+
         await core.group("Initializing the repository", async () => {
             await git.init()
             await git.addConfig('user.useConfigOnly', 'true')
@@ -201,9 +240,13 @@ async function run(): Promise<void> {
                     if (reason instanceof GitError
                         && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)
                     ) {
+                        const unstagedFiles = await unstageIgnoredFiles()
                         const status = await git.status()
                         const unresolvedConflictedFiles: string[] = []
                         for (const conflictedPath of status.conflicted) {
+                            if (unstagedFiles.includes(conflictedPath)) {
+                                continue
+                            }
                             const fileInfo = status.files.find(file => file.path === conflictedPath)
                             if (fileInfo !== undefined && fileInfo.working_dir === 'U') {
                                 if (fileInfo.index === 'A') {
@@ -226,6 +269,8 @@ async function run(): Promise<void> {
                         throw reason
                     }
                 }
+
+                await unstageIgnoredFiles()
 
                 let message = logItem.message
                     .replace(/( \(#\d+\))+$/, '')
@@ -381,6 +426,8 @@ async function run(): Promise<void> {
 run()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+type GlobMatcher = (filePath: string) => boolean
 
 function getSyncBranchName(): string {
     const name = core.getInput('syncBranchName', {required: true})
