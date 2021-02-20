@@ -63,6 +63,30 @@ async function run(): Promise<void> {
             require('debug').enable('simple-git')
         }
         const git = simpleGit(workspacePath)
+
+        const unstageIgnoredFiles: () => Promise<string[]> = async () => {
+            const unstagedFiles: string[] = []
+            if (ignorePathMatcher) {
+                const status = await git.status()
+                for (const filePath of status.staged) {
+                    if (ignorePathMatcher(filePath)) {
+                        core.info(`Unstaging ignored file: ${filePath}`)
+                        await git.raw('reset', '-q', 'HEAD', '--', filePath)
+                        if (status.created.includes(filePath)) {
+                            core.info(`Removing created ignored file: ${filePath}`)
+                            const absoluteFilePath = path.resolve(workspacePath, filePath)
+                            fs.unlinkSync(absoluteFilePath)
+                        } else if (status.modified.includes(filePath)) {
+                            core.info(`Revering modified ignored file: ${filePath}`)
+                            await git.raw('checkout', '--', filePath)
+                        }
+                        unstagedFiles.push(filePath)
+                    }
+                }
+            }
+            return unstagedFiles
+        }
+
         await core.group("Initializing the repository", async () => {
             await git.init()
             await git.addConfig('user.useConfigOnly', 'true')
@@ -216,9 +240,13 @@ async function run(): Promise<void> {
                     if (reason instanceof GitError
                         && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)
                     ) {
+                        const unstagedFiles = await unstageIgnoredFiles()
                         const status = await git.status()
                         const unresolvedConflictedFiles: string[] = []
                         for (const conflictedPath of status.conflicted) {
+                            if (unstagedFiles.includes(conflictedPath)) {
+                                continue
+                            }
                             const fileInfo = status.files.find(file => file.path === conflictedPath)
                             if (fileInfo !== undefined && fileInfo.working_dir === 'U') {
                                 if (fileInfo.index === 'A') {
@@ -242,20 +270,7 @@ async function run(): Promise<void> {
                     }
                 }
 
-                if (ignorePathMatcher) {
-                    const status = await git.status()
-                    for (const filePath of status.staged) {
-                        if (ignorePathMatcher(filePath)) {
-                            core.info(`Unstaging ignored file: ${filePath}`)
-                            await git.raw('reset', '-q', 'HEAD', '--', filePath)
-                            if (status.created.includes(filePath)) {
-                                core.info(`Removing created ignored file: ${filePath}`)
-                                const absoluteFilePath = path.resolve(workspacePath, filePath)
-                                fs.unlinkSync(absoluteFilePath)
-                            }
-                        }
-                    }
-                }
+                await unstageIgnoredFiles()
 
                 let message = logItem.message
                     .replace(/( \(#\d+\))+$/, '')
