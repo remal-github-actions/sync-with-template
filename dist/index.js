@@ -192,15 +192,15 @@ function run() {
                     const status = yield git.status();
                     for (const filePath of status.staged) {
                         if (ignorePathMatcher(filePath)) {
-                            core.info(`Unstaging ignored file: ${filePath}`);
+                            core.info(`Ignored file: unstaging: ${filePath}`);
                             yield git.raw('reset', '-q', 'HEAD', '--', filePath);
                             if (status.created.includes(filePath)) {
-                                core.info(`Removing created ignored file: ${filePath}`);
+                                core.info(`Ignored file: removing created: ${filePath}`);
                                 const absoluteFilePath = path_1.default.resolve(workspacePath, filePath);
                                 fs_1.default.unlinkSync(absoluteFilePath);
                             }
                             else if (status.modified.includes(filePath)) {
-                                core.info(`Revering modified ignored file: ${filePath}`);
+                                core.info(`Ignored file: reverting modified: ${filePath}`);
                                 yield git.raw('checkout', '--', filePath);
                             }
                             unstagedFiles.push(filePath);
