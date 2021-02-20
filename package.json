@@ -24,12 +24,16 @@
     "@octokit/plugin-throttling": "3.4.1",
     "conventional-commits-detector": "1.0.3",
     "debug": "4.3.1",
+    "is-windows": "1.0.2",
+    "picomatch": "2.2.2",
     "simple-git": "2.35.1",
     "tmp": "0.2.1"
   },
   "devDependencies": {
     "@types/conventional-commits-detector": "1.0.0",
+    "@types/is-windows": "1.0.0",
     "@types/node": "14.14.31",
+    "@types/picomatch": "2.2.1",
     "@typescript-eslint/parser": "4.15.1",
     "@vercel/ncc": "0.27.0",
     "console-log-level": "1.4.1",

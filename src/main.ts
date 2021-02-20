@@ -1,6 +1,8 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
+import isWindows from 'is-windows'
+import picomatch from 'picomatch'
 import simpleGit, {GitError, SimpleGit} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 import {isConventionalCommit} from './internal/conventional-commits'
@@ -41,6 +43,17 @@ async function run(): Promise<void> {
             return
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`)
+
+        const ignorePathMatcher: GlobMatcher | undefined = (function () {
+            const patterns = core.getInput('ignorePaths').split('\n')
+                .map(line => line.replace(/#.*/, '').trim())
+                .filter(line => line.length > 0)
+            if (patterns.length === 0) {
+                return undefined
+            }
+
+            return picomatch(patterns, {windows: isWindows()})
+        })()
 
 
         const workspacePath = require('tmp').dirSync().name
@@ -227,6 +240,16 @@ async function run(): Promise<void> {
                     }
                 }
 
+                if (ignorePathMatcher) {
+                    const status = await git.status()
+                    for (const path of status.staged) {
+                        if (ignorePathMatcher(path)) {
+                            core.info(`Reverting ignored file: ${path}`)
+                            await git.raw('restore', '--staged', path)
+                        }
+                    }
+                }
+
                 let message = logItem.message
                     .replace(/( \(#\d+\))+$/, '')
                     .trim()
@@ -381,6 +404,8 @@ async function run(): Promise<void> {
 run()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+type GlobMatcher = (path: string) => boolean
 
 function getSyncBranchName(): string {
     const name = core.getInput('syncBranchName', {required: true})

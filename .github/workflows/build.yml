@@ -51,6 +51,8 @@ jobs:
       uses: ./
       with:
         githubToken: ${{ env.PUSH_BACK_TOKEN }}
+        ignorePaths: |
+          *.lock
 
 
     - name: Push back
