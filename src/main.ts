@@ -1,7 +1,9 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
 import {RestEndpointMethodTypes} from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types"
+import fs from 'fs'
 import isWindows from 'is-windows'
+import path from 'path'
 import picomatch from 'picomatch'
 import simpleGit, {GitError, SimpleGit} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
@@ -242,10 +244,15 @@ async function run(): Promise<void> {
 
                 if (ignorePathMatcher) {
                     const status = await git.status()
-                    for (const path of status.staged) {
-                        if (ignorePathMatcher(path)) {
-                            core.info(`Reverting ignored file: ${path}`)
-                            await git.raw('restore', '--staged', path)
+                    for (const filePath of status.staged) {
+                        if (ignorePathMatcher(filePath)) {
+                            core.info(`Unstaging ignored file: ${filePath}`)
+                            await git.raw('reset', '-q', 'HEAD', '--', filePath)
+                            if (status.created.includes(filePath)) {
+                                core.info(`Removing created ignored file: ${filePath}`)
+                                const absoluteFilePath = path.resolve(workspacePath, filePath)
+                                fs.unlinkSync(absoluteFilePath)
+                            }
                         }
                     }
                 }
@@ -405,7 +412,7 @@ run()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-type GlobMatcher = (path: string) => boolean
+type GlobMatcher = (filePath: string) => boolean
 
 function getSyncBranchName(): string {
     const name = core.getInput('syncBranchName', {required: true})
