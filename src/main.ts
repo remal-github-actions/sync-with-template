@@ -76,9 +76,9 @@ async function run(): Promise<void> {
                             core.info(`Ignored file: removing created: ${filePath}`)
                             const absoluteFilePath = path.resolve(workspacePath, filePath)
                             fs.unlinkSync(absoluteFilePath)
-                        } else if (status.modified.includes(filePath)) {
-                            core.info(`Ignored file: reverting modified: ${filePath}`)
-                            await git.raw('checkout', '--', filePath)
+                        } else {
+                            core.info(`Ignored file: reverting modified/deleted: ${filePath}`)
+                            await git.raw('checkout', 'HEAD', '--', filePath)
                         }
                         unstagedFiles.push(filePath)
                     }
