@@ -54,6 +54,7 @@ async function run(): Promise<void> {
                 return undefined
             }
 
+            core.info(`Ignored files:\n  ${patterns.join('\n  ')}`)
             return picomatch(patterns, {windows: isWindows()})
         })()
 
