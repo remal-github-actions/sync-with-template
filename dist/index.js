@@ -179,6 +179,7 @@ function run() {
                 if (patterns.length === 0) {
                     return undefined;
                 }
+                core.info(`Ignored files:\n  ${patterns.join('\n  ')}`);
                 return picomatch_1.default(patterns, { windows: is_windows_1.default() });
             })();
             const workspacePath = __nccwpck_require__(8517).dirSync().name;
@@ -199,9 +200,9 @@ function run() {
                                 const absoluteFilePath = path_1.default.resolve(workspacePath, filePath);
                                 fs_1.default.unlinkSync(absoluteFilePath);
                             }
-                            else if (status.modified.includes(filePath)) {
-                                core.info(`Ignored file: reverting modified: ${filePath}`);
-                                yield git.raw('checkout', '--', filePath);
+                            else {
+                                core.info(`Ignored file: reverting modified/deleted: ${filePath}`);
+                                yield git.raw('checkout', 'HEAD', '--', filePath);
                             }
                             unstagedFiles.push(filePath);
                         }
