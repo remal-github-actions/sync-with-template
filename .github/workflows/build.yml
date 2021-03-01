@@ -22,17 +22,31 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - name: Setup node 12
-      uses: actions/setup-node@v2
-      with:
-        node-version: '12'
-
     - name: Checkout repository
       uses: actions/checkout@v2
       with:
         submodules: recursive
         lfs: true
         fetch-depth: 1
+
+
+    - name: Setup node 12
+      uses: actions/setup-node@v2
+      with:
+        node-version: '12'
+
+
+    - name: Get Yarn cache params
+      id: yarn-cache
+      run: |
+        CACHE_PATH=$(yarn cache dir)
+        echo "::set-output name=path::$CACHE_PATH"
+
+    - name: Yarn cache
+      uses: actions/cache@v2
+      with:
+        key: ${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+        path: '${{ steps.yarn-cache.outputs.path }}'
 
 
     - name: Install dependencies
