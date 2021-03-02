@@ -8,10 +8,10 @@
   },
   "main": "dist/main.js",
   "scripts": {
-    "tsconfig-generate-app": "node tsconfig-generate-app",
-    "lint": "npm run tsconfig-generate-app && eslint --fix src/**/*.[jt]s",
+    "lint": "eslint --fix",
     "test": "jest --passWithNoTests",
-    "compile": "npm run lint && rimraf build && tsc --rootDir src --outDir build",
+    "tsconfig-generate-app": "node tsconfig-generate-app",
+    "compile": "npm run lint && rimraf build && node tsconfig-generate-app && tsc -project tsconfig.app.json --rootDir src --outDir build",
     "dist": "npm run compile && rimraf dist && ncc build build/main.js --out dist",
     "build": "npm run dist && npm run test"
   },
