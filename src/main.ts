@@ -7,6 +7,7 @@ import path from 'path'
 import picomatch from 'picomatch'
 import simpleGit, {GitError, SimpleGit} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
+import {URL} from 'url'
 import {isConventionalCommit} from './internal/conventional-commits'
 import {newOctokitInstance} from './internal/octokit'
 
