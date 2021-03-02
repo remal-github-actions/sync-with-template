@@ -36,18 +36,12 @@ jobs:
         node-version: '12'
 
 
-    - name: Get Yarn cache params
-      id: yarn-cache
-      run: |
-        CACHE_PATH=$(yarn cache dir)
-        echo "path=$CACHE_PATH"
-        echo "::set-output name=path::$CACHE_PATH"
-
-    - name: Yarn cache
+    - name: node_modules cache
       uses: actions/cache@v2
       with:
-        key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
-        path: '${{ steps.yarn-cache.outputs.path }}'
+        key: ${{ runner.os }}-node_modules-${{ hashFiles('*.lock') }}
+        path: |
+          node_modules
 
 
     - name: Install dependencies
@@ -74,7 +68,7 @@ jobs:
     - name: Push back
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
-      if: ${{ env.PUSH_BACK_TOKEN && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') }}
+      if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && env.PUSH_BACK_TOKEN }}
       uses: remal-github-actions/push-back@v1
       with:
         githubToken: ${{ env.PUSH_BACK_TOKEN }}
@@ -83,12 +77,13 @@ jobs:
 
     - name: Read version
       id: readVersion
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       uses: remal-github-actions/read-nodejs-package-version@v1
 
     - name: Create tag
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
-      if: ${{ env.PUSH_BACK_TOKEN && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.PUSH_BACK_TOKEN }}
       uses: remal-github-actions/create-tag@v1
       with:
         githubToken: ${{ env.PUSH_BACK_TOKEN }}
