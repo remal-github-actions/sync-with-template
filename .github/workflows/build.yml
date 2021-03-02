@@ -39,7 +39,7 @@ jobs:
     - name: node_modules cache
       uses: actions/cache@v2
       with:
-        key: ${{ runner.os }}-node_modules-${{ hashFiles('*.lock') }}
+        key: ${{ runner.os }}-node_modules-${{ hashFiles('package.json', '*.lock') }}
         path: |
           node_modules
 
@@ -56,7 +56,7 @@ jobs:
     - name: Run current action
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
-      if: ${{ env.PUSH_BACK_TOKEN && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.PUSH_BACK_TOKEN }}
       uses: ./
       with:
         githubToken: ${{ env.PUSH_BACK_TOKEN }}
