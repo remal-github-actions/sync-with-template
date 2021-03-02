@@ -1,21 +1,15 @@
-log/
-*.log
-hs_err_pid*
-java_pid*.hprof
-
-# Maven:
-target/
-
-# Gradle:
-build/
-build-cache/
-.gradle/
+/build
 
 # NodeJS
 /node_modules
 
 # Jest
 /coverage
+
+log/
+*.log
+hs_err_pid*
+java_pid*.hprof
 
 # Intellij
 /.idea/*

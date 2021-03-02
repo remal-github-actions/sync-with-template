@@ -1,23 +1,23 @@
 module.exports = {
     clearMocks: true,
-    moduleFileExtensions: ['js', 'ts'],
+    moduleFileExtensions: ['ts', 'js', 'mjs'],
     testEnvironment: 'node',
     testRunner: 'jest-circus/runner',
     transform: {
         '^.+\\.ts$': 'ts-jest'
     },
     testMatch: [
-        '**/*.spec.js',
-        '**/*.spec.ts',
+        '**/*.spec.(ts|js|mjs)',
     ],
     testPathIgnorePatterns: [
-        '/node_modules/',
         '/build/',
         '/dist/',
+        '/node_modules/',
     ],
     collectCoverage: true,
     collectCoverageFrom: [
         'src/**',
     ],
+    errorOnDeprecated: true,
     verbose: true
 }
