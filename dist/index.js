@@ -15950,70 +15950,6 @@ formatters.O = function (v) {
 
 /***/ }),
 
-/***/ 1949:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const Git = __nccwpck_require__(4966);
-
-const {GitConstructError} = __nccwpck_require__(4732);
-const {PluginStore} = __nccwpck_require__(5067);
-const {commandConfigPrefixingPlugin} = __nccwpck_require__(2581);
-const {progressMonitorPlugin} = __nccwpck_require__(1738);
-const {createInstanceConfig, folderExists} = __nccwpck_require__(847);
-
-const api = Object.create(null);
-for (let imported = __nccwpck_require__(4732), keys = Object.keys(imported), i = 0; i < keys.length; i++) {
-   const name = keys[i];
-   if (/^[A-Z]/.test(name)) {
-      api[name] = imported[name];
-   }
-}
-
-/**
- * Adds the necessary properties to the supplied object to enable it for use as
- * the default export of a module.
- *
- * Eg: `module.exports = esModuleFactory({ something () {} })`
- */
-module.exports.esModuleFactory = function esModuleFactory (defaultExport) {
-   return Object.defineProperties(defaultExport, {
-      __esModule: {value: true},
-      default: {value: defaultExport},
-   });
-}
-
-module.exports.gitExportFactory = function gitExportFactory (factory, extra) {
-   return Object.assign(function () {
-         return factory.apply(null, arguments);
-      },
-      api,
-      extra || {},
-   );
-};
-
-module.exports.gitInstanceFactory = function gitInstanceFactory (baseDir, options) {
-   const plugins = new PluginStore();
-   const config = createInstanceConfig(
-      baseDir && (typeof baseDir === 'string' ? {baseDir} : baseDir),
-      options
-   );
-
-   if (!folderExists(config.baseDir)) {
-      throw new GitConstructError(config, `Cannot use simple-git on a directory that does not exist`);
-   }
-
-   if (Array.isArray(config.config)) {
-      plugins.add(commandConfigPrefixingPlugin(config.config));
-   }
-
-   config.progress && plugins.add(progressMonitorPlugin(config.progress));
-
-   return new Git(config, plugins);
-};
-
-
-/***/ }),
-
 /***/ 4966:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -16916,7 +16852,7 @@ module.exports = Git;
 
 
 const {gitP} = __nccwpck_require__(941);
-const {esModuleFactory, gitInstanceFactory, gitExportFactory} = __nccwpck_require__(1949);
+const {esModuleFactory, gitInstanceFactory, gitExportFactory} = __nccwpck_require__(9846);
 
 module.exports = esModuleFactory(
    gitExportFactory(gitInstanceFactory, {gitP})
@@ -16931,21 +16867,25 @@ module.exports = esModuleFactory(
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.TaskConfigurationError = exports.GitResponseError = exports.GitError = exports.GitConstructError = exports.ResetMode = exports.CheckRepoActions = exports.CleanOptions = void 0;
-var clean_1 = __nccwpck_require__(4386);
-Object.defineProperty(exports, "CleanOptions", ({ enumerable: true, get: function () { return clean_1.CleanOptions; } }));
-var check_is_repo_1 = __nccwpck_require__(221);
-Object.defineProperty(exports, "CheckRepoActions", ({ enumerable: true, get: function () { return check_is_repo_1.CheckRepoActions; } }));
-var reset_1 = __nccwpck_require__(2377);
-Object.defineProperty(exports, "ResetMode", ({ enumerable: true, get: function () { return reset_1.ResetMode; } }));
-var git_construct_error_1 = __nccwpck_require__(1876);
-Object.defineProperty(exports, "GitConstructError", ({ enumerable: true, get: function () { return git_construct_error_1.GitConstructError; } }));
-var git_error_1 = __nccwpck_require__(5757);
-Object.defineProperty(exports, "GitError", ({ enumerable: true, get: function () { return git_error_1.GitError; } }));
-var git_response_error_1 = __nccwpck_require__(5131);
-Object.defineProperty(exports, "GitResponseError", ({ enumerable: true, get: function () { return git_response_error_1.GitResponseError; } }));
-var task_configuration_error_1 = __nccwpck_require__(740);
-Object.defineProperty(exports, "TaskConfigurationError", ({ enumerable: true, get: function () { return task_configuration_error_1.TaskConfigurationError; } }));
+const git_construct_error_1 = __nccwpck_require__(1876);
+const git_error_1 = __nccwpck_require__(5757);
+const git_plugin_error_1 = __nccwpck_require__(19);
+const git_response_error_1 = __nccwpck_require__(5131);
+const task_configuration_error_1 = __nccwpck_require__(740);
+const check_is_repo_1 = __nccwpck_require__(221);
+const clean_1 = __nccwpck_require__(4386);
+const reset_1 = __nccwpck_require__(2377);
+const api = {
+    CheckRepoActions: check_is_repo_1.CheckRepoActions,
+    CleanOptions: clean_1.CleanOptions,
+    GitConstructError: git_construct_error_1.GitConstructError,
+    GitError: git_error_1.GitError,
+    GitPluginError: git_plugin_error_1.GitPluginError,
+    GitResponseError: git_response_error_1.GitResponseError,
+    ResetMode: reset_1.ResetMode,
+    TaskConfigurationError: task_configuration_error_1.TaskConfigurationError,
+};
+exports.default = api;
 //# sourceMappingURL=api.js.map
 
 /***/ }),
@@ -17022,6 +16962,27 @@ exports.GitError = GitError;
 
 /***/ }),
 
+/***/ 19:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.GitPluginError = void 0;
+const git_error_1 = __nccwpck_require__(5757);
+class GitPluginError extends git_error_1.GitError {
+    constructor(task, plugin, message) {
+        super(task, message);
+        this.task = task;
+        this.plugin = plugin;
+        Object.setPrototypeOf(this, new.target.prototype);
+    }
+}
+exports.GitPluginError = GitPluginError;
+//# sourceMappingURL=git-plugin-error.js.map
+
+/***/ }),
+
 /***/ 5131:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -17091,6 +17052,54 @@ exports.TaskConfigurationError = TaskConfigurationError;
 
 /***/ }),
 
+/***/ 9846:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.gitInstanceFactory = exports.gitExportFactory = exports.esModuleFactory = void 0;
+const Git = __nccwpck_require__(4966);
+const api_1 = __nccwpck_require__(4732);
+const plugins_1 = __nccwpck_require__(8078);
+const utils_1 = __nccwpck_require__(847);
+/**
+ * Adds the necessary properties to the supplied object to enable it for use as
+ * the default export of a module.
+ *
+ * Eg: `module.exports = esModuleFactory({ something () {} })`
+ */
+function esModuleFactory(defaultExport) {
+    return Object.defineProperties(defaultExport, {
+        __esModule: { value: true },
+        default: { value: defaultExport },
+    });
+}
+exports.esModuleFactory = esModuleFactory;
+function gitExportFactory(factory, extra) {
+    return Object.assign(function (...args) {
+        return factory.apply(null, args);
+    }, api_1.default, extra || {});
+}
+exports.gitExportFactory = gitExportFactory;
+function gitInstanceFactory(baseDir, options) {
+    const plugins = new plugins_1.PluginStore();
+    const config = utils_1.createInstanceConfig(baseDir && (typeof baseDir === 'string' ? { baseDir } : baseDir) || {}, options);
+    if (!utils_1.folderExists(config.baseDir)) {
+        throw new api_1.default.GitConstructError(config, `Cannot use simple-git on a directory that does not exist`);
+    }
+    if (Array.isArray(config.config)) {
+        plugins.add(plugins_1.commandConfigPrefixingPlugin(config.config));
+    }
+    config.progress && plugins.add(plugins_1.progressMonitorPlugin(config.progress));
+    config.timeout && plugins.add(plugins_1.timeoutPlugin(config.timeout));
+    return new Git(config, plugins);
+}
+exports.gitInstanceFactory = gitInstanceFactory;
+//# sourceMappingURL=git-factory.js.map
+
+/***/ }),
+
 /***/ 7178:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -17141,10 +17150,6 @@ function createLogger(label, verbose, initialStep, infoDebugger = exports.log) {
     const debugDebugger = (typeof verbose === 'string') ? infoDebugger.extend(verbose) : verbose;
     const key = childLoggerName(utils_1.filterType(verbose, utils_1.filterString), debugDebugger, infoDebugger);
     return step(initialStep);
-    function destroy() {
-        spawned.forEach(logger => logger.destroy());
-        spawned.length = 0;
-    }
     function child(name) {
         return utils_1.append(spawned, createLogger(label, debugDebugger && debugDebugger.extend(name) || name));
     }
@@ -17163,7 +17168,6 @@ function createLogger(label, verbose, initialStep, infoDebugger = exports.log) {
             debug,
             info,
             step,
-            destroy,
         });
     }
 }
@@ -17785,6 +17789,31 @@ exports.commandConfigPrefixingPlugin = commandConfigPrefixingPlugin;
 
 /***/ }),
 
+/***/ 8078:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+__exportStar(__nccwpck_require__(2581), exports);
+__exportStar(__nccwpck_require__(5067), exports);
+__exportStar(__nccwpck_require__(1738), exports);
+__exportStar(__nccwpck_require__(8436), exports);
+__exportStar(__nccwpck_require__(9504), exports);
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
 /***/ 5067:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -17798,8 +17827,8 @@ class PluginStore {
         this.plugins = new Set();
     }
     add(plugin) {
-        const plugins = utils_1.asArray(plugin);
-        plugins.forEach(plugin => this.plugins.add(plugin));
+        const plugins = [];
+        utils_1.asArray(plugin).forEach(plugin => plugin && this.plugins.add(utils_1.append(plugins, plugin)));
         return () => {
             plugins.forEach(plugin => this.plugins.delete(plugin));
         };
@@ -17869,6 +17898,60 @@ function progressEventStage(input) {
     return String(input.toLowerCase().split(' ', 1)) || 'unknown';
 }
 //# sourceMappingURL=progress-monitor-plugin.js.map
+
+/***/ }),
+
+/***/ 8436:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+//# sourceMappingURL=simple-git-plugin.js.map
+
+/***/ }),
+
+/***/ 9504:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.timeoutPlugin = void 0;
+const git_plugin_error_1 = __nccwpck_require__(19);
+function timeoutPlugin({ block }) {
+    if (block > 0) {
+        return {
+            type: 'spawn.after',
+            action(_data, context) {
+                var _a, _b;
+                let timeout;
+                function wait() {
+                    timeout && clearTimeout(timeout);
+                    timeout = setTimeout(kill, block);
+                }
+                function stop() {
+                    var _a, _b;
+                    (_a = context.spawned.stdout) === null || _a === void 0 ? void 0 : _a.off('data', wait);
+                    (_b = context.spawned.stderr) === null || _b === void 0 ? void 0 : _b.off('data', wait);
+                    context.spawned.off('exit', stop);
+                    context.spawned.off('close', stop);
+                }
+                function kill() {
+                    stop();
+                    context.kill(new git_plugin_error_1.GitPluginError(undefined, 'timeout', `block timeout reached`));
+                }
+                (_a = context.spawned.stdout) === null || _a === void 0 ? void 0 : _a.on('data', wait);
+                (_b = context.spawned.stderr) === null || _b === void 0 ? void 0 : _b.on('data', wait);
+                context.spawned.on('exit', stop);
+                context.spawned.on('close', stop);
+                wait();
+            }
+        };
+    }
+}
+exports.timeoutPlugin = timeoutPlugin;
+//# sourceMappingURL=timout-plugin.js.map
 
 /***/ }),
 
@@ -18494,7 +18577,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GitExecutorChain = void 0;
 const child_process_1 = __nccwpck_require__(3129);
-const api_1 = __nccwpck_require__(4732);
+const git_error_1 = __nccwpck_require__(5757);
 const task_1 = __nccwpck_require__(2815);
 const utils_1 = __nccwpck_require__(847);
 const tasks_pending_queue_1 = __nccwpck_require__(6676);
@@ -18545,7 +18628,7 @@ class GitExecutorChain {
         });
     }
     onFatalException(task, e) {
-        const gitError = (e instanceof api_1.GitError) ? Object.assign(e, { task }) : new api_1.GitError(task, e && String(e));
+        const gitError = (e instanceof git_error_1.GitError) ? Object.assign(e, { task }) : new git_error_1.GitError(task, e && String(e));
         this._chain = Promise.resolve();
         this._queue.fatal(gitError);
         return gitError;
@@ -18568,10 +18651,11 @@ class GitExecutorChain {
             return task.parser();
         });
     }
-    handleTaskData({ onError, concatStdErr }, { exitCode, stdOut, stdErr }, logger) {
+    handleTaskData({ onError, concatStdErr }, { exitCode, rejection, stdOut, stdErr }, logger) {
         return new Promise((done, fail) => {
             logger(`Preparing to handle process response exitCode=%d stdOut=`, exitCode);
-            if (exitCode && stdErr.length && onError) {
+            const failed = !!(rejection || (exitCode && stdErr.length));
+            if (failed && onError) {
                 logger.info(`exitCode=%s handling with custom error handler`);
                 logger(`concatenate stdErr to stdOut: %j`, concatStdErr);
                 return onError(exitCode, Buffer.concat([...(concatStdErr ? stdOut : []), ...stdErr]).toString('utf-8'), (result) => {
@@ -18580,9 +18664,9 @@ class GitExecutorChain {
                     done(new utils_1.GitOutputStreams(Buffer.isBuffer(result) ? result : Buffer.from(String(result)), Buffer.concat(stdErr)));
                 }, fail);
             }
-            if (exitCode && stdErr.length) {
-                logger.info(`exitCode=%s treated as error when then child process has written to stdErr`);
-                return fail(Buffer.concat(stdErr).toString('utf-8'));
+            if (failed) {
+                logger.info(`handling as error: exitCode=%s stdErr=%s rejection=%o`, exitCode, stdErr.length, rejection);
+                return fail(rejection || Buffer.concat(stdErr).toString('utf-8'));
             }
             if (concatStdErr) {
                 logger(`concatenating stdErr onto stdOut before processing`);
@@ -18605,17 +18689,18 @@ class GitExecutorChain {
                 const stdOut = [];
                 const stdErr = [];
                 let attempted = false;
+                let rejection;
                 function attemptClose(exitCode, event = 'retry') {
                     // closing when there is content, terminate immediately
                     if (attempted || stdErr.length || stdOut.length) {
-                        logger.info(`exitCode=%s event=%s`, exitCode, event);
+                        logger.info(`exitCode=%s event=%s rejection=%o`, exitCode, event, rejection);
                         done({
                             stdOut,
                             stdErr,
                             exitCode,
+                            rejection,
                         });
                         attempted = true;
-                        outputLogger.destroy();
                     }
                     // first attempt at closing but no content yet, wait briefly for the close/exit that may follow
                     if (!attempted) {
@@ -18636,7 +18721,13 @@ class GitExecutorChain {
                     logger(`Passing child process stdOut/stdErr to custom outputHandler`);
                     outputHandler(command, spawned.stdout, spawned.stderr, [...args]);
                 }
-                this._plugins.exec('spawn.after', undefined, Object.assign(Object.assign({}, pluginContext(task, args)), { spawned }));
+                this._plugins.exec('spawn.after', undefined, Object.assign(Object.assign({}, pluginContext(task, args)), { spawned, kill(reason) {
+                        if (spawned.killed) {
+                            return;
+                        }
+                        rejection = reason;
+                        spawned.kill('SIGINT');
+                    } }));
             });
         });
     }
@@ -18701,6 +18792,7 @@ exports.GitExecutor = GitExecutor;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.gitP = void 0;
 const git_response_error_1 = __nccwpck_require__(5131);
+const git_factory_1 = __nccwpck_require__(9846);
 const functionNamesBuilderApi = [
     'customBinary', 'env', 'outputHandler', 'silent',
 ];
@@ -18764,12 +18856,11 @@ const functionNamesPromiseApi = [
     'tags',
     'updateServerInfo'
 ];
-const { gitInstanceFactory } = __nccwpck_require__(1949);
 function gitP(...args) {
     let git;
     let chain = Promise.resolve();
     try {
-        git = gitInstanceFactory(...args);
+        git = git_factory_1.gitInstanceFactory(...args);
     }
     catch (e) {
         chain = Promise.reject(e);
@@ -18895,8 +18986,8 @@ exports.Scheduler = Scheduler;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.TasksPendingQueue = void 0;
+const git_error_1 = __nccwpck_require__(5757);
 const git_logger_1 = __nccwpck_require__(7178);
-const api_1 = __nccwpck_require__(4732);
 class TasksPendingQueue {
     constructor(logLabel = 'GitExecutor') {
         this.logLabel = logLabel;
@@ -18938,14 +19029,13 @@ class TasksPendingQueue {
     complete(task) {
         const progress = this.withProgress(task);
         if (progress) {
-            progress.logger.destroy();
             this._queue.delete(task);
         }
     }
     attempt(task) {
         const progress = this.withProgress(task);
         if (!progress) {
-            throw new api_1.GitError(undefined, 'TasksPendingQueue: attempt called for an unknown task');
+            throw new git_error_1.GitError(undefined, 'TasksPendingQueue: attempt called for an unknown task');
         }
         progress.logger('Starting task');
         return progress;
@@ -19010,7 +19100,7 @@ exports.SimpleGitApi = SimpleGitApi;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.taskCallback = void 0;
-const api_1 = __nccwpck_require__(4732);
+const git_response_error_1 = __nccwpck_require__(5131);
 const utils_1 = __nccwpck_require__(847);
 function taskCallback(task, response, callback = utils_1.NOOP) {
     const onSuccess = (data) => {
@@ -19018,7 +19108,7 @@ function taskCallback(task, response, callback = utils_1.NOOP) {
     };
     const onError = (err) => {
         if ((err === null || err === void 0 ? void 0 : err.task) === task) {
-            if (err instanceof api_1.GitResponseError) {
+            if (err instanceof git_response_error_1.GitResponseError) {
                 return callback(addDeprecationNoticeToError(err));
             }
             callback(err);
@@ -19623,7 +19713,7 @@ exports.logTask = logTask;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.mergeTask = void 0;
-const api_1 = __nccwpck_require__(4732);
+const git_response_error_1 = __nccwpck_require__(5131);
 const parse_merge_1 = __nccwpck_require__(6412);
 const task_1 = __nccwpck_require__(2815);
 function mergeTask(customArgs) {
@@ -19636,7 +19726,7 @@ function mergeTask(customArgs) {
         parser(stdOut, stdErr) {
             const merge = parse_merge_1.parseMergeResult(stdOut, stdErr);
             if (merge.failed) {
-                throw new api_1.GitResponseError(merge);
+                throw new git_response_error_1.GitResponseError(merge);
             }
             return merge;
         }
