@@ -477,9 +477,7 @@ async function run(): Promise<void> {
 async function cleanup(): Promise<void> {
     try {
         const workspacePath = core.getState('workspacePath')
-        if (!workspacePath) {
-            throw new Error("Can't get state: workspacePath")
-        }
+        core.debug(`Removing workspace: ${workspacePath}`)
         rimraf.sync(workspacePath)
 
     } catch (error) {
@@ -487,7 +485,7 @@ async function cleanup(): Promise<void> {
     }
 }
 
-if (!core.getState('isPost')) {
+if (!core.getState('workspacePath')) {
     //noinspection JSIgnoredPromiseFromCall
     run()
 } else {
