@@ -61,7 +61,8 @@ async function run(): Promise<void> {
 
 
         const workspacePath = require('tmp').dirSync().name
-        require('debug').enable('*')
+        require('debug').enable('simple-git')
+        process.env.DEBUG = [process.env.DEBUG || '', 'simple-git', 'simple-git:*'].filter(it => it.length).join(',')
         if (process.env.ACTIONS_STEP_DEBUG?.toLowerCase() === 'true') {
             require('debug').enable('simple-git')
         }
