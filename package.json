@@ -26,6 +26,7 @@
     "debug": "4.3.1",
     "is-windows": "1.0.2",
     "picomatch": "2.2.2",
+    "rimraf": "3.0.2",
     "simple-git": "2.36.2",
     "tmp": "0.2.1"
   },
@@ -35,17 +36,16 @@
     "@types/is-windows": "1.0.0",
     "@types/node": "14.14.33",
     "@types/picomatch": "2.2.1",
+    "@types/rimraf": "3.0.0",
     "@typescript-eslint/parser": "4.17.0",
     "@vercel/ncc": "0.27.0",
     "console-log-level": "1.4.1",
-    "del": "6.0.0",
     "eslint": "7.21.0",
     "eslint-config-prettier": "8.1.0",
     "eslint-plugin-github": "4.1.2",
     "eslint-plugin-jest": "24.2.1",
     "jest": "26.6.3",
     "jest-circus": "26.6.3",
-    "rimraf": "3.0.2",
     "ts-jest": "26.5.3",
     "typescript": "4.2.3"
   }

@@ -5,6 +5,7 @@ import fs from 'fs'
 import isWindows from 'is-windows'
 import path from 'path'
 import picomatch from 'picomatch'
+import rimraf from 'rimraf'
 import simpleGit, {GitError, SimpleGit} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 import {URL} from 'url'
@@ -62,6 +63,8 @@ async function run(): Promise<void> {
 
 
         const workspacePath = require('tmp').dirSync().name
+        core.saveState('workspacePath', workspacePath)
+
         if (process.env.ACTIONS_STEP_DEBUG?.toLowerCase() === 'true') {
             require('debug').enable('simple-git')
             process.env.DEBUG = [
@@ -442,8 +445,8 @@ async function run(): Promise<void> {
                                 throw reason
                             }
                         }
-                        const status = await git.status()
-                        core.info(`status: ${JSON.stringify(status, null, 2)}`)
+
+                        core.info(`status: ${JSON.stringify(await git.status(), null, 2)}`)
 
                         core.info('Committing changes')
                         if (repo.owner != null) {
@@ -471,8 +474,26 @@ async function run(): Promise<void> {
     }
 }
 
-//noinspection JSIgnoredPromiseFromCall
-run()
+async function cleanup(): Promise<void> {
+    try {
+        const workspacePath = core.getState('workspacePath')
+        if (!workspacePath) {
+            throw new Error("Can't get state: workspacePath")
+        }
+        rimraf.sync(workspacePath)
+
+    } catch (error) {
+        core.warning(error.message)
+    }
+}
+
+if (!core.getState('isPost')) {
+    //noinspection JSIgnoredPromiseFromCall
+    run()
+} else {
+    //noinspection JSIgnoredPromiseFromCall
+    cleanup()
+}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
