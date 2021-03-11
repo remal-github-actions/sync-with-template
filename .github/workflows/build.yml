@@ -56,8 +56,6 @@ jobs:
     - name: Run current action
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
-        DEBUG: 'simple-git'
-        ACTIONS_STEP_DEBUG: true
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.PUSH_BACK_TOKEN }}
       uses: ./
       with:
