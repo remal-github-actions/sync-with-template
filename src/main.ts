@@ -321,7 +321,6 @@ async function run(): Promise<void> {
                     head: `${context.repo.owner}:${syncBranchName}`,
                     sort: 'created',
                     direction: 'desc',
-                    per_page: 1,
                 })
             ).data.filter(pr => pr.head.ref === syncBranchName)
             if (openedPullRequests.length > 0) {
@@ -363,24 +362,25 @@ async function run(): Promise<void> {
             core.debug('Resolving merge conflicts for ignored files')
             let conflictPullRequest: PullRequest | undefined = undefined
             const openedPullRequests = (
-                await octokit.paginate(octokit.pulls.list, {
+                await octokit.pulls.list({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     state: 'open',
                     head: `${context.repo.owner}:${syncBranchName}`,
+                    sort: 'created',
+                    direction: 'desc',
                 })
-            ).filter(pr => pr.head.ref === syncBranchName)
+            ).data.filter(pr => pr.head.ref === syncBranchName)
             for (const pullRequestSimple of openedPullRequests) {
                 const pullRequest = await octokit.pulls.get({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     pull_number: pullRequestSimple.number
                 }).then(it => it.data)
-                if (pullRequest.mergeable || pullRequest.mergeable_state !== 'dirty') {
-                    continue
+                if (pullRequest.mergeable_state === 'dirty') {
+                    conflictPullRequest = pullRequest
+                    break
                 }
-                conflictPullRequest = pullRequest
-                break
             }
             if (conflictPullRequest) {
                 await core.group(
