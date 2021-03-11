@@ -533,16 +533,14 @@ async function run() {
 async function cleanup() {
     try {
         const workspacePath = core.getState('workspacePath');
-        if (!workspacePath) {
-            throw new Error("Can't get state: workspacePath");
-        }
+        core.debug(`Removing workspace: ${workspacePath}`);
         rimraf_1.default.sync(workspacePath);
     }
     catch (error) {
         core.warning(error.message);
     }
 }
-if (!core.getState('isPost')) {
+if (!core.getState('workspacePath')) {
     //noinspection JSIgnoredPromiseFromCall
     run();
 }
