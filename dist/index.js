@@ -509,6 +509,8 @@ async function run() {
                             throw reason;
                         }
                     }
+                    const status = await git.status();
+                    core.info(`status: ${JSON.stringify(status, null, 2)}`);
                     core.info('Committing changes');
                     if (repo.owner != null) {
                         await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${conflictsResolutionEmailSuffix}`);
