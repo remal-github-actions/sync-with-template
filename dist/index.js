@@ -533,7 +533,7 @@ async function run() {
 async function cleanup() {
     try {
         const workspacePath = core.getState('workspacePath');
-        core.debug(`Removing workspace: ${workspacePath}`);
+        core.info(`Removing workspace: ${workspacePath}`);
         rimraf_1.default.sync(workspacePath);
     }
     catch (error) {
