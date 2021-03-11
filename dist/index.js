@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.isConventionalCommit = void 0;
-const conventional_commits_detector_1 = __importDefault(__nccwpck_require__(3973));
+const conventional_commits_detector_1 = __importDefault(__nccwpck_require__(7712));
 function isConventionalCommit(commitMessage) {
     const type = conventional_commits_detector_1.default([commitMessage]);
     return type.length > 0 && type !== 'unknown';
@@ -135,6 +135,7 @@ const fs_1 = __importDefault(__nccwpck_require__(5747));
 const is_windows_1 = __importDefault(__nccwpck_require__(9125));
 const path_1 = __importDefault(__nccwpck_require__(5622));
 const picomatch_1 = __importDefault(__nccwpck_require__(8569));
+const rimraf_1 = __importDefault(__nccwpck_require__(4959));
 const simple_git_1 = __importStar(__nccwpck_require__(1477));
 const url_1 = __nccwpck_require__(8835);
 const conventional_commits_1 = __nccwpck_require__(6421);
@@ -180,6 +181,7 @@ async function run() {
             return picomatch_1.default(patterns, { windows: is_windows_1.default() });
         })();
         const workspacePath = __nccwpck_require__(8517).dirSync().name;
+        core.saveState('workspacePath', workspacePath);
         if (((_a = process.env.ACTIONS_STEP_DEBUG) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === 'true') {
             __nccwpck_require__(8231).enable('simple-git');
             process.env.DEBUG = [
@@ -509,8 +511,7 @@ async function run() {
                             throw reason;
                         }
                     }
-                    const status = await git.status();
-                    core.info(`status: ${JSON.stringify(status, null, 2)}`);
+                    core.info(`status: ${JSON.stringify(await git.status(), null, 2)}`);
                     core.info('Committing changes');
                     if (repo.owner != null) {
                         await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${conflictsResolutionEmailSuffix}`);
@@ -529,8 +530,26 @@ async function run() {
         core.setFailed(error);
     }
 }
-//noinspection JSIgnoredPromiseFromCall
-run();
+async function cleanup() {
+    try {
+        const workspacePath = core.getState('workspacePath');
+        if (!workspacePath) {
+            throw new Error("Can't get state: workspacePath");
+        }
+        rimraf_1.default.sync(workspacePath);
+    }
+    catch (error) {
+        core.warning(error.message);
+    }
+}
+if (!core.getState('isPost')) {
+    //noinspection JSIgnoredPromiseFromCall
+    run();
+}
+else {
+    //noinspection JSIgnoredPromiseFromCall
+    cleanup();
+}
 function getSyncBranchName() {
     const name = core.getInput('syncBranchName', { required: true });
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
@@ -6848,7 +6867,7 @@ function isLowerCase(str) {
 
 /***/ }),
 
-/***/ 3973:
+/***/ 7712:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -8163,7 +8182,7 @@ function ownProp (obj, field) {
 }
 
 var path = __nccwpck_require__(5622)
-var minimatch = __nccwpck_require__(8085)
+var minimatch = __nccwpck_require__(3973)
 var isAbsolute = __nccwpck_require__(8714)
 var Minimatch = minimatch.Minimatch
 
@@ -8439,7 +8458,7 @@ module.exports = glob
 
 var fs = __nccwpck_require__(5747)
 var rp = __nccwpck_require__(6863)
-var minimatch = __nccwpck_require__(8085)
+var minimatch = __nccwpck_require__(3973)
 var Minimatch = minimatch.Minimatch
 var inherits = __nccwpck_require__(4124)
 var EE = __nccwpck_require__(8614).EventEmitter
@@ -9197,7 +9216,7 @@ globSync.GlobSync = GlobSync
 
 var fs = __nccwpck_require__(5747)
 var rp = __nccwpck_require__(6863)
-var minimatch = __nccwpck_require__(8085)
+var minimatch = __nccwpck_require__(3973)
 var Minimatch = minimatch.Minimatch
 var Glob = __nccwpck_require__(1957).Glob
 var util = __nccwpck_require__(1669)
@@ -9843,7 +9862,7 @@ if (typeof Object.create === 'function') {
 
 /***/ }),
 
-/***/ 8085:
+/***/ 3973:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 module.exports = minimatch
