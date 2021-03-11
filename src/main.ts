@@ -305,83 +305,14 @@ async function run(): Promise<void> {
             }
             return count
         })
+
         if (cherryPickedCommitCounts === 0) {
             core.info("No commits were cherry-picked from template repository")
-        }
 
+        } else {
+            core.info(`Pushing ${cherryPickedCommitCounts} commits`)
+            await git.raw('push', 'origin', syncBranchName)
 
-        let isDiffEmpty = false
-        const mergeBase = await git.raw(
-            'merge-base',
-            `remotes/origin/${repo.default_branch}`,
-            syncBranchName
-        ).then(text => text.trim())
-        if (mergeBase !== '') {
-            const diff = await git.raw(
-                'merge-tree',
-                mergeBase,
-                `remotes/origin/${repo.default_branch}`,
-                syncBranchName
-            ).then(text => text.trim())
-            isDiffEmpty = diff === ''
-        }
-
-
-        if (cherryPickedCommitCounts > 0) {
-            if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                core.info(`Pushing ${cherryPickedCommitCounts} commits`)
-                await git.raw('push', 'origin', syncBranchName)
-            }
-        }
-
-
-        if (isDiffEmpty) {
-            await core.group(`Diff is empty, removing '${syncBranchName}' branch`, async () => {
-                const pullRequests = (
-                    await octokit.paginate(octokit.pulls.list, {
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        state: 'open',
-                        head: `${context.repo.owner}:${syncBranchName}`
-                    })
-                ).filter(pr => pr.head.ref === syncBranchName)
-                for (const pullRequest of pullRequests) {
-                    core.info(`Closing empty pull request: ${pullRequest.html_url}`)
-                    await octokit.issues.createComment({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        issue_number: pullRequest.number,
-                        body: "Closing empty pull request",
-                    })
-                    const autoclosedTitleSuffix = ' - autoclosed'
-                    if (!pullRequest.title.endsWith(autoclosedTitleSuffix)) {
-                        const newTitle = `${pullRequest.title}${autoclosedTitleSuffix}`
-                        await octokit.pulls.update({
-                            owner: context.repo.owner,
-                            repo: context.repo.repo,
-                            pull_number: pullRequest.number,
-                            title: newTitle,
-                        })
-                    }
-                    await octokit.issues.update({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        issue_number: pullRequest.number,
-                        state: 'closed',
-                    })
-                }
-
-                if (doesOriginHasSyncBranch) {
-                    core.info(`Removing '${syncBranchName}' branch from origin remote`)
-                    await git.raw('push', '--delete', 'origin', syncBranchName)
-                }
-            })
-
-            return
-        }
-
-
-        if (cherryPickedCommitCounts > 0) {
             const openedPullRequests = (
                 await octokit.pulls.list({
                     owner: context.repo.owner,
