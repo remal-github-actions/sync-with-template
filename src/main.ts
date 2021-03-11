@@ -24,6 +24,7 @@ const octokit = newOctokitInstance(githubToken)
 
 const pullRequestLabel = 'sync-with-template'
 const emailSuffix = '+sync-with-template@users.noreply.github.com'
+const conflictsResolutionEmailSuffix = '+sync-with-template-conflicts-resolution@users.noreply.github.com'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -69,7 +70,9 @@ async function run(): Promise<void> {
                 'simple-git:*'
             ].filter(it => it.length).join(',')
         }
-        const git = simpleGit(workspacePath)
+        const git = simpleGit(workspacePath, {
+            timeout: {block: 300_000},
+        })
 
         const unstageIgnoredFiles: () => Promise<string[]> = async () => {
             const unstagedFiles: string[] = []
@@ -127,7 +130,7 @@ async function run(): Promise<void> {
 
             if (lfs) {
                 core.info("Installing LFS")
-                await git.raw(['lfs', 'install', '--local'])
+                await git.raw('lfs', 'install', '--local')
             }
         })
 
@@ -234,7 +237,7 @@ async function run(): Promise<void> {
                 core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`)
 
                 try {
-                    await git.raw([
+                    await git.raw(
                         'cherry-pick',
                         '--no-commit',
                         '-r',
@@ -243,7 +246,7 @@ async function run(): Promise<void> {
                         '--strategy=recursive',
                         '-Xours',
                         logItem.hash
-                    ])
+                    )
                 } catch (reason) {
                     if (reason instanceof GitError
                         && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)
@@ -263,7 +266,7 @@ async function run(): Promise<void> {
                                     continue
                                 } else if (fileInfo.index === 'D') {
                                     core.info(`Resolving conflict: removing file: ${conflictedPath}`)
-                                    await git.rm(conflictedPath)
+                                    await git.raw('rm', '-f', conflictedPath)
                                     continue
                                 }
                             }
@@ -308,18 +311,18 @@ async function run(): Promise<void> {
 
 
         let isDiffEmpty = false
-        const mergeBase = await git.raw([
+        const mergeBase = await git.raw(
             'merge-base',
             `remotes/origin/${repo.default_branch}`,
             syncBranchName
-        ]).then(text => text.trim())
+        ).then(text => text.trim())
         if (mergeBase !== '') {
-            const diff = await git.raw([
+            const diff = await git.raw(
                 'merge-tree',
                 mergeBase,
                 `remotes/origin/${repo.default_branch}`,
                 syncBranchName
-            ]).then(text => text.trim())
+            ).then(text => text.trim())
             isDiffEmpty = diff === ''
         }
 
@@ -327,7 +330,7 @@ async function run(): Promise<void> {
         if (cherryPickedCommitCounts > 0) {
             if (!isDiffEmpty || doesOriginHasSyncBranch) {
                 core.info(`Pushing ${cherryPickedCommitCounts} commits`)
-                await git.raw(['push', 'origin', syncBranchName])
+                await git.raw('push', 'origin', syncBranchName)
             }
         }
 
@@ -370,7 +373,7 @@ async function run(): Promise<void> {
 
                 if (doesOriginHasSyncBranch) {
                     core.info(`Removing '${syncBranchName}' branch from origin remote`)
-                    await git.raw(['push', '--delete', 'origin', syncBranchName])
+                    await git.raw('push', '--delete', 'origin', syncBranchName)
                 }
             })
 
@@ -395,35 +398,122 @@ async function run(): Promise<void> {
                 core.info(`Skip creating pull request for '${syncBranchName}' branch`
                     + `, as there is an opened one: ${openedPullRequest.html_url}`
                 )
-                return
-            }
 
-            let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
-            if (conventionalCommits) {
-                pullRequestTitle = `chore(template): ${pullRequestTitle}`
-            }
+            } else {
+                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
+                if (conventionalCommits) {
+                    pullRequestTitle = `chore(template): ${pullRequestTitle}`
+                }
 
-            const pullRequest = (
-                await octokit.pulls.create({
+                const pullRequest = (
+                    await octokit.pulls.create({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        head: syncBranchName,
+                        base: repo.default_branch,
+                        title: pullRequestTitle,
+                        body: "Template repository changes."
+                            + "\n\nIf you close this PR, it will be recreated automatically.",
+                        maintainer_can_modify: true,
+                    })
+                ).data
+                await octokit.issues.addLabels({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
-                    head: syncBranchName,
-                    base: repo.default_branch,
-                    title: pullRequestTitle,
-                    body: "Template repository changes."
-                        + "\n\nIf you close this PR, it will be recreated automatically.",
-                    maintainer_can_modify: true,
+                    issue_number: pullRequest.number,
+                    labels: [pullRequestLabel]
                 })
-            ).data
-            await octokit.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pullRequest.number,
-                labels: [pullRequestLabel]
-            })
-            core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+            }
         }
 
+
+        if (ignorePathMatcher) {
+            core.debug('Resolving merge conflicts for ignored files')
+            let conflictPullRequest: PullRequest | undefined = undefined
+            const openedPullRequests = (
+                await octokit.paginate(octokit.pulls.list, {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    state: 'open',
+                    head: `${context.repo.owner}:${syncBranchName}`,
+                })
+            ).filter(pr => pr.head.ref === syncBranchName)
+            for (const pullRequestSimple of openedPullRequests) {
+                const pullRequest = await octokit.pulls.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: pullRequestSimple.number
+                }).then(it => it.data)
+                if (pullRequest.mergeable || pullRequest.mergeable_state !== 'dirty') {
+                    continue
+                }
+                conflictPullRequest = pullRequest
+                break
+            }
+            if (conflictPullRequest) {
+                await core.group(
+                    `Trying to resolve merge conflicts for ignored files of ${conflictPullRequest.html_url}`,
+                    async () => {
+                        await git.fetch('origin', repo.default_branch)
+                        await git.fetch('origin', syncBranchName)
+                        await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${syncBranchName}`)
+                        try {
+                            await git.raw('merge', '--no-commit', '--no-ff', `remotes/origin/${repo.default_branch}`)
+                        } catch (reason) {
+                            if (reason instanceof GitError
+                                && reason.message.includes('Automatic merge failed; fix conflicts')
+                            ) {
+                                const status = await git.status()
+                                const conflictingNotIgnoredFiles = status.conflicted.filter(it => !ignorePathMatcher(it))
+                                if (conflictingNotIgnoredFiles.length) {
+                                    core.warning(`Automatic merge-conflict resolution for ignored files failed`
+                                        + `, as there are some conflict in included`
+                                        + ` files:\n  ${conflictingNotIgnoredFiles.join('\n  ')}`
+                                    )
+                                    await git.raw('merge', '--abort')
+                                } else {
+                                    for (const conflictedPath of status.conflicted) {
+                                        const fileInfo = status.files.find(file => file.path === conflictedPath)
+                                        if (fileInfo && fileInfo.working_dir === 'D') {
+                                            core.info(`Resolving conflict: removing file: ${conflictedPath}`)
+                                            await git.raw('rm', '-f', conflictedPath)
+                                        } else {
+                                            core.info(`Resolving conflict: using file from`
+                                                + ` '${repo.default_branch}' branch: ${conflictedPath}`)
+                                            await git.raw(
+                                                'checkout',
+                                                '-f',
+                                                `remotes/origin/${syncBranchName}`,
+                                                '--',
+                                                conflictedPath
+                                            )
+                                        }
+                                    }
+
+                                    core.info('Committing changes')
+                                    if (repo.owner != null) {
+                                        await git.addConfig(
+                                            'user.email',
+                                            `${repo.owner.id}+${repo.owner.login}${conflictsResolutionEmailSuffix}`
+                                        )
+                                    } else {
+                                        await git.addConfig(
+                                            'user.email',
+                                            `${context.repo.owner}${conflictsResolutionEmailSuffix}`
+                                        )
+                                    }
+                                    await git.raw('commit', '--no-edit')
+
+                                    core.info('Pushing merge-commit')
+                                    await git.raw('push', 'origin', syncBranchName)
+                                }
+                            }
+                        }
+                    }
+                )
+            }
+        }
 
     } catch (error) {
         core.setFailed(error)
@@ -460,6 +550,7 @@ async function gitRemoteBranches(git: SimpleGit, remoteName: string): Promise<st
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 type Repo = RestEndpointMethodTypes['repos']['get']['response']['data']
+type PullRequest = RestEndpointMethodTypes['pulls']['get']['response']['data']
 
 async function getCurrentRepo(): Promise<Repo> {
     return getRepo(context.repo.owner, context.repo.repo)
