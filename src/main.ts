@@ -70,9 +70,7 @@ async function run(): Promise<void> {
                 'simple-git:*'
             ].filter(it => it.length).join(',')
         }
-        const git = simpleGit(workspacePath, {
-            timeout: {block: 300_000},
-        })
+        const git = simpleGit(workspacePath)
 
         const unstageIgnoredFiles: () => Promise<string[]> = async () => {
             const unstagedFiles: string[] = []
@@ -462,8 +460,6 @@ async function run(): Promise<void> {
                         }
                     }
                 )
-            } else {
-                return
             }
         }
 
