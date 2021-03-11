@@ -442,6 +442,8 @@ async function run(): Promise<void> {
                                 throw reason
                             }
                         }
+                        const status = await git.status()
+                        core.info(`status: ${JSON.stringify(status, null, 2)}`)
 
                         core.info('Committing changes')
                         if (repo.owner != null) {
