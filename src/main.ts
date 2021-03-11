@@ -462,6 +462,8 @@ async function run(): Promise<void> {
                         }
                     }
                 )
+            } else {
+                return
             }
         }
 
