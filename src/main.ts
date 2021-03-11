@@ -306,6 +306,8 @@ async function run(): Promise<void> {
             return count
         })
 
+
+        let createdPullRequestNumber: number | undefined = undefined
         if (cherryPickedCommitCounts === 0) {
             core.info("No commits were cherry-picked from template repository")
 
@@ -328,6 +330,7 @@ async function run(): Promise<void> {
                 core.info(`Skip creating pull request for '${syncBranchName}' branch`
                     + `, as there is an opened one: ${openedPullRequest.html_url}`
                 )
+                createdPullRequestNumber = openedPullRequest.number
 
             } else {
                 let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
@@ -354,6 +357,7 @@ async function run(): Promise<void> {
                     labels: [pullRequestLabel]
                 })
                 core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+                createdPullRequestNumber = pullRequest.number
             }
         }
 
@@ -361,27 +365,39 @@ async function run(): Promise<void> {
         if (ignorePathMatcher) {
             core.debug('Resolving merge conflicts for ignored files')
             let conflictPullRequest: PullRequest | undefined = undefined
-            const openedPullRequests = (
-                await octokit.pulls.list({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    state: 'open',
-                    head: `${context.repo.owner}:${syncBranchName}`,
-                    sort: 'created',
-                    direction: 'desc',
-                })
-            ).data.filter(pr => pr.head.ref === syncBranchName)
-            for (const pullRequestSimple of openedPullRequests) {
+            if (createdPullRequestNumber) {
                 const pullRequest = await octokit.pulls.get({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
-                    pull_number: pullRequestSimple.number
+                    pull_number: createdPullRequestNumber
                 }).then(it => it.data)
                 if (pullRequest.mergeable_state === 'dirty') {
                     conflictPullRequest = pullRequest
-                    break
+                }
+            } else {
+                const openedPullRequests = (
+                    await octokit.pulls.list({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        state: 'open',
+                        head: `${context.repo.owner}:${syncBranchName}`,
+                        sort: 'created',
+                        direction: 'desc',
+                    })
+                ).data.filter(pr => pr.head.ref === syncBranchName)
+                for (const pullRequestSimple of openedPullRequests) {
+                    const pullRequest = await octokit.pulls.get({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        pull_number: pullRequestSimple.number
+                    }).then(it => it.data)
+                    if (pullRequest.mergeable_state === 'dirty') {
+                        conflictPullRequest = pullRequest
+                        break
+                    }
                 }
             }
+
             if (conflictPullRequest) {
                 await core.group(
                     `Trying to resolve merge conflicts for ignored files of ${conflictPullRequest.html_url}`,
