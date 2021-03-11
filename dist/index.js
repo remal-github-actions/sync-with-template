@@ -180,6 +180,7 @@ async function run() {
         })();
         const workspacePath = __nccwpck_require__(8517).dirSync().name;
         __nccwpck_require__(8231).enable('simple-git');
+        __nccwpck_require__(8231).enable('simple-git:*');
         if (((_a = process.env.ACTIONS_STEP_DEBUG) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === 'true') {
             __nccwpck_require__(8231).enable('simple-git');
         }
