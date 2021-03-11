@@ -481,6 +481,7 @@ async function run() {
                         if (reason instanceof simple_git_1.GitError
                             && reason.message.includes('Automatic merge failed; fix conflicts')) {
                             const status = await git.status();
+                            core.info(`status: ${JSON.stringify(status, null, 2)}`);
                             const conflictingNotIgnoredFiles = status.conflicted.filter(it => !ignorePathMatcher(it));
                             if (conflictingNotIgnoredFiles.length) {
                                 core.error(`Automatic merge-conflict resolution for ignored files failed`
