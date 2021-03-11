@@ -489,8 +489,8 @@ async function cleanup(): Promise<void> {
     }
 }
 
-if (!core.getState('isPost')) {
-    core.saveState('isPost', 'true')
+if (!core.getState('isExecuted')) {
+    core.saveState('isExecuted', 'true')
     //noinspection JSIgnoredPromiseFromCall
     run()
 } else {
