@@ -482,46 +482,45 @@ async function run() {
                     catch (reason) {
                         if (reason instanceof simple_git_1.GitError
                             && reason.message.includes('Automatic merge failed; fix conflicts')) {
-                            const status = await git.status();
-                            core.info(`status: ${JSON.stringify(status, null, 2)}`);
-                            const conflictingNotIgnoredFiles = status.conflicted.filter(it => !ignorePathMatcher(it));
-                            if (conflictingNotIgnoredFiles.length) {
-                                core.error(`Automatic merge-conflict resolution for ignored files failed`
-                                    + `, as there are some conflict in included`
-                                    + ` files:\n  ${conflictingNotIgnoredFiles.join('\n  ')}`);
-                                await git.raw('merge', '--abort');
-                                throw reason;
-                            }
-                            else {
-                                for (const conflictedPath of status.conflicted) {
-                                    const fileInfo = status.files.find(file => file.path === conflictedPath);
-                                    if (fileInfo && fileInfo.working_dir === 'D') {
-                                        core.info(`Resolving conflict: removing file: ${conflictedPath}`);
-                                        await git.raw('rm', '-f', conflictedPath);
-                                    }
-                                    else {
-                                        core.info(`Resolving conflict: using file from`
-                                            + ` '${repo.default_branch}' branch: ${conflictedPath}`);
-                                        await git.raw('checkout', '-f', `remotes/origin/${syncBranchName}`, '--', conflictedPath);
-                                    }
-                                }
-                            }
+                            // Merge conflicts will be resolved below
                         }
                         else {
                             throw reason;
                         }
                     }
-                    core.info(`status: ${JSON.stringify(await git.status(), null, 2)}`);
-                    core.info('Committing changes');
-                    if (repo.owner != null) {
-                        await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${conflictsResolutionEmailSuffix}`);
+                    const status = await git.status();
+                    core.info(`status: ${JSON.stringify(status, null, 2)}`);
+                    const conflictingNotIgnoredFiles = status.conflicted.filter(it => !ignorePathMatcher(it));
+                    if (conflictingNotIgnoredFiles.length) {
+                        core.error(`Automatic merge-conflict resolution for ignored files failed`
+                            + `, as there are some conflict in included`
+                            + ` files:\n  ${conflictingNotIgnoredFiles.join('\n  ')}`);
+                        await git.raw('merge', '--abort');
                     }
                     else {
-                        await git.addConfig('user.email', `${github_1.context.repo.owner}${conflictsResolutionEmailSuffix}`);
+                        for (const conflictedPath of status.conflicted) {
+                            const fileInfo = status.files.find(file => file.path === conflictedPath);
+                            if (fileInfo && fileInfo.working_dir === 'D') {
+                                core.info(`Resolving conflict: removing file: ${conflictedPath}`);
+                                await git.raw('rm', '-f', conflictedPath);
+                            }
+                            else {
+                                core.info(`Resolving conflict: using file from`
+                                    + ` '${repo.default_branch}' branch: ${conflictedPath}`);
+                                await git.raw('checkout', '-f', `remotes/origin/${syncBranchName}`, '--', conflictedPath);
+                            }
+                        }
+                        core.info('Committing changes');
+                        if (repo.owner != null) {
+                            await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${conflictsResolutionEmailSuffix}`);
+                        }
+                        else {
+                            await git.addConfig('user.email', `${github_1.context.repo.owner}${conflictsResolutionEmailSuffix}`);
+                        }
+                        await git.raw('commit', '--no-edit');
+                        core.info('Pushing merge-commit');
+                        await git.raw('push', 'origin', syncBranchName);
                     }
-                    await git.raw('commit', '--no-edit');
-                    core.info('Pushing merge-commit');
-                    await git.raw('push', 'origin', syncBranchName);
                 });
             }
         }
