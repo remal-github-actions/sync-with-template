@@ -148,6 +148,7 @@ const syncBranchName = getSyncBranchName();
 const octokit = octokit_1.newOctokitInstance(githubToken);
 const pullRequestLabel = 'sync-with-template';
 const emailSuffix = '+sync-with-template@users.noreply.github.com';
+const conflictsResolutionEmailSuffix = '+sync-with-template-conflicts-resolution@users.noreply.github.com';
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 async function run() {
     var _a;
@@ -241,7 +242,7 @@ async function run() {
             await git.fetch('template', templateRepo.default_branch);
             if (lfs) {
                 core.info("Installing LFS");
-                await git.raw(['lfs', 'install', '--local']);
+                await git.raw('lfs', 'install', '--local');
             }
         });
         const originBranches = await gitRemoteBranches(git, 'origin');
@@ -328,16 +329,7 @@ async function run() {
                 ++count;
                 core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`);
                 try {
-                    await git.raw([
-                        'cherry-pick',
-                        '--no-commit',
-                        '-r',
-                        '--allow-empty',
-                        '--allow-empty-message',
-                        '--strategy=recursive',
-                        '-Xours',
-                        logItem.hash
-                    ]);
+                    await git.raw('cherry-pick', '--no-commit', '-r', '--allow-empty', '--allow-empty-message', '--strategy=recursive', '-Xours', logItem.hash);
                 }
                 catch (reason) {
                     if (reason instanceof simple_git_1.GitError
@@ -358,7 +350,7 @@ async function run() {
                                 }
                                 else if (fileInfo.index === 'D') {
                                     core.info(`Resolving conflict: removing file: ${conflictedPath}`);
-                                    await git.rm(conflictedPath);
+                                    await git.raw('rm', '-f', conflictedPath);
                                     continue;
                                 }
                             }
@@ -397,71 +389,13 @@ async function run() {
             }
             return count;
         });
+        let createdPullRequestNumber = undefined;
         if (cherryPickedCommitCounts === 0) {
             core.info("No commits were cherry-picked from template repository");
         }
-        let isDiffEmpty = false;
-        const mergeBase = await git.raw([
-            'merge-base',
-            `remotes/origin/${repo.default_branch}`,
-            syncBranchName
-        ]).then(text => text.trim());
-        if (mergeBase !== '') {
-            const diff = await git.raw([
-                'merge-tree',
-                mergeBase,
-                `remotes/origin/${repo.default_branch}`,
-                syncBranchName
-            ]).then(text => text.trim());
-            isDiffEmpty = diff === '';
-        }
-        if (cherryPickedCommitCounts > 0) {
-            if (!isDiffEmpty || doesOriginHasSyncBranch) {
-                core.info(`Pushing ${cherryPickedCommitCounts} commits`);
-                await git.raw(['push', 'origin', syncBranchName]);
-            }
-        }
-        if (isDiffEmpty) {
-            await core.group(`Diff is empty, removing '${syncBranchName}' branch`, async () => {
-                const pullRequests = (await octokit.paginate(octokit.pulls.list, {
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    state: 'open',
-                    head: `${github_1.context.repo.owner}:${syncBranchName}`
-                })).filter(pr => pr.head.ref === syncBranchName);
-                for (const pullRequest of pullRequests) {
-                    core.info(`Closing empty pull request: ${pullRequest.html_url}`);
-                    await octokit.issues.createComment({
-                        owner: github_1.context.repo.owner,
-                        repo: github_1.context.repo.repo,
-                        issue_number: pullRequest.number,
-                        body: "Closing empty pull request",
-                    });
-                    const autoclosedTitleSuffix = ' - autoclosed';
-                    if (!pullRequest.title.endsWith(autoclosedTitleSuffix)) {
-                        const newTitle = `${pullRequest.title}${autoclosedTitleSuffix}`;
-                        await octokit.pulls.update({
-                            owner: github_1.context.repo.owner,
-                            repo: github_1.context.repo.repo,
-                            pull_number: pullRequest.number,
-                            title: newTitle,
-                        });
-                    }
-                    await octokit.issues.update({
-                        owner: github_1.context.repo.owner,
-                        repo: github_1.context.repo.repo,
-                        issue_number: pullRequest.number,
-                        state: 'closed',
-                    });
-                }
-                if (doesOriginHasSyncBranch) {
-                    core.info(`Removing '${syncBranchName}' branch from origin remote`);
-                    await git.raw(['push', '--delete', 'origin', syncBranchName]);
-                }
-            });
-            return;
-        }
-        if (cherryPickedCommitCounts > 0) {
+        else {
+            core.info(`Pushing ${cherryPickedCommitCounts} commits`);
+            await git.raw('push', 'origin', syncBranchName);
             const openedPullRequests = (await octokit.pulls.list({
                 owner: github_1.context.repo.owner,
                 repo: github_1.context.repo.repo,
@@ -469,35 +403,123 @@ async function run() {
                 head: `${github_1.context.repo.owner}:${syncBranchName}`,
                 sort: 'created',
                 direction: 'desc',
-                per_page: 1,
             })).data.filter(pr => pr.head.ref === syncBranchName);
             if (openedPullRequests.length > 0) {
                 const openedPullRequest = openedPullRequests[0];
                 core.info(`Skip creating pull request for '${syncBranchName}' branch`
                     + `, as there is an opened one: ${openedPullRequest.html_url}`);
-                return;
+                createdPullRequestNumber = openedPullRequest.number;
             }
-            let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`;
-            if (conventionalCommits) {
-                pullRequestTitle = `chore(template): ${pullRequestTitle}`;
+            else {
+                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`;
+                if (conventionalCommits) {
+                    pullRequestTitle = `chore(template): ${pullRequestTitle}`;
+                }
+                const pullRequest = (await octokit.pulls.create({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    head: syncBranchName,
+                    base: repo.default_branch,
+                    title: pullRequestTitle,
+                    body: "Template repository changes."
+                        + "\n\nIf you close this PR, it will be recreated automatically.",
+                    maintainer_can_modify: true,
+                })).data;
+                await octokit.issues.addLabels({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    issue_number: pullRequest.number,
+                    labels: [pullRequestLabel]
+                });
+                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
+                createdPullRequestNumber = pullRequest.number;
             }
-            const pullRequest = (await octokit.pulls.create({
-                owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo,
-                head: syncBranchName,
-                base: repo.default_branch,
-                title: pullRequestTitle,
-                body: "Template repository changes."
-                    + "\n\nIf you close this PR, it will be recreated automatically.",
-                maintainer_can_modify: true,
-            })).data;
-            await octokit.issues.addLabels({
-                owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo,
-                issue_number: pullRequest.number,
-                labels: [pullRequestLabel]
-            });
-            core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
+        }
+        if (ignorePathMatcher) {
+            core.debug('Resolving merge conflicts for ignored files');
+            let conflictPullRequest = undefined;
+            if (createdPullRequestNumber) {
+                const pullRequest = await octokit.pulls.get({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    pull_number: createdPullRequestNumber
+                }).then(it => it.data);
+                if (pullRequest.mergeable_state === 'dirty') {
+                    conflictPullRequest = pullRequest;
+                }
+            }
+            else {
+                const openedPullRequests = (await octokit.pulls.list({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    state: 'open',
+                    head: `${github_1.context.repo.owner}:${syncBranchName}`,
+                    sort: 'created',
+                    direction: 'desc',
+                })).data.filter(pr => pr.head.ref === syncBranchName);
+                for (const pullRequestSimple of openedPullRequests) {
+                    const pullRequest = await octokit.pulls.get({
+                        owner: github_1.context.repo.owner,
+                        repo: github_1.context.repo.repo,
+                        pull_number: pullRequestSimple.number
+                    }).then(it => it.data);
+                    if (pullRequest.mergeable_state === 'dirty') {
+                        conflictPullRequest = pullRequest;
+                        break;
+                    }
+                }
+            }
+            if (conflictPullRequest) {
+                await core.group(`Trying to resolve merge conflicts for ignored files of ${conflictPullRequest.html_url}`, async () => {
+                    await git.fetch('origin', repo.default_branch);
+                    await git.fetch('origin', syncBranchName);
+                    await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${syncBranchName}`);
+                    try {
+                        await git.raw('merge', '--no-commit', '--no-ff', `remotes/origin/${repo.default_branch}`);
+                    }
+                    catch (reason) {
+                        if (reason instanceof simple_git_1.GitError
+                            && reason.message.includes('Automatic merge failed; fix conflicts')) {
+                            const status = await git.status();
+                            const conflictingNotIgnoredFiles = status.conflicted.filter(it => !ignorePathMatcher(it));
+                            if (conflictingNotIgnoredFiles.length) {
+                                core.error(`Automatic merge-conflict resolution for ignored files failed`
+                                    + `, as there are some conflict in included`
+                                    + ` files:\n  ${conflictingNotIgnoredFiles.join('\n  ')}`);
+                                await git.raw('merge', '--abort');
+                                throw reason;
+                            }
+                            else {
+                                for (const conflictedPath of status.conflicted) {
+                                    const fileInfo = status.files.find(file => file.path === conflictedPath);
+                                    if (fileInfo && fileInfo.working_dir === 'D') {
+                                        core.info(`Resolving conflict: removing file: ${conflictedPath}`);
+                                        await git.raw('rm', '-f', conflictedPath);
+                                    }
+                                    else {
+                                        core.info(`Resolving conflict: using file from`
+                                            + ` '${repo.default_branch}' branch: ${conflictedPath}`);
+                                        await git.raw('checkout', '-f', `remotes/origin/${syncBranchName}`, '--', conflictedPath);
+                                    }
+                                }
+                                core.info('Committing changes');
+                                if (repo.owner != null) {
+                                    await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${conflictsResolutionEmailSuffix}`);
+                                }
+                                else {
+                                    await git.addConfig('user.email', `${github_1.context.repo.owner}${conflictsResolutionEmailSuffix}`);
+                                }
+                                await git.raw('commit', '--no-edit');
+                                core.info('Pushing merge-commit');
+                                await git.raw('push', 'origin', syncBranchName);
+                            }
+                        }
+                        else {
+                            throw reason;
+                        }
+                    }
+                });
+            }
         }
     }
     catch (error) {
