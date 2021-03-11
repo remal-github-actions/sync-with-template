@@ -485,7 +485,7 @@ async function cleanup(): Promise<void> {
         rimraf.sync(workspacePath)
 
     } catch (error) {
-        core.warning(error.message)
+        core.warning(error)
     }
 }
 
