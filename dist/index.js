@@ -444,7 +444,6 @@ async function run() {
                     repo: github_1.context.repo.repo,
                     pull_number: createdPullRequestNumber
                 }).then(it => it.data);
-                core.info(`1: ${JSON.stringify(pullRequest)}`);
                 if (pullRequest.mergeable_state === 'dirty') {
                     conflictPullRequest = pullRequest;
                 }
@@ -464,7 +463,6 @@ async function run() {
                         repo: github_1.context.repo.repo,
                         pull_number: pullRequestSimple.number
                     }).then(it => it.data);
-                    core.info(`2: ${JSON.stringify(pullRequest)}`);
                     if (pullRequest.mergeable_state === 'dirty') {
                         conflictPullRequest = pullRequest;
                         break;
@@ -504,22 +502,22 @@ async function run() {
                                         await git.raw('checkout', '-f', `remotes/origin/${syncBranchName}`, '--', conflictedPath);
                                     }
                                 }
-                                core.info('Committing changes');
-                                if (repo.owner != null) {
-                                    await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${conflictsResolutionEmailSuffix}`);
-                                }
-                                else {
-                                    await git.addConfig('user.email', `${github_1.context.repo.owner}${conflictsResolutionEmailSuffix}`);
-                                }
-                                await git.raw('commit', '--no-edit');
-                                core.info('Pushing merge-commit');
-                                await git.raw('push', 'origin', syncBranchName);
                             }
                         }
                         else {
                             throw reason;
                         }
                     }
+                    core.info('Committing changes');
+                    if (repo.owner != null) {
+                        await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${conflictsResolutionEmailSuffix}`);
+                    }
+                    else {
+                        await git.addConfig('user.email', `${github_1.context.repo.owner}${conflictsResolutionEmailSuffix}`);
+                    }
+                    await git.raw('commit', '--no-edit');
+                    core.info('Pushing merge-commit');
+                    await git.raw('push', 'origin', syncBranchName);
                 });
             }
         }
