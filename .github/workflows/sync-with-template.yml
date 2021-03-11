@@ -27,3 +27,4 @@ jobs:
         templateRepository: '${{ secrets.TEMPLATE_REPOSITORY }}'
         ignorePaths: |
           *.lock
+          dist/**
