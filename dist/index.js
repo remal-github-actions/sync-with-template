@@ -533,14 +533,18 @@ async function run() {
 async function cleanup() {
     try {
         const workspacePath = core.getState('workspacePath');
-        core.info(`Removing workspace: ${workspacePath}`);
+        if (!workspacePath) {
+            throw new Error('workspacePath must be set');
+        }
+        core.debug(`Removing workspace: ${workspacePath}`);
         rimraf_1.default.sync(workspacePath);
     }
     catch (error) {
         core.warning(error.message);
     }
 }
-if (!core.getState('workspacePath')) {
+if (!core.getState('isPost')) {
+    core.saveState('isPost', 'true');
     //noinspection JSIgnoredPromiseFromCall
     run();
 }
