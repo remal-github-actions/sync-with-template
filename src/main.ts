@@ -467,11 +467,12 @@ async function run(): Promise<void> {
                                 const status = await git.status()
                                 const conflictingNotIgnoredFiles = status.conflicted.filter(it => !ignorePathMatcher(it))
                                 if (conflictingNotIgnoredFiles.length) {
-                                    core.warning(`Automatic merge-conflict resolution for ignored files failed`
+                                    core.error(`Automatic merge-conflict resolution for ignored files failed`
                                         + `, as there are some conflict in included`
                                         + ` files:\n  ${conflictingNotIgnoredFiles.join('\n  ')}`
                                     )
                                     await git.raw('merge', '--abort')
+                                    throw reason
                                 } else {
                                     for (const conflictedPath of status.conflicted) {
                                         const fileInfo = status.files.find(file => file.path === conflictedPath)
@@ -508,6 +509,8 @@ async function run(): Promise<void> {
                                     core.info('Pushing merge-commit')
                                     await git.raw('push', 'origin', syncBranchName)
                                 }
+                            } else {
+                                throw reason
                             }
                         }
                     }
