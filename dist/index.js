@@ -540,11 +540,11 @@ async function cleanup() {
         rimraf_1.default.sync(workspacePath);
     }
     catch (error) {
-        core.warning(error.message);
+        core.warning(error);
     }
 }
-if (!core.getState('isPost')) {
-    core.saveState('isPost', 'true');
+if (!core.getState('isExecuted')) {
+    core.saveState('isExecuted', 'true');
     //noinspection JSIgnoredPromiseFromCall
     run();
 }
