@@ -444,6 +444,7 @@ async function run() {
                     repo: github_1.context.repo.repo,
                     pull_number: createdPullRequestNumber
                 }).then(it => it.data);
+                core.info(`1: ${JSON.stringify(pullRequest)}`);
                 if (pullRequest.mergeable_state === 'dirty') {
                     conflictPullRequest = pullRequest;
                 }
@@ -463,6 +464,7 @@ async function run() {
                         repo: github_1.context.repo.repo,
                         pull_number: pullRequestSimple.number
                     }).then(it => it.data);
+                    core.info(`2: ${JSON.stringify(pullRequest)}`);
                     if (pullRequest.mergeable_state === 'dirty') {
                         conflictPullRequest = pullRequest;
                         break;
