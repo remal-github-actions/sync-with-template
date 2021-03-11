@@ -477,7 +477,7 @@ async function run(): Promise<void> {
 async function cleanup(): Promise<void> {
     try {
         const workspacePath = core.getState('workspacePath')
-        core.debug(`Removing workspace: ${workspacePath}`)
+        core.info(`Removing workspace: ${workspacePath}`)
         rimraf.sync(workspacePath)
 
     } catch (error) {
