@@ -179,10 +179,13 @@ async function run() {
             return picomatch_1.default(patterns, { windows: is_windows_1.default() });
         })();
         const workspacePath = __nccwpck_require__(8517).dirSync().name;
-        __nccwpck_require__(8231).enable('simple-git');
-        process.env.DEBUG = [process.env.DEBUG || '', 'simple-git', 'simple-git:*'].filter(it => it.length).join(',');
         if (((_a = process.env.ACTIONS_STEP_DEBUG) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === 'true') {
             __nccwpck_require__(8231).enable('simple-git');
+            process.env.DEBUG = [
+                process.env.DEBUG || '',
+                'simple-git',
+                'simple-git:*'
+            ].filter(it => it.length).join(',');
         }
         const git = simple_git_1.default(workspacePath);
         const unstageIgnoredFiles = async () => {
@@ -205,6 +208,7 @@ async function run() {
                         unstagedFiles.push(filePath);
                     }
                 }
+                await git.status();
             }
             return unstagedFiles;
         };
