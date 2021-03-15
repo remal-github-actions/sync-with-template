@@ -6,6 +6,7 @@
     "strict": true,
     "strictNullChecks": true,
     "noImplicitAny": false,
+    "experimentalDecorators": true,
     "esModuleInterop": true,
     "moduleResolution": "Node",
     "types": [
