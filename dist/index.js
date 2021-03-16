@@ -414,15 +414,6 @@ class RepositorySynchronizer {
     }
     async closePullRequest(pullRequest, titleSuffix, message) {
         core.info(`Closing pull request ${pullRequest.html_url}`);
-        const result = this.octokit.pulls.update({
-            owner: github_1.context.repo.owner,
-            repo: github_1.context.repo.repo,
-            pull_number: pullRequest.number,
-            state: 'closed',
-            title: titleSuffix
-                ? `${pullRequest.title} - ${titleSuffix}`
-                : pullRequest.title
-        }).then(it => it.data);
         if (message) {
             await this.octokit.issues.createComment({
                 owner: github_1.context.repo.owner,
@@ -431,7 +422,15 @@ class RepositorySynchronizer {
                 body: message
             });
         }
-        return result;
+        return this.octokit.pulls.update({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            pull_number: pullRequest.number,
+            state: 'closed',
+            title: titleSuffix
+                ? `${pullRequest.title} - ${titleSuffix}`
+                : pullRequest.title
+        }).then(it => it.data);
     }
     get currentRepo() {
         return this.getRepo(github_1.context.repo.owner, github_1.context.repo.repo);
@@ -922,12 +921,12 @@ async function run() {
         if (!changedFiles.length) {
             core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
                 + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`);
-            await synchronizer.origin.then(remote => remote.remove(syncBranchName));
             const openedPullRequest = await synchronizer.openedPullRequest;
             if (openedPullRequest) {
                 await synchronizer.closePullRequest(openedPullRequest, 'autoclosed', `Autoclosing the PR, as no files will be changed after merging the changes`
                     + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`);
             }
+            await synchronizer.origin.then(remote => remote.remove(syncBranchName));
         }
         else {
             const totalCommitCount = cherryPickedCommitsCounts + additionalCommitsCount;
