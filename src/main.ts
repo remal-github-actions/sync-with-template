@@ -27,6 +27,7 @@ async function run(): Promise<void> {
         )
 
         const repo = await synchronizer.currentRepo
+        core.info(`Using ${repo.full_name} as the current repository`)
         if (repo.archived) {
             core.info(`Skipping template synchronization, as current repository is archived`)
             return
@@ -35,6 +36,9 @@ async function run(): Promise<void> {
             core.info(`Skipping template synchronization, as current repository is a fork`)
             return
         }
+        const defaultBranchName = await synchronizer.origin.then(it => it.defaultBranch)
+        core.info(`Using '${defaultBranchName}' as a default branch of the current repository`)
+
 
         const templateRepo = await synchronizer.templateRepoOrNull
         if (templateRepo == null) {
@@ -43,10 +47,6 @@ async function run(): Promise<void> {
             return
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`)
-
-
-        const defaultBranchName = await synchronizer.origin.then(it => it.defaultBranch)
-        core.info(`Using ${defaultBranchName} as a default branch`)
 
 
         await core.group("Initializing the repository", async () => {
