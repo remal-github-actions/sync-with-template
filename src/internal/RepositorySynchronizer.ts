@@ -312,7 +312,7 @@ export class RepositorySynchronizer {
             }
         }
 
-        this.git.raw('merge', '--abort')
+        await this.abortMerge()
 
         return changedFiles
     }
@@ -327,7 +327,7 @@ export class RepositorySynchronizer {
         const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref))
         const conflicted = mergeStatus.conflicted
         if (!conflicted.length) {
-            this.git.raw('merge', '--abort')
+            await this.abortMerge()
             return false
         }
 
@@ -338,7 +338,7 @@ export class RepositorySynchronizer {
                 + `, as there are some conflict in included`
                 + ` files:\n  ${notIgnoredConflicted.join('\n  ')}`
             )
-            this.git.raw('merge', '--abort')
+            await this.abortMerge()
             return false
         }
 
@@ -383,6 +383,10 @@ export class RepositorySynchronizer {
         }
 
         return this.git.status()
+    }
+
+    async abortMerge() {
+        await await this.abortMerge()
     }
 
 
