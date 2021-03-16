@@ -90,14 +90,26 @@ export class RepositorySynchronizer {
         await this.initializeUserInfo()
     }
 
+    private currentUserName: string | undefined = undefined
+    private previousUserEmail: string | undefined = undefined
+
     async initializeUserInfo(userEmailSuffix: string = synchronizationEmailSuffix) {
         const repo = await this.currentRepo
-        if (repo.owner != null) {
-            await this.git.addConfig('user.name', repo.owner.login)
-            await this.git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${userEmailSuffix}`)
-        } else {
-            await this.git.addConfig('user.name', context.repo.owner)
-            await this.git.addConfig('user.email', `${context.repo.owner}${userEmailSuffix}`)
+
+        const userName = repo.owner != null
+            ? repo.owner.login
+            : context.repo.owner
+        if (userName !== this.currentUserName) {
+            await this.git.addConfig('user.name', userName)
+            this.currentUserName = userName
+        }
+
+        const userEmail = repo.owner != null
+            ? `${repo.owner.id}+${repo.owner.login}${userEmailSuffix}`
+            : `${context.repo.owner}${userEmailSuffix}`
+        if (userEmail !== this.previousUserEmail) {
+            await this.git.addConfig('user.email', userEmail)
+            this.previousUserEmail = userEmail
         }
     }
 
@@ -269,16 +281,20 @@ export class RepositorySynchronizer {
     async commit(message: string, date?: string | Date, userEmailSuffix: string = synchronizationEmailSuffix) {
         await this.initializeUserInfo(userEmailSuffix)
 
-        let git = this.git
         if (date) {
-            git = git
-                .env('GIT_AUTHOR_DATE', date.toString())
-                .env('GIT_COMMITTER_DATE', date.toString())
+            this.git.env({
+                GIT_AUTHOR_DATE: date.toString(),
+                GIT_COMMITTER_DATE: date.toString(),
+            })
+        } else {
+            this.git.env({})
         }
 
-        await git.commit(message, {
+        await this.git.commit(message, {
             '--allow-empty': null,
         })
+
+        this.git.env({})
     }
 
 
