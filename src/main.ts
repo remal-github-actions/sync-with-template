@@ -133,7 +133,9 @@ async function run(): Promise<void> {
 
         const changedFiles = await synchronizer.retrieveChangedFilesAfterMerge()
         if (!changedFiles.length) {
-            core.info('No files will be changed after merging the changes, removing sync branch')
+            core.info(`No files will be changed after merging the changes from '${syncBranchName}' branch`
+                + ` into '${defaultBranchName}' branch, removing '${syncBranchName}' branch`
+            )
 
             await synchronizer.origin.then(remote => remote.remove(syncBranchName))
 
