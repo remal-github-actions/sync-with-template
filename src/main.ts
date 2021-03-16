@@ -114,13 +114,17 @@ async function run(): Promise<void> {
         }
 
         let additionalCommitsCount: number = 0
+        const defaultBranch = await synchronizer.origin.then(it => it.defaultBranch)
         if (synchronizer.isIgnorePathMatcherSet) {
-            await core.group('Trying to resolve merge conflicts for ignored files', async () => {
-                const isCommitAdded = await synchronizer.resolveMergeConflictsForIgnoredFiles()
-                if (isCommitAdded) {
-                    additionalCommitsCount++
+            await core.group(
+                `Trying to resolve merge conflicts ${syncBranchName}->${defaultBranch} for ignored files`,
+                async () => {
+                    const isCommitAdded = await synchronizer.resolveMergeConflictsForIgnoredFiles()
+                    if (isCommitAdded) {
+                        additionalCommitsCount++
+                    }
                 }
-            })
+            )
         }
 
         const changedFiles = await synchronizer.retrieveChangedFilesAfterMerge()
@@ -147,7 +151,6 @@ async function run(): Promise<void> {
                         pullRequestTitle = `chore(template): ${pullRequestTitle}`
                     }
 
-                    const defaultBranch = await synchronizer.origin.then(it => it.defaultBranch)
                     const pullRequest = await synchronizer.createPullRequest({
                         head: syncBranchName,
                         base: defaultBranch,
