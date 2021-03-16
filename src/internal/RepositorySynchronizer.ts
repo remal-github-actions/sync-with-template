@@ -573,6 +573,7 @@ export class Remote {
                         .filter(line => line.length > 0)
                 })
                     .then(branches => {
+                        core.info(`Branches of '${this.name}' remote:\n  ${branches.join('\n  ')}`)
                         this._remoteBranches = branches
                         return branches
                     })
