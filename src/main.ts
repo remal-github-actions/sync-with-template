@@ -69,8 +69,8 @@ async function run(): Promise<void> {
         const lastSynchronizedCommitDate: Date = await core.group(
             "Retrieving last synchronized commit date",
             async () => {
-                const latestSyncCommit = await synchronizer.retrieveLatestSyncCommit()
-                    || await synchronizer.firstRepositoryCommit
+                const latestSyncCommit = (await synchronizer.retrieveLatestSyncCommit())
+                    || (await synchronizer.firstRepositoryCommit)
                 core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestSyncCommit.hash} (${latestSyncCommit.date}): ${latestSyncCommit.message}`)
                 return new Date(latestSyncCommit.date)
             }

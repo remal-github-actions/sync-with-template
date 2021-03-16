@@ -116,14 +116,12 @@ export class RepositorySynchronizer {
 
 
     async doesSyncBranchExists(): Promise<boolean> {
-        const remote = await this.origin
-        const remoteBranches = await remote.remoteBranches
+        const remoteBranches = await this.origin.then(it => it.remoteBranches)
         return remoteBranches.includes(this.syncBranchName)
     }
 
     async checkoutSyncBranch() {
-        const remote = await this.origin
-        await remote.checkout(this.syncBranchName)
+        await this.origin.then(it => it.checkout(this.syncBranchName))
     }
 
 
@@ -641,6 +639,7 @@ const synchronizationEmailSuffix = '+sync-with-template@users.noreply.github.com
 const conflictsResolutionEmailSuffix = '+sync-with-template-conflicts-resolution@users.noreply.github.com'
 
 async function forceCheckout(git: SimpleGit, branchName: string, ref: string) {
+    core.info(`Checkouting ${branchName}`)
     await git.raw('checkout', '-f', '-B', branchName, ref)
 
     const status = await git.status()
