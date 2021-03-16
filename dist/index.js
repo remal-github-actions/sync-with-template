@@ -590,7 +590,7 @@ class Remote {
         if (!remoteBranches.includes(trueRef)) {
             return;
         }
-        core.info(`Removing branch from '${this.name}' remote: ${trueRef}`);
+        core.info(`Removing '${trueRef}' branch from '${this.name}' remote`);
         await this.git.raw('push', '-d', this.name, trueRef);
         const remoteBranchesCache = this._remoteBranches;
         if (remoteBranchesCache !== undefined) {
