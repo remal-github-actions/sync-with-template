@@ -86,6 +86,8 @@ export class RepositorySynchronizer {
         for (const origin of [new URL(repo.svn_url).origin, new URL(templateRepo.svn_url).origin]) {
             await git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`)
         }
+
+        await this.initializeUserInfo()
     }
 
     async initializeUserInfo(userEmailSuffix: string = synchronizationEmailSuffix) {
@@ -281,7 +283,7 @@ export class RepositorySynchronizer {
 
 
     async retrieveChangedFilesAfterMerge(ref?: string): Promise<string[]> {
-        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus())
+        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref))
 
         const changedFiles: string[] = []
         const ignorePathMatcher = this.ignorePathMatcher
@@ -306,7 +308,7 @@ export class RepositorySynchronizer {
             return false
         }
 
-        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus())
+        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref))
         const conflicted = mergeStatus.conflicted
         if (!conflicted.length) {
             this.git.raw('merge', '--abort')
@@ -351,6 +353,7 @@ export class RepositorySynchronizer {
 
     async mergeAndGetStatus(ref: string): Promise<StatusResult> {
         try {
+            await this.initializeUserInfo(conflictsResolutionEmailSuffix)
             await this.git.raw('merge', '--no-commit', '--no-ff', ref)
 
         } catch (reason) {
@@ -581,7 +584,6 @@ export class Remote {
                         }
                     }))
                     .then(branches => {
-                        core.info(`Branches of '${this.name}' remote:\n  ${branches.join('\n  ')}`)
                         this._remoteBranches = branches
                         return branches
                     })
@@ -648,7 +650,7 @@ const synchronizationEmailSuffix = '+sync-with-template@users.noreply.github.com
 const conflictsResolutionEmailSuffix = '+sync-with-template-conflicts-resolution@users.noreply.github.com'
 
 async function forceCheckout(git: SimpleGit, branchName: string, ref: string) {
-    core.info(`Checkouting ${branchName}`)
+    core.info(`Checkouting ${branchName} from ${ref}`)
     await git.raw('checkout', '-f', '-B', branchName, ref)
 
     const status = await git.status()
