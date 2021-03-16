@@ -668,7 +668,7 @@ export class Remote {
             return
         }
 
-        core.info(`Removing branch from '${this.name}' remote: ${trueRef}`)
+        core.info(`Removing '${trueRef}' branch from '${this.name}' remote`)
         await this.git.raw('push', '-d', this.name, trueRef)
 
         const remoteBranchesCache = this._remoteBranches
