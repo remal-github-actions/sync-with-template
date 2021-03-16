@@ -138,8 +138,6 @@ async function run(): Promise<void> {
                 + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`
             )
 
-            await synchronizer.origin.then(remote => remote.remove(syncBranchName))
-
             const openedPullRequest = await synchronizer.openedPullRequest
             if (openedPullRequest) {
                 await synchronizer.closePullRequest(
@@ -149,6 +147,8 @@ async function run(): Promise<void> {
                     + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`
                 )
             }
+
+            await synchronizer.origin.then(remote => remote.remove(syncBranchName))
 
         } else {
             const totalCommitCount = cherryPickedCommitsCounts + additionalCommitsCount

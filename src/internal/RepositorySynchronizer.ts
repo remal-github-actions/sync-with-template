@@ -484,15 +484,6 @@ export class RepositorySynchronizer {
         message?: string
     ): Promise<PullRequest> {
         core.info(`Closing pull request ${pullRequest.html_url}`)
-        const result = this.octokit.pulls.update({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            pull_number: pullRequest.number,
-            state: 'closed',
-            title: titleSuffix
-                ? `${pullRequest.title} - ${titleSuffix}`
-                : pullRequest.title
-        }).then(it => it.data)
 
         if (message) {
             await this.octokit.issues.createComment({
@@ -503,7 +494,15 @@ export class RepositorySynchronizer {
             })
         }
 
-        return result
+        return this.octokit.pulls.update({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pullRequest.number,
+            state: 'closed',
+            title: titleSuffix
+                ? `${pullRequest.title} - ${titleSuffix}`
+                : pullRequest.title
+        }).then(it => it.data)
     }
 
 
