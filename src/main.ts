@@ -44,6 +44,11 @@ async function run(): Promise<void> {
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
+
+        const defaultBranchName = await synchronizer.origin.then(it => it.defaultBranch)
+        core.info(`Using ${defaultBranchName} as a default branch`)
+
+
         await core.group("Initializing the repository", async () => {
             await synchronizer.initializeRepository()
         })
@@ -114,10 +119,9 @@ async function run(): Promise<void> {
         }
 
         let additionalCommitsCount: number = 0
-        const defaultBranch = await synchronizer.origin.then(it => it.defaultBranch)
         if (synchronizer.isIgnorePathMatcherSet) {
             await core.group(
-                `Trying to resolve merge conflicts ${syncBranchName}->${defaultBranch} for ignored files`,
+                `Trying to resolve merge conflicts ${syncBranchName}->${defaultBranchName} for ignored files`,
                 async () => {
                     const isCommitAdded = await synchronizer.resolveMergeConflictsForIgnoredFiles()
                     if (isCommitAdded) {
@@ -153,7 +157,7 @@ async function run(): Promise<void> {
 
                     const pullRequest = await synchronizer.createPullRequest({
                         head: syncBranchName,
-                        base: defaultBranch,
+                        base: defaultBranchName,
                         title: pullRequestTitle,
                         body: "Template repository changes."
                             + "\n\nIf you close this PR, it will be recreated automatically.",
