@@ -910,7 +910,8 @@ async function run() {
         }
         const changedFiles = await synchronizer.retrieveChangedFilesAfterMerge();
         if (!changedFiles.length) {
-            core.info('No files will be changed after merging the changes, removing sync branch');
+            core.info(`No files will be changed after merging the changes from '${syncBranchName}' branch`
+                + ` into '${defaultBranchName}' branch, removing '${syncBranchName}' branch`);
             await synchronizer.origin.then(remote => remote.remove(syncBranchName));
             const openedPullRequest = await synchronizer.openedPullRequest;
             if (openedPullRequest) {
