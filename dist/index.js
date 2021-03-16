@@ -136,8 +136,7 @@ class RepositorySynchronizer {
         await this.origin.then(it => it.checkout(this.syncBranchName));
     }
     async fetchPullRequest(pullRequest) {
-        const repo = await this.currentRepo;
-        core.info(`Fetching last commit of pull request #${pullRequest.number}: ${repo.html_url}/commit/${pullRequest.head.sha}`);
+        core.info(`Fetching last commit of pull request ${pullRequest.html_url}`);
         const remote = await this.origin;
         await remote.fetch(`refs/pull/${pullRequest.number}/head`);
     }
@@ -610,7 +609,7 @@ const pullRequestLabel = 'sync-with-template';
 const synchronizationEmailSuffix = '+sync-with-template@users.noreply.github.com';
 const conflictsResolutionEmailSuffix = '+sync-with-template-conflicts-resolution@users.noreply.github.com';
 async function forceCheckout(git, branchName, ref) {
-    core.info(`Checkouting ${branchName} from ${ref}`);
+    core.info(`Checkouting '${branchName}' branch from '${ref}' Git ref`);
     await git.raw('checkout', '-f', '-B', branchName, ref);
     const status = await git.status();
     const notAdded = status.not_added;
