@@ -387,7 +387,18 @@ export class RepositorySynchronizer {
     }
 
     async abortMerge() {
-        await this.git.raw('merge', '--abort')
+        try {
+            await this.git.raw('merge', '--abort')
+
+        } catch (reason) {
+            if (reason instanceof GitError
+                && reason.message.includes('There is no merge to abort')
+            ) {
+                // OK
+            } else {
+                throw reason
+            }
+        }
     }
 
 
