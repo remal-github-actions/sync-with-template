@@ -141,7 +141,12 @@ async function run(): Promise<void> {
 
             const openedPullRequest = await synchronizer.openedPullRequest
             if (openedPullRequest) {
-                await synchronizer.closePullRequest(openedPullRequest, 'autoclosed')
+                await synchronizer.closePullRequest(
+                    openedPullRequest,
+                    'autoclosed',
+                    `Closing the PR, as no files will be changed after merging the changes`
+                    + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`
+                )
             }
 
         } else {

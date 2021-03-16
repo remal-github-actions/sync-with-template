@@ -478,9 +478,13 @@ export class RepositorySynchronizer {
             })
     }
 
-    async closePullRequest(pullRequest: PullRequest | PullRequestSimple, titleSuffix?: string): Promise<PullRequest> {
+    async closePullRequest(
+        pullRequest: PullRequest | PullRequestSimple,
+        titleSuffix?: string,
+        message?: string
+    ): Promise<PullRequest> {
         core.info(`Closing pull request ${pullRequest.html_url}`)
-        return this.octokit.pulls.update({
+        const result = this.octokit.pulls.update({
             owner: context.repo.owner,
             repo: context.repo.repo,
             pull_number: pullRequest.number,
@@ -489,6 +493,17 @@ export class RepositorySynchronizer {
                 ? `${pullRequest.title} - ${titleSuffix}`
                 : pullRequest.title
         }).then(it => it.data)
+
+        if (message) {
+            await this.octokit.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullRequest.number,
+                body: message
+            })
+        }
+
+        return result
     }
 
 
