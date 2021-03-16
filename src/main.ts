@@ -139,28 +139,28 @@ async function run(): Promise<void> {
             if (totalCommitCount > 0) {
                 core.info(`Pushing ${totalCommitCount} commits`)
                 await synchronizer.origin.then(remote => remote.push(syncBranchName))
+
+                const openedPullRequest = await synchronizer.openedPullRequest
+                if (!openedPullRequest) {
+                    let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
+                    if (conventionalCommits) {
+                        pullRequestTitle = `chore(template): ${pullRequestTitle}`
+                    }
+
+                    const defaultBranch = await synchronizer.origin.then(it => it.defaultBranch)
+                    const pullRequest = await synchronizer.createPullRequest({
+                        head: syncBranchName,
+                        base: defaultBranch,
+                        title: pullRequestTitle,
+                        body: "Template repository changes."
+                            + "\n\nIf you close this PR, it will be recreated automatically.",
+                        maintainer_can_modify: true,
+                    })
+
+                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+                }
             } else {
                 core.info('No commits were made, nothing to push')
-            }
-
-            const openedPullRequest = await synchronizer.openedPullRequest
-            if (!openedPullRequest) {
-                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
-                if (conventionalCommits) {
-                    pullRequestTitle = `chore(template): ${pullRequestTitle}`
-                }
-
-                const defaultBranch = await synchronizer.origin.then(it => it.defaultBranch)
-                const pullRequest = await synchronizer.createPullRequest({
-                    head: syncBranchName,
-                    base: defaultBranch,
-                    title: pullRequestTitle,
-                    body: "Template repository changes."
-                        + "\n\nIf you close this PR, it will be recreated automatically.",
-                    maintainer_can_modify: true,
-                })
-
-                core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
             }
         }
 
