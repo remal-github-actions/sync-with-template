@@ -2,6 +2,677 @@ module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 2798:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Remote = exports.RepositorySynchronizer = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const github_1 = __nccwpck_require__(5438);
+const is_windows_1 = __importDefault(__nccwpck_require__(9125));
+const picomatch_1 = __importDefault(__nccwpck_require__(8569));
+const simple_git_1 = __importStar(__nccwpck_require__(1477));
+const url_1 = __nccwpck_require__(8835);
+const cache_1 = __nccwpck_require__(3790);
+const octokit_1 = __nccwpck_require__(8093);
+class RepositorySynchronizer {
+    constructor(githubToken, templateRepositoryFullName, syncBranchName, ignorePathPatterns) {
+        this.currentUserName = undefined;
+        this.previousUserEmail = undefined;
+        this.getRepoCache = {};
+        this.githubToken = githubToken;
+        this.templateRepositoryFullName = templateRepositoryFullName;
+        this.syncBranchName = syncBranchName;
+        core.setSecret(githubToken);
+        this.octokit = octokit_1.newOctokitInstance(githubToken);
+        if (ignorePathPatterns.length) {
+            core.info(`Ignored files:\n  ${ignorePathPatterns.join('\n  ')}`);
+            this.ignorePathMatcher = picomatch_1.default(ignorePathPatterns, { windows: is_windows_1.default() });
+        }
+        else {
+            this.ignorePathMatcher = undefined;
+        }
+    }
+    get isIgnorePathMatcherSet() {
+        return this.ignorePathMatcher != null;
+    }
+    get workspacePath() {
+        const workspacePath = __nccwpck_require__(8517).dirSync().name;
+        core.debug(`Workspace path: ${workspacePath}`);
+        return workspacePath;
+    }
+    get git() {
+        var _a;
+        if (((_a = process.env.ACTIONS_STEP_DEBUG) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === 'true') {
+            __nccwpck_require__(8231).enable('simple-git');
+            process.env.DEBUG = [
+                process.env.DEBUG || '',
+                'simple-git',
+                'simple-git:*'
+            ].filter(it => it.length).join(',');
+        }
+        return simple_git_1.default(this.workspacePath);
+    }
+    async initializeRepository() {
+        const repo = await this.currentRepo;
+        const templateRepo = await this.templateRepo;
+        const git = this.git;
+        await git.init();
+        await git.addConfig('gc.auto', '0');
+        await git.addConfig('user.useConfigOnly', 'true');
+        await git.addConfig('diff.algorithm', 'patience');
+        //await git.addConfig('core.pager', 'cat')
+        await git.addConfig('fetch.recurseSubmodules', 'no');
+        core.info('Setting up credentials');
+        const basicCredentials = Buffer.from(`x-access-token:${this.githubToken}`, 'utf8').toString('base64');
+        core.setSecret(basicCredentials);
+        for (const origin of [new url_1.URL(repo.svn_url).origin, new url_1.URL(templateRepo.svn_url).origin]) {
+            await git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`);
+        }
+        await this.initializeUserInfo();
+    }
+    async initializeUserInfo(userEmailSuffix = synchronizationEmailSuffix) {
+        const repo = await this.currentRepo;
+        const userName = repo.owner != null
+            ? repo.owner.login
+            : github_1.context.repo.owner;
+        if (userName !== this.currentUserName) {
+            await this.git.addConfig('user.name', userName);
+            this.currentUserName = userName;
+        }
+        const userEmail = repo.owner != null
+            ? `${repo.owner.id}+${repo.owner.login}${userEmailSuffix}`
+            : `${github_1.context.repo.owner}${userEmailSuffix}`;
+        if (userEmail !== this.previousUserEmail) {
+            await this.git.addConfig('user.email', userEmail);
+            this.previousUserEmail = userEmail;
+        }
+    }
+    get origin() {
+        return this.currentRepo.then(repo => {
+            return new Remote(this, 'origin', repo);
+        });
+    }
+    get template() {
+        return this.templateRepo.then(repo => {
+            return new Remote(this, 'template', repo);
+        });
+    }
+    async doesSyncBranchExists() {
+        const remoteBranches = await this.origin.then(it => it.remoteBranches);
+        return remoteBranches.includes(this.syncBranchName);
+    }
+    async checkoutSyncBranch() {
+        await this.origin.then(it => it.checkout(this.syncBranchName));
+    }
+    async fetchPullRequest(pullRequest) {
+        const repo = await this.currentRepo;
+        core.info(`Fetching last commit of pull request #${pullRequest.number}: ${repo.html_url}/commit/${pullRequest.head.sha}`);
+        const remote = await this.origin;
+        await remote.fetch(`refs/pull/${pullRequest.number}/head`);
+    }
+    async checkoutPullRequestHead(pullRequest, branchName) {
+        const trueBranchName = branchName || this.syncBranchName;
+        await this.fetchPullRequest(pullRequest);
+        await forceCheckout(this.git, trueBranchName, pullRequest.head.sha);
+    }
+    async parseLog(ref, reverse, since) {
+        const options = [];
+        if (reverse) {
+            options.push('--reverse');
+        }
+        if (since) {
+            const timestamp = since.getTime() / 1000;
+            options.push(`--since=${timestamp}`);
+        }
+        if (ref) {
+            options.push(ref);
+        }
+        return this.git.log(options);
+    }
+    async retrieveLatestSyncCommit() {
+        const log = await this.parseLog();
+        for (const logItem of log.all) {
+            if (logItem.author_email.endsWith(synchronizationEmailSuffix)) {
+                return logItem;
+            }
+        }
+        return undefined;
+    }
+    get firstRepositoryCommit() {
+        return this.origin
+            .then(remote => remote.parseLog())
+            .then(log => log.latest);
+    }
+    async checkoutFirstRepositoryCommit() {
+        const repo = await this.currentRepo;
+        core.info(`Creating '${this.syncBranchName}' branch from the first commit of default branch '${repo.default_branch}'`);
+        const firstRepositoryCommit = await this.firstRepositoryCommit;
+        await forceCheckout(this.git, this.syncBranchName, firstRepositoryCommit.hash);
+        return firstRepositoryCommit;
+    }
+    async cherryPick(logItem) {
+        try {
+            await this.git.raw('cherry-pick', '--no-commit', '-r', '--allow-empty', '--allow-empty-message', '--strategy=recursive', '-Xours', logItem.hash);
+        }
+        catch (error) {
+            if (error instanceof simple_git_1.GitError
+                && error.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)) {
+                const unstagedFiles = await this.unstageIgnoredFiles();
+                const status = await this.git.status();
+                const unresolvedConflictedFiles = [];
+                for (const conflictedPath of status.conflicted) {
+                    if (unstagedFiles.includes(conflictedPath)) {
+                        continue;
+                    }
+                    const fileInfo = status.files.find(file => file.path === conflictedPath);
+                    if (fileInfo !== undefined && fileInfo.working_dir === 'U') {
+                        if (fileInfo.index === 'A') {
+                            core.info(`Resolving conflict: adding file: ${conflictedPath}`);
+                            await this.git.add(conflictedPath);
+                            continue;
+                        }
+                        else if (fileInfo.index === 'D') {
+                            core.info(`Resolving conflict: removing file: ${conflictedPath}`);
+                            await this.git.rm(conflictedPath);
+                            continue;
+                        }
+                    }
+                    core.error(`Unresolved conflict: ${conflictedPath}`);
+                    unresolvedConflictedFiles.push(conflictedPath);
+                }
+                if (unresolvedConflictedFiles.length === 0) {
+                    return;
+                }
+                else {
+                    throw error;
+                }
+            }
+            else {
+                throw error;
+            }
+        }
+        await this.unstageIgnoredFiles();
+    }
+    async unstageIgnoredFiles() {
+        const ignorePathMatcher = this.ignorePathMatcher;
+        if (ignorePathMatcher === undefined) {
+            return Promise.resolve([]);
+        }
+        const unstagedFiles = [];
+        const status = await this.git.status();
+        for (const filePath of status.staged) {
+            if (ignorePathMatcher(filePath)) {
+                core.info(`Ignored file: unstaging: ${filePath}`);
+                await this.git.raw('reset', '-q', 'HEAD', '--', filePath);
+                if (status.created.includes(filePath)) {
+                    core.info(`Ignored file: removing created: ${filePath}`);
+                    await this.git.rm(filePath);
+                }
+                else {
+                    core.info(`Ignored file: reverting modified/deleted: ${filePath}`);
+                    await this.git.raw('checkout', 'HEAD', '--', filePath);
+                }
+                unstagedFiles.push(filePath);
+            }
+        }
+        return Promise.resolve(unstagedFiles);
+    }
+    async commit(message, date, userEmailSuffix = synchronizationEmailSuffix) {
+        await this.initializeUserInfo(userEmailSuffix);
+        if (date) {
+            this.git.env({
+                GIT_AUTHOR_DATE: date.toString(),
+                GIT_COMMITTER_DATE: date.toString(),
+            });
+        }
+        else {
+            this.git.env({});
+        }
+        await this.git.commit(message, {
+            '--allow-empty': null,
+        });
+        this.git.env({});
+    }
+    async retrieveChangedFilesAfterMerge(ref) {
+        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref));
+        const changedFiles = [];
+        const ignorePathMatcher = this.ignorePathMatcher;
+        for (const filePath of [...mergeStatus.staged, ...mergeStatus.conflicted]) {
+            if (!changedFiles.includes(filePath)) {
+                const isIncluded = !ignorePathMatcher || ignorePathMatcher(filePath);
+                if (isIncluded) {
+                    changedFiles.push(filePath);
+                }
+            }
+        }
+        await this.abortMerge();
+        return changedFiles;
+    }
+    async resolveMergeConflictsForIgnoredFiles(ref) {
+        const ignorePathMatcher = this.ignorePathMatcher;
+        if (ignorePathMatcher == null) {
+            return false;
+        }
+        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref));
+        const conflicted = mergeStatus.conflicted;
+        if (!conflicted.length) {
+            await this.abortMerge();
+            return false;
+        }
+        const ignoredConflicted = conflicted.filter(it => ignorePathMatcher(it));
+        const notIgnoredConflicted = conflicted.filter(it => !ignoredConflicted.includes(it));
+        if (notIgnoredConflicted.length) {
+            core.error(`Automatic merge-conflict resolution for ignored files failed`
+                + `, as there are some conflict in included`
+                + ` files:\n  ${notIgnoredConflicted.join('\n  ')}`);
+            await this.abortMerge();
+            return false;
+        }
+        for (const conflictedPath of ignoredConflicted) {
+            const fileInfo = mergeStatus.files.find(file => file.path === conflictedPath);
+            if (fileInfo && fileInfo.working_dir === 'D') {
+                core.info(`Resolving conflict: removing file: ${conflictedPath}`);
+                await this.git.rm(conflictedPath);
+            }
+            else {
+                const remote = await this.origin;
+                core.info(`Resolving conflict: using file from '${remote.defaultBranch}' branch: ${conflictedPath}`);
+                await this.git.raw('checkout', '-f', `remotes/${remote.name}/${this.syncBranchName}`, '--', conflictedPath);
+            }
+        }
+        core.info('Committing changes');
+        await this.initializeUserInfo(conflictsResolutionEmailSuffix);
+        await this.git.raw('commit', '--no-edit');
+        return true;
+    }
+    async mergeAndGetStatus(ref) {
+        try {
+            await this.initializeUserInfo(conflictsResolutionEmailSuffix);
+            await this.git.raw('merge', '--no-commit', '--no-ff', ref);
+        }
+        catch (reason) {
+            if (reason instanceof simple_git_1.GitError
+                && reason.message.includes('Automatic merge failed; fix conflicts')) {
+                // Merge conflicts will be resolved later
+            }
+            else {
+                throw reason;
+            }
+        }
+        return this.git.status();
+    }
+    async abortMerge() {
+        await this.git.raw('merge', '--abort');
+    }
+    get latestMergedPullRequest() {
+        return this.mergedPullRequests.then(prs => prs.length ? prs[0] : undefined);
+    }
+    get mergedPullRequests() {
+        return this.octokit.paginate(this.octokit.pulls.list, {
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            state: 'closed',
+            head: `${github_1.context.repo.owner}:${this.syncBranchName}`
+        })
+            .then(prs => prs.filter(pr => pr.head.ref === this.syncBranchName))
+            .then(prs => prs.filter(pr => pr.head.sha !== pr.base.sha))
+            .then(prs => prs.filter(pr => pr.merged_at != null))
+            .then(prs => [...prs].sort((pr1, pr2) => {
+            const mergedAt1 = new Date(pr1.merged_at).getTime();
+            const mergedAt2 = new Date(pr2.merged_at).getTime();
+            if (mergedAt1 < mergedAt2) {
+                return 1;
+            }
+            else if (mergedAt1 > mergedAt2) {
+                return -1;
+            }
+            else {
+                return pr2.number - pr1.number;
+            }
+        }));
+    }
+    async createPullRequest(info) {
+        const pullRequest = await this.octokit.pulls.create(Object.assign({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+        }, info)).then(it => it.data);
+        await this.octokit.issues.addLabels({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            issue_number: pullRequest.number,
+            labels: [pullRequestLabel],
+        });
+        return pullRequest;
+    }
+    get openedPullRequest() {
+        return this.octokit.paginate(this.octokit.pulls.list, {
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            state: 'open',
+            head: `${github_1.context.repo.owner}:${this.syncBranchName}`,
+            sort: 'created',
+            direction: 'desc',
+        })
+            .then(prs => prs.filter(pr => pr.head.ref === this.syncBranchName))
+            .then(prs => {
+            const promises = prs.map((pr, index) => index === 0
+                ? Promise.resolve(pr)
+                : this.closePullRequest(pr, 'autoclosed redundant'));
+            return Promise.all(promises);
+        })
+            .then(promises => {
+            if (promises.length) {
+                return promises[0];
+            }
+            else {
+                return undefined;
+            }
+        });
+    }
+    async closePullRequest(pullRequest, titleSuffix) {
+        core.info(`Closing pull request ${pullRequest.html_url}`);
+        return this.octokit.pulls.update({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            pull_number: pullRequest.number,
+            state: 'closed',
+            title: titleSuffix
+                ? `${pullRequest.title} - ${titleSuffix}`
+                : pullRequest.title
+        }).then(it => it.data);
+    }
+    get currentRepo() {
+        return this.getRepo(github_1.context.repo.owner, github_1.context.repo.repo);
+    }
+    get templateRepo() {
+        return this.templateRepoOrNull.then(repo => {
+            if (repo == null) {
+                throw new Error('Template repository is not defined');
+            }
+            return repo;
+        });
+    }
+    get templateRepoOrNull() {
+        return this.currentRepo.then(currentRepo => {
+            var _a;
+            const templateRepoName = this.templateRepositoryFullName;
+            if (templateRepoName === ((_a = currentRepo.template_repository) === null || _a === void 0 ? void 0 : _a.full_name)) {
+                return currentRepo.template_repository;
+            }
+            else if (!templateRepoName) {
+                if (currentRepo.template_repository != null) {
+                    return currentRepo.template_repository;
+                }
+            }
+            else {
+                const [owner, repo] = templateRepoName.split('/');
+                return this.getRepo(owner, repo);
+            }
+            return null;
+        });
+    }
+    getRepo(owner, repo) {
+        const cacheKey = `${owner}/${repo}`;
+        if (cacheKey in this.getRepoCache) {
+            return Promise.resolve(this.getRepoCache[cacheKey]);
+        }
+        return this.octokit.repos.get({ owner, repo })
+            .then(it => it.data)
+            .then(it => {
+            this.getRepoCache[cacheKey] = it;
+            return it;
+        });
+    }
+}
+__decorate([
+    cache_1.cache
+], RepositorySynchronizer.prototype, "workspacePath", null);
+__decorate([
+    cache_1.cache
+], RepositorySynchronizer.prototype, "git", null);
+__decorate([
+    cache_1.cache
+], RepositorySynchronizer.prototype, "origin", null);
+__decorate([
+    cache_1.cache
+], RepositorySynchronizer.prototype, "template", null);
+__decorate([
+    cache_1.cache
+], RepositorySynchronizer.prototype, "firstRepositoryCommit", null);
+__decorate([
+    cache_1.cache
+], RepositorySynchronizer.prototype, "mergedPullRequests", null);
+__decorate([
+    cache_1.cache
+], RepositorySynchronizer.prototype, "openedPullRequest", null);
+__decorate([
+    cache_1.cache
+], RepositorySynchronizer.prototype, "currentRepo", null);
+__decorate([
+    cache_1.cache
+], RepositorySynchronizer.prototype, "templateRepoOrNull", null);
+exports.RepositorySynchronizer = RepositorySynchronizer;
+class Remote {
+    constructor(synchronizer, name, repo) {
+        this.isRemoteAdded = false;
+        this.fetchedRefs = [];
+        this._remoteBranches = undefined;
+        this.name = name;
+        this.defaultBranch = repo.default_branch;
+        this.synchronizer = synchronizer;
+        this.git = synchronizer.git;
+        this.repo = repo;
+    }
+    async addRemoteIfNotAdded() {
+        if (!this.isRemoteAdded) {
+            core.debug(`Adding '${this.name}' remote: ${this.repo.svn_url}`);
+            await this.git.addRemote(this.name, this.repo.svn_url);
+            this.isRemoteAdded = true;
+        }
+    }
+    async fetch(ref) {
+        const trueRef = ref || this.defaultBranch;
+        if (!this.fetchedRefs.includes(trueRef)) {
+            await this.addRemoteIfNotAdded();
+            core.debug(`Fetching from '${this.name}' remote: ${trueRef}`);
+            await this.git.fetch(this.name, trueRef);
+            this.fetchedRefs.push(trueRef);
+        }
+    }
+    async checkout(ref) {
+        const trueRef = ref || this.defaultBranch;
+        await this.fetch(trueRef);
+        await forceCheckout(this.git, trueRef, `remotes/${this.name}/${trueRef}`);
+    }
+    get remoteBranches() {
+        return this.addRemoteIfNotAdded().then(() => {
+            if (this._remoteBranches !== undefined) {
+                return Promise.resolve(this._remoteBranches);
+            }
+            else {
+                const branchPrefix = `refs/heads/`;
+                return this.git.listRemote(['--exit-code', '--heads', this.name]).then(content => {
+                    return content.split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0)
+                        .map(line => line.split('\t')[1])
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0);
+                })
+                    .then(branches => branches.map(branch => {
+                    if (branch.startsWith(branchPrefix)) {
+                        return branch.substring(branchPrefix.length);
+                    }
+                    else {
+                        return branch;
+                    }
+                }))
+                    .then(branches => {
+                    this._remoteBranches = branches;
+                    return branches;
+                });
+            }
+        });
+    }
+    async parseLog(ref, reverse, since) {
+        const trueRef = ref || this.defaultBranch;
+        await this.fetch(trueRef);
+        return this.synchronizer.parseLog(`remotes/${this.name}/${trueRef}`, reverse, since);
+    }
+    async push(ref) {
+        const currentBranch = await this.git.raw('rev-parse', '--abbrev-ref', 'HEAD').then(content => content.trim());
+        const trueRef = ref || currentBranch;
+        await this.git.raw('push', this.name, trueRef);
+        const remoteBranchesCache = this._remoteBranches;
+        if (remoteBranchesCache !== undefined) {
+            remoteBranchesCache.push(trueRef);
+        }
+        if (!this.fetchedRefs.includes(trueRef)) {
+            this.fetchedRefs.push(trueRef);
+        }
+    }
+    async remove(ref) {
+        const currentBranch = await this.git.raw('rev-parse', '--abbrev-ref', 'HEAD').then(content => content.trim());
+        const trueRef = ref || currentBranch;
+        const remoteBranches = await this.remoteBranches;
+        if (!remoteBranches.includes(trueRef)) {
+            return;
+        }
+        core.info(`Removing branch from '${this.name}' remote: ${trueRef}`);
+        await this.git.raw('push', '-d', this.name, trueRef);
+        const remoteBranchesCache = this._remoteBranches;
+        if (remoteBranchesCache !== undefined) {
+            const index = remoteBranchesCache.indexOf(trueRef);
+            if (index >= 0) {
+                remoteBranchesCache.splice(index);
+            }
+        }
+    }
+    async mergeAndGetStatus(ref) {
+        const trueRef = ref || this.defaultBranch;
+        await this.fetch(trueRef);
+        return this.synchronizer.mergeAndGetStatus(`remotes/${this.name}/${trueRef}`);
+    }
+}
+exports.Remote = Remote;
+const pullRequestLabel = 'sync-with-template';
+const synchronizationEmailSuffix = '+sync-with-template@users.noreply.github.com';
+const conflictsResolutionEmailSuffix = '+sync-with-template-conflicts-resolution@users.noreply.github.com';
+async function forceCheckout(git, branchName, ref) {
+    core.info(`Checkouting ${branchName} from ${ref}`);
+    await git.raw('checkout', '-f', '-B', branchName, ref);
+    const status = await git.status();
+    const notAdded = status.not_added;
+    if (notAdded.length) {
+        core.debug(`Removing not added files:\n  ${notAdded.join('\n  ')}`);
+        await git.add(notAdded);
+        await git.rm(notAdded);
+    }
+}
+
+
+/***/ }),
+
+/***/ 3790:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.cache = void 0;
+function cache(target, name, descriptor) {
+    const getter = descriptor.get;
+    if (!getter || descriptor.set || descriptor.value) {
+        throw new TypeError(`Property getter is expected: ${name.toString()}`);
+    }
+    const promiseHolder = new PromiseHolder();
+    descriptor.get = function () {
+        const value = getter.call(this);
+        if (value instanceof Promise) {
+            const promise = value
+                .then(result => promiseHolder.resolve(result))
+                .catch(reason => promiseHolder.reject(reason));
+            Object.defineProperty(this, name, {
+                configurable: descriptor.configurable,
+                enumerable: descriptor.enumerable,
+                get() {
+                    if (promiseHolder.isResolved) {
+                        if (promiseHolder.error !== undefined) {
+                            return Promise.reject(promiseHolder.error);
+                        }
+                        else {
+                            return Promise.resolve(promiseHolder.value);
+                        }
+                    }
+                    else {
+                        return promise;
+                    }
+                }
+            });
+        }
+        else {
+            Object.defineProperty(this, name, {
+                configurable: descriptor.configurable,
+                enumerable: descriptor.enumerable,
+                writable: false,
+                value
+            });
+        }
+        return value;
+    };
+}
+exports.cache = cache;
+class PromiseHolder {
+    constructor() {
+        this.isResolved = false;
+        this.error = undefined;
+    }
+    resolve(value) {
+        this.isResolved = true;
+        this.value = value;
+        return value;
+    }
+    reject(error) {
+        this.isResolved = true;
+        this.error = error;
+        return error;
+    }
+}
+
+
+/***/ }),
+
 /***/ 6421:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -12,7 +683,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.isConventionalCommit = void 0;
-const conventional_commits_detector_1 = __importDefault(__nccwpck_require__(7712));
+const conventional_commits_detector_1 = __importDefault(__nccwpck_require__(3973));
 function isConventionalCommit(commitMessage) {
     const type = conventional_commits_detector_1.default([commitMessage]);
     return type.length > 0 && type !== 'unknown';
@@ -125,36 +796,24 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const github_1 = __nccwpck_require__(5438);
-const fs_1 = __importDefault(__nccwpck_require__(5747));
-const is_windows_1 = __importDefault(__nccwpck_require__(9125));
-const path_1 = __importDefault(__nccwpck_require__(5622));
-const picomatch_1 = __importDefault(__nccwpck_require__(8569));
-const rimraf_1 = __importDefault(__nccwpck_require__(4959));
-const simple_git_1 = __importStar(__nccwpck_require__(1477));
-const url_1 = __nccwpck_require__(8835);
 const conventional_commits_1 = __nccwpck_require__(6421);
-const octokit_1 = __nccwpck_require__(8093);
+const RepositorySynchronizer_1 = __nccwpck_require__(2798);
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 const githubToken = core.getInput('githubToken', { required: true });
 core.setSecret(githubToken);
 const conventionalCommits = core.getInput('conventionalCommits', { required: true }).toLowerCase() === 'true';
-const lfs = core.getInput('lfs', { required: true }).toLowerCase() === 'true';
 const syncBranchName = getSyncBranchName();
-const octokit = octokit_1.newOctokitInstance(githubToken);
-const pullRequestLabel = 'sync-with-template';
-const emailSuffix = '+sync-with-template@users.noreply.github.com';
-const conflictsResolutionEmailSuffix = '+sync-with-template-conflicts-resolution@users.noreply.github.com';
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 async function run() {
-    var _a;
     try {
-        const repo = await getCurrentRepo();
+        const templateRepositoryFullName = core.getInput('templateRepository');
+        const ignorePathPatterns = core.getInput('ignorePaths').split('\n')
+            .map(line => line.replace(/#.*/, '').trim())
+            .filter(line => line.length);
+        const synchronizer = new RepositorySynchronizer_1.RepositorySynchronizer(githubToken, templateRepositoryFullName, syncBranchName, ignorePathPatterns);
+        const repo = await synchronizer.currentRepo;
         if (repo.archived) {
             core.info(`Skipping template synchronization, as current repository is archived`);
             return;
@@ -163,165 +822,38 @@ async function run() {
             core.info(`Skipping template synchronization, as current repository is a fork`);
             return;
         }
-        const templateRepo = await getTemplateRepo(core.getInput('templateRepository'), repo);
+        const templateRepo = await synchronizer.templateRepoOrNull;
         if (templateRepo == null) {
             core.warning("Template repository name can't be retrieved: the current repository isn't created from a"
                 + " template and 'templateRepository' input isn't set");
             return;
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`);
-        const ignorePathMatcher = (function () {
-            const patterns = core.getInput('ignorePaths').split('\n')
-                .map(line => line.replace(/#.*/, '').trim())
-                .filter(line => line.length > 0);
-            if (patterns.length === 0) {
-                return undefined;
-            }
-            core.info(`Ignored files:\n  ${patterns.join('\n  ')}`);
-            return picomatch_1.default(patterns, { windows: is_windows_1.default() });
-        })();
-        const workspacePath = __nccwpck_require__(8517).dirSync().name;
-        core.saveState('workspacePath', workspacePath);
-        if (((_a = process.env.ACTIONS_STEP_DEBUG) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === 'true') {
-            __nccwpck_require__(8231).enable('simple-git');
-            process.env.DEBUG = [
-                process.env.DEBUG || '',
-                'simple-git',
-                'simple-git:*'
-            ].filter(it => it.length).join(',');
-        }
-        const git = simple_git_1.default(workspacePath);
-        const unstageIgnoredFiles = async () => {
-            const unstagedFiles = [];
-            if (ignorePathMatcher) {
-                const status = await git.status();
-                for (const filePath of status.staged) {
-                    if (ignorePathMatcher(filePath)) {
-                        core.info(`Ignored file: unstaging: ${filePath}`);
-                        await git.raw('reset', '-q', 'HEAD', '--', filePath);
-                        if (status.created.includes(filePath)) {
-                            core.info(`Ignored file: removing created: ${filePath}`);
-                            const absoluteFilePath = path_1.default.resolve(workspacePath, filePath);
-                            fs_1.default.unlinkSync(absoluteFilePath);
-                        }
-                        else {
-                            core.info(`Ignored file: reverting modified/deleted: ${filePath}`);
-                            await git.raw('checkout', 'HEAD', '--', filePath);
-                        }
-                        unstagedFiles.push(filePath);
-                    }
-                }
-                await git.status();
-            }
-            return unstagedFiles;
-        };
         await core.group("Initializing the repository", async () => {
-            await git.init();
-            await git.addConfig('user.useConfigOnly', 'true');
-            if (repo.owner != null) {
-                await git.addConfig('user.name', repo.owner.login);
-                await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${emailSuffix}`);
-            }
-            else {
-                await git.addConfig('user.name', github_1.context.repo.owner);
-                await git.addConfig('user.email', `${github_1.context.repo.owner}${emailSuffix}`);
-            }
-            await git.addConfig('diff.algorithm', 'patience');
-            //await git.addConfig('core.pager', 'cat')
-            await git.addConfig('gc.auto', '0');
-            await git.addConfig('fetch.recurseSubmodules', 'no');
-            core.info("Setting up credentials");
-            const basicCredentials = Buffer.from(`x-access-token:${githubToken}`, 'utf8').toString('base64');
-            core.setSecret(basicCredentials);
-            for (const origin of [new url_1.URL(repo.svn_url).origin, new url_1.URL(templateRepo.svn_url).origin]) {
-                await git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`);
-            }
-            core.info(`Adding 'origin' remote: ${repo.svn_url}`);
-            await git.addRemote('origin', repo.svn_url);
-            await git.fetch('origin', repo.default_branch);
-            core.info(`Adding 'template' remote: ${templateRepo.svn_url}`);
-            await git.addRemote('template', templateRepo.svn_url);
-            await git.fetch('template', templateRepo.default_branch);
-            if (lfs) {
-                core.info("Installing LFS");
-                await git.raw('lfs', 'install', '--local');
-            }
+            await synchronizer.initializeRepository();
         });
-        const originBranches = await gitRemoteBranches(git, 'origin');
-        const doesOriginHasSyncBranch = originBranches.indexOf(`refs/heads/${syncBranchName}`) >= 0;
-        const lastCommitLogItem = await core.group("Fetching sync branch", async () => {
+        await core.group("Fetching sync branch", async () => {
+            const doesOriginHasSyncBranch = await synchronizer.doesSyncBranchExists();
             if (doesOriginHasSyncBranch) {
-                await git.fetch('origin', syncBranchName);
-                await git.checkout(syncBranchName);
-                return null;
+                await synchronizer.checkoutSyncBranch();
+                return;
             }
-            const mergedPullRequests = (await octokit.paginate(octokit.pulls.list, {
-                owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo,
-                state: 'closed',
-                head: `${github_1.context.repo.owner}:${syncBranchName}`
-            }))
-                .filter(pr => pr.head.ref === syncBranchName)
-                .filter(pr => pr.head.sha !== pr.base.sha)
-                .filter(pr => pr.merged_at != null);
-            const sortedPullRequests = [...mergedPullRequests].sort((pr1, pr2) => {
-                const mergedAt1 = new Date(pr1.merged_at).getTime();
-                const mergedAt2 = new Date(pr2.merged_at).getTime();
-                if (mergedAt1 < mergedAt2) {
-                    return 1;
-                }
-                else if (mergedAt1 > mergedAt2) {
-                    return -1;
-                }
-                else {
-                    return pr2.number - pr1.number;
-                }
-            });
-            if (sortedPullRequests.length > 0) {
-                const pullRequest = sortedPullRequests[0];
-                core.info(`Fetching last commit of pull request #${pullRequest.number}: ${repo.html_url}/commit/${pullRequest.head.sha}`);
-                const pullRequestBranchName = `refs/pull/${pullRequest.number}/head`;
-                await git.fetch('origin', pullRequestBranchName);
-                //await git.checkoutBranch(syncBranchName, pullRequest.merge_commit_sha!)
-                await git.checkoutBranch(syncBranchName, pullRequest.head.sha);
-                const log = await git.log([pullRequest.head.sha]);
-                for (const logItem of log.all) {
-                    if (logItem.author_email.endsWith(emailSuffix)) {
-                        return logItem;
-                    }
-                }
-                return null;
+            const pullRequest = await synchronizer.latestMergedPullRequest;
+            if (pullRequest) {
+                await synchronizer.checkoutPullRequestHead(pullRequest);
+                return;
             }
-            core.info(`Creating '${syncBranchName}' branch from the first commit of default branch '${repo.default_branch}'`);
-            const defaultBranchLog = await git.log(['--reverse', `remotes/origin/${repo.default_branch}`]);
-            await git.checkoutBranch(syncBranchName, defaultBranchLog.latest.hash);
-            return null;
+            await synchronizer.checkoutFirstRepositoryCommit();
         });
         const lastSynchronizedCommitDate = await core.group("Retrieving last synchronized commit date", async () => {
-            if (lastCommitLogItem != null) {
-                core.info(`Last synchronized commit is: ${repo.html_url}/commit/${lastCommitLogItem.hash} (${lastCommitLogItem.date}): ${lastCommitLogItem.message}`);
-                return new Date(lastCommitLogItem.date);
-            }
-            const syncBranchLog = await git.log();
-            for (const logItem of syncBranchLog.all) {
-                if (logItem.author_email.endsWith(emailSuffix)) {
-                    core.info(`Last synchronized commit is: ${repo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`);
-                    return new Date(logItem.date);
-                }
-            }
-            const latestLogItem = syncBranchLog.latest;
-            core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestLogItem.hash} (${latestLogItem.date}): ${latestLogItem.message}`);
-            return new Date(latestLogItem.date);
+            const latestSyncCommit = (await synchronizer.retrieveLatestSyncCommit())
+                || (await synchronizer.firstRepositoryCommit);
+            core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestSyncCommit.hash} (${latestSyncCommit.date}): ${latestSyncCommit.message}`);
+            return new Date(latestSyncCommit.date);
         });
-        const lastSynchronizedCommitTimestamp = lastSynchronizedCommitDate.getTime() / 1000;
-        const cherryPickedCommitCounts = await core.group("Cherry-picking template commits", async () => {
-            const templateBranchName = templateRepo.default_branch;
-            await git.fetch('template', templateBranchName);
-            const templateBranchLog = await git.log([
-                '--reverse',
-                `--since=${lastSynchronizedCommitTimestamp + 1}`,
-                `remotes/template/${templateBranchName}`
-            ]);
+        const cherryPickedCommitsCounts = await core.group("Cherry-picking template commits", async () => {
+            const templateBranchLog = await synchronizer.template
+                .then(it => it.parseLog(undefined, true, lastSynchronizedCommitDate));
             let count = 0;
             for (const logItem of templateBranchLog.all) {
                 const logDate = new Date(logItem.date);
@@ -330,44 +862,7 @@ async function run() {
                 }
                 ++count;
                 core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`);
-                try {
-                    await git.raw('cherry-pick', '--no-commit', '-r', '--allow-empty', '--allow-empty-message', '--strategy=recursive', '-Xours', logItem.hash);
-                }
-                catch (reason) {
-                    if (reason instanceof simple_git_1.GitError
-                        && reason.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)) {
-                        const unstagedFiles = await unstageIgnoredFiles();
-                        const status = await git.status();
-                        const unresolvedConflictedFiles = [];
-                        for (const conflictedPath of status.conflicted) {
-                            if (unstagedFiles.includes(conflictedPath)) {
-                                continue;
-                            }
-                            const fileInfo = status.files.find(file => file.path === conflictedPath);
-                            if (fileInfo !== undefined && fileInfo.working_dir === 'U') {
-                                if (fileInfo.index === 'A') {
-                                    core.info(`Resolving conflict: adding file: ${conflictedPath}`);
-                                    await git.add(conflictedPath);
-                                    continue;
-                                }
-                                else if (fileInfo.index === 'D') {
-                                    core.info(`Resolving conflict: removing file: ${conflictedPath}`);
-                                    await git.raw('rm', '-f', conflictedPath);
-                                    continue;
-                                }
-                            }
-                            core.error(`Unresolved conflict: ${conflictedPath}`);
-                            unresolvedConflictedFiles.push(conflictedPath);
-                        }
-                        if (unresolvedConflictedFiles.length > 0) {
-                            throw reason;
-                        }
-                    }
-                    else {
-                        throw reason;
-                    }
-                }
-                await unstageIgnoredFiles();
+                await synchronizer.cherryPick(logItem);
                 let message = logItem.message
                     .replace(/( \(#\d+\))+$/, '')
                     .trim();
@@ -382,146 +877,56 @@ async function run() {
                         message = `chore(template): ${message}`;
                     }
                 }
-                await git
-                    .env('GIT_AUTHOR_DATE', logItem.date)
-                    .env('GIT_COMMITTER_DATE', logItem.date)
-                    .commit(message, {
-                    '--allow-empty': null,
-                });
+                await synchronizer.commit(message, logItem.date);
             }
             return count;
         });
-        let createdPullRequestNumber = undefined;
-        if (cherryPickedCommitCounts === 0) {
+        if (cherryPickedCommitsCounts === 0) {
             core.info("No commits were cherry-picked from template repository");
         }
+        let additionalCommitsCount = 0;
+        if (synchronizer.isIgnorePathMatcherSet) {
+            await core.group('Trying to resolve merge conflicts for ignored files', async () => {
+                const isCommitAdded = await synchronizer.resolveMergeConflictsForIgnoredFiles();
+                if (isCommitAdded) {
+                    additionalCommitsCount++;
+                }
+            });
+        }
+        const changedFiles = await synchronizer.retrieveChangedFilesAfterMerge();
+        if (!changedFiles.length) {
+            core.info('No files will be changed after merging the changes, removing sync branch');
+            await synchronizer.origin.then(remote => remote.remove(syncBranchName));
+            const openedPullRequest = await synchronizer.openedPullRequest;
+            if (openedPullRequest) {
+                await synchronizer.closePullRequest(openedPullRequest, 'autoclosed');
+            }
+        }
         else {
-            core.info(`Pushing ${cherryPickedCommitCounts} commits`);
-            await git.raw('push', 'origin', syncBranchName);
-            const openedPullRequests = (await octokit.pulls.list({
-                owner: github_1.context.repo.owner,
-                repo: github_1.context.repo.repo,
-                state: 'open',
-                head: `${github_1.context.repo.owner}:${syncBranchName}`,
-                sort: 'created',
-                direction: 'desc',
-            })).data.filter(pr => pr.head.ref === syncBranchName);
-            if (openedPullRequests.length > 0) {
-                const openedPullRequest = openedPullRequests[0];
-                core.info(`Skip creating pull request for '${syncBranchName}' branch`
-                    + `, as there is an opened one: ${openedPullRequest.html_url}`);
-                createdPullRequestNumber = openedPullRequest.number;
+            const totalCommitCount = cherryPickedCommitsCounts + additionalCommitsCount;
+            if (totalCommitCount > 0) {
+                core.info(`Pushing ${totalCommitCount} commits`);
+                await synchronizer.origin.then(remote => remote.push(syncBranchName));
             }
             else {
+                core.info('No commits were made, nothing to push');
+            }
+            const openedPullRequest = await synchronizer.openedPullRequest;
+            if (!openedPullRequest) {
                 let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`;
                 if (conventionalCommits) {
                     pullRequestTitle = `chore(template): ${pullRequestTitle}`;
                 }
-                const pullRequest = (await octokit.pulls.create({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
+                const defaultBranch = await synchronizer.origin.then(it => it.defaultBranch);
+                const pullRequest = await synchronizer.createPullRequest({
                     head: syncBranchName,
-                    base: repo.default_branch,
+                    base: defaultBranch,
                     title: pullRequestTitle,
                     body: "Template repository changes."
                         + "\n\nIf you close this PR, it will be recreated automatically.",
                     maintainer_can_modify: true,
-                })).data;
-                await octokit.issues.addLabels({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    issue_number: pullRequest.number,
-                    labels: [pullRequestLabel]
                 });
                 core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
-                createdPullRequestNumber = pullRequest.number;
-            }
-        }
-        if (ignorePathMatcher) {
-            core.debug('Resolving merge conflicts for ignored files');
-            let conflictPullRequest = undefined;
-            if (createdPullRequestNumber) {
-                const pullRequest = await octokit.pulls.get({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    pull_number: createdPullRequestNumber
-                }).then(it => it.data);
-                if (pullRequest.mergeable_state === 'dirty') {
-                    conflictPullRequest = pullRequest;
-                }
-            }
-            else {
-                const openedPullRequests = (await octokit.pulls.list({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    state: 'open',
-                    head: `${github_1.context.repo.owner}:${syncBranchName}`,
-                    sort: 'created',
-                    direction: 'desc',
-                })).data.filter(pr => pr.head.ref === syncBranchName);
-                for (const pullRequestSimple of openedPullRequests) {
-                    const pullRequest = await octokit.pulls.get({
-                        owner: github_1.context.repo.owner,
-                        repo: github_1.context.repo.repo,
-                        pull_number: pullRequestSimple.number
-                    }).then(it => it.data);
-                    if (pullRequest.mergeable_state === 'dirty') {
-                        conflictPullRequest = pullRequest;
-                        break;
-                    }
-                }
-            }
-            if (conflictPullRequest) {
-                await core.group(`Trying to resolve merge conflicts for ignored files of ${conflictPullRequest.html_url}`, async () => {
-                    await git.fetch('origin', repo.default_branch);
-                    await git.fetch('origin', syncBranchName);
-                    await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${syncBranchName}`);
-                    try {
-                        await git.raw('merge', '--no-commit', '--no-ff', `remotes/origin/${repo.default_branch}`);
-                    }
-                    catch (reason) {
-                        if (reason instanceof simple_git_1.GitError
-                            && reason.message.includes('Automatic merge failed; fix conflicts')) {
-                            // Merge conflicts will be resolved below
-                        }
-                        else {
-                            throw reason;
-                        }
-                    }
-                    const status = await git.status();
-                    core.info(`status: ${JSON.stringify(status, null, 2)}`);
-                    const conflictingNotIgnoredFiles = status.conflicted.filter(it => !ignorePathMatcher(it));
-                    if (conflictingNotIgnoredFiles.length) {
-                        core.error(`Automatic merge-conflict resolution for ignored files failed`
-                            + `, as there are some conflict in included`
-                            + ` files:\n  ${conflictingNotIgnoredFiles.join('\n  ')}`);
-                        await git.raw('merge', '--abort');
-                    }
-                    else {
-                        for (const conflictedPath of status.conflicted) {
-                            const fileInfo = status.files.find(file => file.path === conflictedPath);
-                            if (fileInfo && fileInfo.working_dir === 'D') {
-                                core.info(`Resolving conflict: removing file: ${conflictedPath}`);
-                                await git.raw('rm', '-f', conflictedPath);
-                            }
-                            else {
-                                core.info(`Resolving conflict: using file from`
-                                    + ` '${repo.default_branch}' branch: ${conflictedPath}`);
-                                await git.raw('checkout', '-f', `remotes/origin/${syncBranchName}`, '--', conflictedPath);
-                            }
-                        }
-                        core.info('Committing changes');
-                        if (repo.owner != null) {
-                            await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${conflictsResolutionEmailSuffix}`);
-                        }
-                        else {
-                            await git.addConfig('user.email', `${github_1.context.repo.owner}${conflictsResolutionEmailSuffix}`);
-                        }
-                        await git.raw('commit', '--no-edit');
-                        core.info('Pushing merge-commit');
-                        await git.raw('push', 'origin', syncBranchName);
-                    }
-                });
             }
         }
     }
@@ -529,28 +934,9 @@ async function run() {
         core.setFailed(error);
     }
 }
-async function cleanup() {
-    try {
-        const workspacePath = core.getState('workspacePath');
-        if (!workspacePath) {
-            throw new Error('workspacePath must be set');
-        }
-        core.debug(`Removing workspace: ${workspacePath}`);
-        rimraf_1.default.sync(workspacePath);
-    }
-    catch (error) {
-        core.warning(error);
-    }
-}
-if (!core.getState('isExecuted')) {
-    core.saveState('isExecuted', 'true');
-    //noinspection JSIgnoredPromiseFromCall
-    run();
-}
-else {
-    //noinspection JSIgnoredPromiseFromCall
-    cleanup();
-}
+//noinspection JSIgnoredPromiseFromCall
+run();
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 function getSyncBranchName() {
     const name = core.getInput('syncBranchName', { required: true });
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
@@ -559,40 +945,6 @@ function getSyncBranchName() {
     else {
         return `chore/${name}`;
     }
-}
-async function gitRemoteBranches(git, remoteName) {
-    return git.listRemote(['--exit-code', '--heads', remoteName]).then(content => {
-        return content.split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0)
-            .map(line => line.split('\t')[1])
-            .map(line => line.trim())
-            .filter(line => line.length > 0);
-    });
-}
-async function getCurrentRepo() {
-    return getRepo(github_1.context.repo.owner, github_1.context.repo.repo);
-}
-async function getTemplateRepo(templateRepoName, currentRepo) {
-    var _a;
-    if (templateRepoName === ((_a = currentRepo.template_repository) === null || _a === void 0 ? void 0 : _a.full_name)) {
-        const templateRepo = currentRepo.template_repository;
-        return Promise.resolve(templateRepo);
-    }
-    else if (templateRepoName === '') {
-        if (currentRepo.template_repository != null) {
-            const templateRepo = currentRepo.template_repository;
-            return Promise.resolve(templateRepo);
-        }
-    }
-    else {
-        const [owner, repo] = templateRepoName.split('/');
-        return getRepo(owner, repo);
-    }
-    return Promise.resolve(null);
-}
-async function getRepo(owner, repo) {
-    return octokit.repos.get({ owner, repo }).then(it => it.data);
 }
 
 
@@ -6868,7 +7220,7 @@ function isLowerCase(str) {
 
 /***/ }),
 
-/***/ 7712:
+/***/ 3973:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -8183,7 +8535,7 @@ function ownProp (obj, field) {
 }
 
 var path = __nccwpck_require__(5622)
-var minimatch = __nccwpck_require__(3973)
+var minimatch = __nccwpck_require__(8085)
 var isAbsolute = __nccwpck_require__(8714)
 var Minimatch = minimatch.Minimatch
 
@@ -8459,7 +8811,7 @@ module.exports = glob
 
 var fs = __nccwpck_require__(5747)
 var rp = __nccwpck_require__(6863)
-var minimatch = __nccwpck_require__(3973)
+var minimatch = __nccwpck_require__(8085)
 var Minimatch = minimatch.Minimatch
 var inherits = __nccwpck_require__(4124)
 var EE = __nccwpck_require__(8614).EventEmitter
@@ -9217,7 +9569,7 @@ globSync.GlobSync = GlobSync
 
 var fs = __nccwpck_require__(5747)
 var rp = __nccwpck_require__(6863)
-var minimatch = __nccwpck_require__(3973)
+var minimatch = __nccwpck_require__(8085)
 var Minimatch = minimatch.Minimatch
 var Glob = __nccwpck_require__(1957).Glob
 var util = __nccwpck_require__(1669)
@@ -9863,7 +10215,7 @@ if (typeof Object.create === 'function') {
 
 /***/ }),
 
-/***/ 3973:
+/***/ 8085:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 module.exports = minimatch
