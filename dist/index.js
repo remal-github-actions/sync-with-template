@@ -897,8 +897,9 @@ async function run() {
             core.info("No commits were cherry-picked from template repository");
         }
         let additionalCommitsCount = 0;
+        const defaultBranch = await synchronizer.origin.then(it => it.defaultBranch);
         if (synchronizer.isIgnorePathMatcherSet) {
-            await core.group('Trying to resolve merge conflicts for ignored files', async () => {
+            await core.group(`Trying to resolve merge conflicts ${syncBranchName}->${defaultBranch} for ignored files`, async () => {
                 const isCommitAdded = await synchronizer.resolveMergeConflictsForIgnoredFiles();
                 if (isCommitAdded) {
                     additionalCommitsCount++;
@@ -925,7 +926,6 @@ async function run() {
                     if (conventionalCommits) {
                         pullRequestTitle = `chore(template): ${pullRequestTitle}`;
                     }
-                    const defaultBranch = await synchronizer.origin.then(it => it.defaultBranch);
                     const pullRequest = await synchronizer.createPullRequest({
                         head: syncBranchName,
                         base: defaultBranch,
