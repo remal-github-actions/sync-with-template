@@ -564,6 +564,7 @@ export class Remote {
                 return Promise.resolve(this._remoteBranches)
 
             } else {
+                const branchPrefix = `refs/heads/`
                 return this.git.listRemote(['--exit-code', '--heads', this.name]).then(content => {
                     return content.split('\n')
                         .map(line => line.trim())
@@ -572,6 +573,13 @@ export class Remote {
                         .map(line => line.trim())
                         .filter(line => line.length > 0)
                 })
+                    .then(branches => branches.map(branch => {
+                        if (branch.startsWith(branchPrefix)) {
+                            return branch.substring(branchPrefix.length)
+                        } else {
+                            return branch
+                        }
+                    }))
                     .then(branches => {
                         core.info(`Branches of '${this.name}' remote:\n  ${branches.join('\n  ')}`)
                         this._remoteBranches = branches
