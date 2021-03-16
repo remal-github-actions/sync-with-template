@@ -910,7 +910,8 @@ async function run() {
         }
         let additionalCommitsCount = 0;
         if (synchronizer.isIgnorePathMatcherSet) {
-            await core.group(`Trying to resolve merge conflicts ${syncBranchName}->${defaultBranchName} for ignored files`, async () => {
+            await core.group(`Trying to resolve merge conflicts from '${syncBranchName}' branch`
+                + ` to '${defaultBranchName}' branch for ignored files`, async () => {
                 const isCommitAdded = await synchronizer.resolveMergeConflictsForIgnoredFiles();
                 if (isCommitAdded) {
                     additionalCommitsCount++;
@@ -919,8 +920,8 @@ async function run() {
         }
         const changedFiles = await synchronizer.retrieveChangedFilesAfterMerge();
         if (!changedFiles.length) {
-            core.info(`No files will be changed after merging the changes from '${syncBranchName}' branch`
-                + ` into '${defaultBranchName}' branch, removing '${syncBranchName}' branch`);
+            core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
+                + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`);
             await synchronizer.origin.then(remote => remote.remove(syncBranchName));
             const openedPullRequest = await synchronizer.openedPullRequest;
             if (openedPullRequest) {
