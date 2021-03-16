@@ -1,11 +1,9 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
-import {components} from '@octokit/openapi-types/generated/types'
-import fs from 'fs'
+import {components, operations} from '@octokit/openapi-types/generated/types'
 import isWindows from 'is-windows'
-import path from 'path'
 import picomatch from 'picomatch'
-import simpleGit, {GitError, LogResult, SimpleGit} from 'simple-git'
+import simpleGit, {GitError, LogResult, SimpleGit, StatusResult} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
 import {URL} from 'url'
 import {cache} from './cache'
@@ -14,6 +12,7 @@ import {newOctokitInstance, Octokit} from './octokit'
 export type Repo = components['schemas']['full-repository']
 export type PullRequest = components['schemas']['pull-request']
 export type PullRequestSimple = components['schemas']['pull-request-simple']
+export type NewPullRequest = operations['pulls/create']['requestBody']['content']['application/json']
 
 export class RepositorySynchronizer {
 
@@ -44,6 +43,9 @@ export class RepositorySynchronizer {
         }
     }
 
+    get isIgnorePathMatcherSet(): boolean {
+        return this.ignorePathMatcher != null
+    }
 
     @cache
     get workspacePath(): string {
@@ -73,13 +75,6 @@ export class RepositorySynchronizer {
 
         await git.init()
         await git.addConfig('user.useConfigOnly', 'true')
-        if (repo.owner != null) {
-            await git.addConfig('user.name', repo.owner.login)
-            await git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${emailSuffix}`)
-        } else {
-            await git.addConfig('user.name', context.repo.owner)
-            await git.addConfig('user.email', `${context.repo.owner}${emailSuffix}`)
-        }
         await git.addConfig('diff.algorithm', 'patience')
         //await git.addConfig('core.pager', 'cat')
         await git.addConfig('gc.auto', '0')
@@ -93,9 +88,15 @@ export class RepositorySynchronizer {
         }
     }
 
-    async initializeLfs() {
-        core.info('Initialize LFS')
-        await this.git.raw('lfs', 'install', '--local')
+    async initializeUserInfo(userEmailSuffix: string = synchronizationEmailSuffix) {
+        const repo = await this.currentRepo
+        if (repo.owner != null) {
+            await this.git.addConfig('user.name', repo.owner.login)
+            await this.git.addConfig('user.email', `${repo.owner.id}+${repo.owner.login}${userEmailSuffix}`)
+        } else {
+            await this.git.addConfig('user.name', context.repo.owner)
+            await this.git.addConfig('user.email', `${context.repo.owner}${userEmailSuffix}`)
+        }
     }
 
 
@@ -162,7 +163,7 @@ export class RepositorySynchronizer {
     async retrieveLatestSyncCommit(): Promise<DefaultLogFields | undefined> {
         const log = await this.parseLog()
         for (const logItem of log.all) {
-            if (logItem.author_email.endsWith(emailSuffix)) {
+            if (logItem.author_email.endsWith(synchronizationEmailSuffix)) {
                 return logItem
             }
         }
@@ -253,8 +254,7 @@ export class RepositorySynchronizer {
                 await this.git.raw('reset', '-q', 'HEAD', '--', filePath)
                 if (status.created.includes(filePath)) {
                     core.info(`Ignored file: removing created: ${filePath}`)
-                    const absoluteFilePath = path.resolve(this.workspacePath, filePath)
-                    fs.unlinkSync(absoluteFilePath)
+                    await this.git.rm(filePath)
                 } else {
                     core.info(`Ignored file: reverting modified/deleted: ${filePath}`)
                     await this.git.raw('checkout', 'HEAD', '--', filePath)
@@ -266,7 +266,9 @@ export class RepositorySynchronizer {
     }
 
 
-    async commit(message: string, date?: string | Date) {
+    async commit(message: string, date?: string | Date, userEmailSuffix: string = synchronizationEmailSuffix) {
+        await this.initializeUserInfo(userEmailSuffix)
+
         let git = this.git
         if (date) {
             git = git
@@ -280,11 +282,90 @@ export class RepositorySynchronizer {
     }
 
 
-    async resolveMergeConflictsForIgnoredFiles() {
-        if (!this.ignorePathMatcher) {
-            return
+    async retrieveChangedFilesAfterMerge(ref?: string): Promise<string[]> {
+        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus())
+
+        const changedFiles: string[] = []
+        const ignorePathMatcher = this.ignorePathMatcher
+        for (const filePath of [...mergeStatus.staged, ...mergeStatus.conflicted]) {
+            if (!changedFiles.includes(filePath)) {
+                const isIncluded = !ignorePathMatcher || ignorePathMatcher(filePath)
+                if (isIncluded) {
+                    changedFiles.push(filePath)
+                }
+            }
         }
 
+        this.git.raw('merge', '--abort')
+
+        return changedFiles
+    }
+
+
+    async resolveMergeConflictsForIgnoredFiles(ref?: string): Promise<boolean> {
+        const ignorePathMatcher = this.ignorePathMatcher
+        if (ignorePathMatcher == null) {
+            return false
+        }
+
+        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus())
+        const conflicted = mergeStatus.conflicted
+        if (!conflicted.length) {
+            this.git.raw('merge', '--abort')
+            return false
+        }
+
+        const ignoredConflicted = conflicted.filter(it => ignorePathMatcher(it))
+        const notIgnoredConflicted = conflicted.filter(it => !ignoredConflicted.includes(it))
+        if (notIgnoredConflicted.length) {
+            core.error(`Automatic merge-conflict resolution for ignored files failed`
+                + `, as there are some conflict in included`
+                + ` files:\n  ${notIgnoredConflicted.join('\n  ')}`
+            )
+            this.git.raw('merge', '--abort')
+            return false
+        }
+
+        for (const conflictedPath of ignoredConflicted) {
+            const fileInfo = mergeStatus.files.find(file => file.path === conflictedPath)
+            if (fileInfo && fileInfo.working_dir === 'D') {
+                core.info(`Resolving conflict: removing file: ${conflictedPath}`)
+                await this.git.rm(conflictedPath)
+            } else {
+                const remote = await this.origin
+                core.info(`Resolving conflict: using file from '${remote.defaultBranch}' branch: ${conflictedPath}`)
+                await this.git.raw(
+                    'checkout',
+                    '-f',
+                    `remotes/${remote.name}/${this.syncBranchName}`,
+                    '--',
+                    conflictedPath
+                )
+            }
+        }
+
+        core.info('Committing changes')
+        await this.initializeUserInfo(conflictsResolutionEmailSuffix)
+        await this.git.raw('commit', '--no-edit')
+
+        return true
+    }
+
+    async mergeAndGetStatus(ref: string): Promise<StatusResult> {
+        try {
+            await this.git.raw('merge', '--no-commit', '--no-ff', ref)
+
+        } catch (reason) {
+            if (reason instanceof GitError
+                && reason.message.includes('Automatic merge failed; fix conflicts')
+            ) {
+                // Merge conflicts will be resolved later
+            } else {
+                throw reason
+            }
+        }
+
+        return this.git.status()
     }
 
 
@@ -314,6 +395,25 @@ export class RepositorySynchronizer {
                     return pr2.number - pr1.number
                 }
             }))
+    }
+
+    async createPullRequest(info: NewPullRequest): Promise<PullRequest> {
+        const pullRequest = await this.octokit.pulls.create(Object.assign(
+            {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+            },
+            info
+        )).then(it => it.data)
+
+        await this.octokit.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: pullRequest.number,
+            labels: [pullRequestLabel],
+        })
+
+        return pullRequest
     }
 
 
@@ -346,6 +446,7 @@ export class RepositorySynchronizer {
     }
 
     async closePullRequest(pullRequest: PullRequest | PullRequestSimple, titleSuffix?: string): Promise<PullRequest> {
+        core.info(`Closing pull request ${pullRequest.html_url}`)
         return this.octokit.pulls.update({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -413,15 +514,19 @@ export class RepositorySynchronizer {
 
 export class Remote {
 
+    readonly name: RemoteName
+    readonly defaultBranch: string
+
     private readonly synchronizer: RepositorySynchronizer
     private readonly git: SimpleGit
-    private readonly name: string
     private readonly repo: Repo
 
     constructor(synchronizer: RepositorySynchronizer, name: RemoteName, repo: Repo) {
+        this.name = name
+        this.defaultBranch = repo.default_branch
+
         this.synchronizer = synchronizer
         this.git = synchronizer.git
-        this.name = name
         this.repo = repo
     }
 
@@ -435,10 +540,10 @@ export class Remote {
         }
     }
 
-    private fetchedRefs: string[] = []
+    private readonly fetchedRefs: string[] = []
 
     async fetch(ref?: string) {
-        const trueRef = ref || this.repo.default_branch
+        const trueRef = ref || this.defaultBranch
         if (!this.fetchedRefs.includes(trueRef)) {
             await this.addRemoteIfNotAdded()
             core.debug(`Fetching from '${this.name}' remote: ${trueRef}`)
@@ -448,7 +553,7 @@ export class Remote {
     }
 
     async checkout(ref?: string) {
-        const trueRef = ref || this.repo.default_branch
+        const trueRef = ref || this.defaultBranch
         await this.fetch(trueRef)
         await forceCheckout(this.git, trueRef, `remotes/origin/${trueRef}`)
     }
@@ -478,19 +583,49 @@ export class Remote {
     }
 
     async parseLog(ref?: string, reverse?: boolean, since?: Date): Promise<LogResult> {
-        const trueRef = ref || this.repo.default_branch
+        const trueRef = ref || this.defaultBranch
         return this.synchronizer.parseLog(`remotes/origin/${trueRef}`, reverse, since)
     }
 
     async push(ref?: string) {
-        if (ref) {
-            await this.git.raw('push', this.name, ref)
+        const currentBranch = await this.git.raw('rev-parse', '--abbrev-ref', 'HEAD').then(content => content.trim())
+        const trueRef = ref || currentBranch
 
-        } else {
-            const currentBranch = await this.git.raw('rev-parse', '--abbrev-ref', 'HEAD')
-                .then(content => content.trim())
-            await this.git.raw('push', this.name, currentBranch)
+        await this.git.raw('push', this.name, trueRef)
+
+        const remoteBranchesCache = this._remoteBranches
+        if (remoteBranchesCache !== undefined) {
+            remoteBranchesCache.push(trueRef)
         }
+        if (!this.fetchedRefs.includes(trueRef)) {
+            this.fetchedRefs.push(trueRef)
+        }
+    }
+
+    async remove(ref?: string) {
+        const currentBranch = await this.git.raw('rev-parse', '--abbrev-ref', 'HEAD').then(content => content.trim())
+        const trueRef = ref || currentBranch
+
+        const remoteBranches = await this.remoteBranches
+        if (!remoteBranches.includes(trueRef)) {
+            return
+        }
+
+        core.info(`Removing branch from '${this.name}' remote: ${trueRef}`)
+        await this.git.raw('push', '-d', this.name, trueRef)
+
+        const remoteBranchesCache = this._remoteBranches
+        if (remoteBranchesCache !== undefined) {
+            const index = remoteBranchesCache.indexOf(trueRef)
+            if (index >= 0) {
+                remoteBranchesCache.splice(index)
+            }
+        }
+    }
+
+    async mergeAndGetStatus(ref?: string): Promise<StatusResult> {
+        const trueRef = ref || this.defaultBranch
+        return this.synchronizer.mergeAndGetStatus(`remotes/${this.name}/${trueRef}`)
     }
 
 }
@@ -500,7 +635,7 @@ type GlobMatcher = (filePath: string) => boolean
 type RemoteName = 'origin' | 'template'
 
 const pullRequestLabel = 'sync-with-template'
-const emailSuffix = '+sync-with-template@users.noreply.github.com'
+const synchronizationEmailSuffix = '+sync-with-template@users.noreply.github.com'
 const conflictsResolutionEmailSuffix = '+sync-with-template-conflicts-resolution@users.noreply.github.com'
 
 async function forceCheckout(git: SimpleGit, branchName: string, ref: string) {
