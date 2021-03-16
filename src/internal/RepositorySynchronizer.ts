@@ -280,6 +280,15 @@ export class RepositorySynchronizer {
     }
 
 
+    async resolveMergeConflictsForIgnoredFiles() {
+        if (!this.ignorePathMatcher) {
+            return
+        }
+
+
+    }
+
+
     get latestMergedPullRequest(): Promise<PullRequest | PullRequestSimple | undefined> {
         return this.mergedPullRequests.then(prs => prs.length ? prs[0] : undefined)
     }
@@ -309,19 +318,8 @@ export class RepositorySynchronizer {
     }
 
 
-    get openedPullRequest(): Promise<PullRequest | PullRequestSimple | undefined> {
-        return this.openedPullRequests.then(prs => prs.length ? prs[0] : undefined)
-    }
-
-    async closeRedundantOpenedPullRequests() {
-        const openedPullRequests = await this.openedPullRequests
-        for (let index = 1; index < openedPullRequests.length; ++index) {
-
-        }
-    }
-
     @cache
-    private get openedPullRequests(): Promise<PullRequestSimple[]> {
+    get openedPullRequest(): Promise<PullRequestSimple | undefined> {
         return this.octokit.paginate(this.octokit.pulls.list, {
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -331,6 +329,33 @@ export class RepositorySynchronizer {
             direction: 'desc',
         })
             .then(prs => prs.filter(pr => pr.head.ref === this.syncBranchName))
+            .then(prs => {
+                const promises = prs.map((pr, index) =>
+                    index === 0
+                        ? Promise.resolve(pr)
+                        : this.closePullRequest(pr, 'autoclosed redundant')
+                )
+                return Promise.all(promises as Promise<any>[])
+            })
+            .then(promises => {
+                if (promises.length) {
+                    return promises[0] as PullRequestSimple
+                } else {
+                    return undefined
+                }
+            })
+    }
+
+    async closePullRequest(pullRequest: PullRequest | PullRequestSimple, titleSuffix?: string): Promise<PullRequest> {
+        return this.octokit.pulls.update({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pullRequest.number,
+            state: 'closed',
+            title: titleSuffix
+                ? `${pullRequest.title} - ${titleSuffix}`
+                : pullRequest.title
+        }).then(it => it.data)
     }
 
 
@@ -385,7 +410,6 @@ export class RepositorySynchronizer {
             })
     }
 
-
 }
 
 export class Remote {
@@ -395,7 +419,7 @@ export class Remote {
     private readonly name: string
     private readonly repo: Repo
 
-    constructor(synchronizer: RepositorySynchronizer, name: string, repo: Repo) {
+    constructor(synchronizer: RepositorySynchronizer, name: RemoteName, repo: Repo) {
         this.synchronizer = synchronizer
         this.git = synchronizer.git
         this.name = name
@@ -460,16 +484,21 @@ export class Remote {
     }
 
     async push(ref?: string) {
-        const params: string[] = ['push', this.name]
         if (ref) {
-            params.push(ref)
+            await this.git.raw('push', this.name, ref)
+
+        } else {
+            const currentBranch = await this.git.raw('rev-parse', '--abbrev-ref', 'HEAD')
+                .then(content => content.trim())
+            await this.git.raw('push', this.name, currentBranch)
         }
-        await this.git.raw(params)
     }
 
 }
 
 type GlobMatcher = (filePath: string) => boolean
+
+type RemoteName = 'origin' | 'template'
 
 const pullRequestLabel = 'sync-with-template'
 const emailSuffix = '+sync-with-template@users.noreply.github.com'
