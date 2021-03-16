@@ -287,6 +287,7 @@ class RepositorySynchronizer {
         const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref));
         const conflicted = mergeStatus.conflicted;
         if (!conflicted.length) {
+            core.info('No merge conflicts detected');
             await this.abortMerge();
             return false;
         }
