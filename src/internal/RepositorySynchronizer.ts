@@ -585,7 +585,7 @@ export class Remote {
     async parseLog(ref?: string, reverse?: boolean, since?: Date): Promise<LogResult> {
         const trueRef = ref || this.defaultBranch
         await this.fetch(trueRef)
-        return this.synchronizer.parseLog(`remotes/origin/${trueRef}`, reverse, since)
+        return this.synchronizer.parseLog(`remotes/${this.name}/${trueRef}`, reverse, since)
     }
 
     async push(ref?: string) {

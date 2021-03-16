@@ -78,8 +78,8 @@ async function run(): Promise<void> {
 
 
         const cherryPickedCommitsCounts: number = await core.group("Cherry-picking template commits", async () => {
-            const templateRemote = await synchronizer.template
-            const templateBranchLog = await templateRemote.parseLog(undefined, true, lastSynchronizedCommitDate)
+            const templateBranchLog = await synchronizer.template
+                .then(it => it.parseLog(undefined, true, lastSynchronizedCommitDate))
 
             let count = 0
             for (const logItem of templateBranchLog.all) {
