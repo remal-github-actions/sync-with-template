@@ -555,7 +555,7 @@ export class Remote {
     async checkout(ref?: string) {
         const trueRef = ref || this.defaultBranch
         await this.fetch(trueRef)
-        await forceCheckout(this.git, trueRef, `remotes/origin/${trueRef}`)
+        await forceCheckout(this.git, trueRef, `remotes/${this.name}/${trueRef}`)
     }
 
     private _remoteBranches: string[] | undefined = undefined
