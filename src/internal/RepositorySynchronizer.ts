@@ -74,10 +74,10 @@ export class RepositorySynchronizer {
         const git = this.git
 
         await git.init()
+        await git.addConfig('gc.auto', '0')
         await git.addConfig('user.useConfigOnly', 'true')
         await git.addConfig('diff.algorithm', 'patience')
         //await git.addConfig('core.pager', 'cat')
-        await git.addConfig('gc.auto', '0')
         await git.addConfig('fetch.recurseSubmodules', 'no')
 
         core.info('Setting up credentials')
@@ -584,6 +584,7 @@ export class Remote {
 
     async parseLog(ref?: string, reverse?: boolean, since?: Date): Promise<LogResult> {
         const trueRef = ref || this.defaultBranch
+        await this.fetch(trueRef)
         return this.synchronizer.parseLog(`remotes/origin/${trueRef}`, reverse, since)
     }
 
