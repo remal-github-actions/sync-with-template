@@ -924,7 +924,7 @@ async function run() {
             await synchronizer.origin.then(remote => remote.remove(syncBranchName));
             const openedPullRequest = await synchronizer.openedPullRequest;
             if (openedPullRequest) {
-                await synchronizer.closePullRequest(openedPullRequest, 'autoclosed', `Closing the PR, as no files will be changed after merging the changes`
+                await synchronizer.closePullRequest(openedPullRequest, 'autoclosed', `Autoclosing the PR, as no files will be changed after merging the changes`
                     + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`);
             }
         }
