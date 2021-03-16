@@ -457,7 +457,7 @@ export class RepositorySynchronizer {
     }
 
 
-    @cache
+    //@cache
     get currentRepo(): Promise<Repo> {
         return this.getRepo(context.repo.owner, context.repo.repo)
     }
@@ -471,7 +471,7 @@ export class RepositorySynchronizer {
         })
     }
 
-    @cache
+    //@cache
     get templateRepoOrNull(): Promise<Repo | null> {
         return this.currentRepo.then(currentRepo => {
             const templateRepoName = this.templateRepositoryFullName

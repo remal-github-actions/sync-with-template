@@ -52,7 +52,7 @@ describe('cache', () => {
             @cache
             get incr(): Promise<number> {
                 return new Promise(resolve => {
-                    setImmediate(() => resolve(++this.i))
+                    setTimeout(() => resolve(++this.i), 1)
                 })
             }
         }

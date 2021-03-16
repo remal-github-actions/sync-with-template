@@ -13,7 +13,7 @@ export function cache<T, R>(target: any, name: PropertyKey, descriptor: CachePro
         const value = getter.call(this)
 
         if (value instanceof Promise) {
-            const promise = value as Promise<unknown>
+            const promise = (value as Promise<unknown>)
             Object.defineProperty(this, name, {
                 configurable: descriptor.configurable,
                 enumerable: descriptor.enumerable,
