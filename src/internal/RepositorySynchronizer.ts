@@ -386,7 +386,7 @@ export class RepositorySynchronizer {
     }
 
     async abortMerge() {
-        await await this.abortMerge()
+        await this.git.raw('merge', '--abort')
     }
 
 
