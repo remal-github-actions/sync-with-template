@@ -626,6 +626,7 @@ export class Remote {
 
     async mergeAndGetStatus(ref?: string): Promise<StatusResult> {
         const trueRef = ref || this.defaultBranch
+        await this.fetch(trueRef)
         return this.synchronizer.mergeAndGetStatus(`remotes/${this.name}/${trueRef}`)
     }
 
