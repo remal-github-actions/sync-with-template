@@ -826,6 +826,7 @@ async function run() {
             .filter(line => line.length);
         const synchronizer = new RepositorySynchronizer_1.RepositorySynchronizer(githubToken, templateRepositoryFullName, syncBranchName, ignorePathPatterns);
         const repo = await synchronizer.currentRepo;
+        core.info(`Using ${repo.full_name} as the current repository`);
         if (repo.archived) {
             core.info(`Skipping template synchronization, as current repository is archived`);
             return;
@@ -834,6 +835,8 @@ async function run() {
             core.info(`Skipping template synchronization, as current repository is a fork`);
             return;
         }
+        const defaultBranchName = await synchronizer.origin.then(it => it.defaultBranch);
+        core.info(`Using '${defaultBranchName}' as a default branch of the current repository`);
         const templateRepo = await synchronizer.templateRepoOrNull;
         if (templateRepo == null) {
             core.warning("Template repository name can't be retrieved: the current repository isn't created from a"
@@ -841,8 +844,6 @@ async function run() {
             return;
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`);
-        const defaultBranchName = await synchronizer.origin.then(it => it.defaultBranch);
-        core.info(`Using ${defaultBranchName} as a default branch`);
         await core.group("Initializing the repository", async () => {
             await synchronizer.initializeRepository();
         });
