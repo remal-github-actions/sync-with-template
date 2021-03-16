@@ -121,7 +121,8 @@ async function run(): Promise<void> {
         let additionalCommitsCount: number = 0
         if (synchronizer.isIgnorePathMatcherSet) {
             await core.group(
-                `Trying to resolve merge conflicts ${syncBranchName}->${defaultBranchName} for ignored files`,
+                `Trying to resolve merge conflicts from '${syncBranchName}' branch`
+                + ` to '${defaultBranchName}' branch for ignored files`,
                 async () => {
                     const isCommitAdded = await synchronizer.resolveMergeConflictsForIgnoredFiles()
                     if (isCommitAdded) {
@@ -133,8 +134,8 @@ async function run(): Promise<void> {
 
         const changedFiles = await synchronizer.retrieveChangedFilesAfterMerge()
         if (!changedFiles.length) {
-            core.info(`No files will be changed after merging the changes from '${syncBranchName}' branch`
-                + ` into '${defaultBranchName}' branch, removing '${syncBranchName}' branch`
+            core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
+                + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`
             )
 
             await synchronizer.origin.then(remote => remote.remove(syncBranchName))
