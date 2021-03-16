@@ -412,9 +412,9 @@ class RepositorySynchronizer {
             }
         });
     }
-    async closePullRequest(pullRequest, titleSuffix) {
+    async closePullRequest(pullRequest, titleSuffix, message) {
         core.info(`Closing pull request ${pullRequest.html_url}`);
-        return this.octokit.pulls.update({
+        const result = this.octokit.pulls.update({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
             pull_number: pullRequest.number,
@@ -423,6 +423,15 @@ class RepositorySynchronizer {
                 ? `${pullRequest.title} - ${titleSuffix}`
                 : pullRequest.title
         }).then(it => it.data);
+        if (message) {
+            await this.octokit.issues.createComment({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                issue_number: pullRequest.number,
+                body: message
+            });
+        }
+        return result;
     }
     get currentRepo() {
         return this.getRepo(github_1.context.repo.owner, github_1.context.repo.repo);
@@ -915,7 +924,8 @@ async function run() {
             await synchronizer.origin.then(remote => remote.remove(syncBranchName));
             const openedPullRequest = await synchronizer.openedPullRequest;
             if (openedPullRequest) {
-                await synchronizer.closePullRequest(openedPullRequest, 'autoclosed');
+                await synchronizer.closePullRequest(openedPullRequest, 'autoclosed', `Closing the PR, as no files will be changed after merging the changes`
+                    + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`);
             }
         }
         else {
