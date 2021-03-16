@@ -14,6 +14,9 @@ export function cache<T, R>(target: any, name: PropertyKey, descriptor: CachePro
 
         if (value instanceof Promise) {
             const promise = (value as Promise<unknown>)
+                .then(result => promiseHolder.resolve(result))
+                .catch(reason => promiseHolder.reject(reason))
+
             Object.defineProperty(this, name, {
                 configurable: descriptor.configurable,
                 enumerable: descriptor.enumerable,
@@ -26,12 +29,7 @@ export function cache<T, R>(target: any, name: PropertyKey, descriptor: CachePro
                         }
 
                     } else {
-                        return new Promise((resolve, reject) => {
-                            promise
-                                .then(result => promiseHolder.resolve(result))
-                                .catch(reason => promiseHolder.reject(reason))
-                                .then(resolve, reject)
-                        })
+                        return promise
                     }
                 }
             })
