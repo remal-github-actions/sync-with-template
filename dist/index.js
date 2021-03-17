@@ -308,7 +308,7 @@ class RepositorySynchronizer {
             else {
                 const remote = await this.origin;
                 core.info(`Resolving conflict: using file from '${remote.defaultBranch}' branch: ${conflictedPath}`);
-                await this.git.raw('checkout', '-f', `remotes/${remote.name}/${this.syncBranchName}`, '--', conflictedPath);
+                await this.git.raw('checkout', '-f', this.syncBranchName, '--', conflictedPath);
             }
         }
         core.info('Committing changes');
@@ -317,9 +317,10 @@ class RepositorySynchronizer {
         return true;
     }
     async mergeAndGetStatus(ref) {
+        const trueRef = ref || (await this.currentRepo).default_branch;
         try {
             await this.initializeUserInfo(conflictsResolutionEmailSuffix);
-            await this.git.raw('merge', '--no-commit', '--no-ff', ref);
+            await this.git.raw('merge', '--no-commit', '--no-ff', trueRef);
         }
         catch (reason) {
             if (reason instanceof simple_git_1.GitError
