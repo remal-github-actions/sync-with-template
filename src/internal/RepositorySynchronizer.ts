@@ -323,7 +323,10 @@ export class RepositorySynchronizer {
             return false
         }
 
-        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref))
+        const trueRef = ref || (await this.currentRepo).default_branch
+
+        await this.origin.then(it => it.fetch(trueRef))
+        const mergeStatus = await this.mergeAndGetStatus(trueRef)
         const conflicted = mergeStatus.conflicted
         if (!conflicted.length) {
             core.info('No merge conflicts detected')
@@ -367,10 +370,12 @@ export class RepositorySynchronizer {
         return true
     }
 
-    async mergeAndGetStatus(ref: string): Promise<StatusResult> {
+    async mergeAndGetStatus(ref?: string): Promise<StatusResult> {
+        const trueRef = ref || (await this.currentRepo).default_branch
+
         try {
             await this.initializeUserInfo(conflictsResolutionEmailSuffix)
-            await this.git.raw('merge', '--no-commit', '--no-ff', ref)
+            await this.git.raw('merge', '--no-commit', '--no-ff', trueRef)
 
         } catch (reason) {
             if (reason instanceof GitError
