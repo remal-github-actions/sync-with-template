@@ -81,7 +81,9 @@ class RepositorySynchronizer {
                 'simple-git:*'
             ].filter(it => it.length).join(',');
         }
-        return simple_git_1.default(this.workspacePath);
+        const git = simple_git_1.default(this.workspacePath)
+            .env(DEFAULT_GIT_ENV);
+        return git;
     }
     async initializeRepository() {
         const repo = await this.currentRepo;
@@ -101,7 +103,7 @@ class RepositorySynchronizer {
         }
         await this.initializeUserInfo();
     }
-    async initializeUserInfo(userEmailSuffix = synchronizationEmailSuffix) {
+    async initializeUserInfo(userEmailSuffix = SYNCHRONIZATION_EMAIL_SUFFIX) {
         const repo = await this.currentRepo;
         const userName = repo.owner != null
             ? repo.owner.login
@@ -162,7 +164,7 @@ class RepositorySynchronizer {
     async retrieveLatestSyncCommit() {
         const log = await this.parseLog();
         for (const logItem of log.all) {
-            if (logItem.author_email.endsWith(synchronizationEmailSuffix)) {
+            if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
                 return logItem;
             }
         }
@@ -247,21 +249,18 @@ class RepositorySynchronizer {
         }
         return Promise.resolve(unstagedFiles);
     }
-    async commit(message, date, userEmailSuffix = synchronizationEmailSuffix) {
+    async commit(message, date, userEmailSuffix = SYNCHRONIZATION_EMAIL_SUFFIX) {
         await this.initializeUserInfo(userEmailSuffix);
         if (date) {
-            this.git.env({
+            this.git.env(Object.assign({
                 GIT_AUTHOR_DATE: date.toString(),
                 GIT_COMMITTER_DATE: date.toString(),
-            });
-        }
-        else {
-            this.git.env({});
+            }, DEFAULT_GIT_ENV));
         }
         await this.git.commit(message, {
             '--allow-empty': null,
         });
-        this.git.env({});
+        this.git.env(DEFAULT_GIT_ENV);
     }
     async retrieveChangedFilesAfterMerge(ref) {
         const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref));
@@ -312,14 +311,14 @@ class RepositorySynchronizer {
             }
         }
         core.info('Committing changes');
-        await this.initializeUserInfo(conflictsResolutionEmailSuffix);
+        await this.initializeUserInfo(CONFLICTS_RESOLUTION_EMAIL_SUFFIX);
         await this.git.raw('commit', '--no-edit');
         return true;
     }
     async mergeAndGetStatus(ref) {
         const trueRef = ref || (await this.currentRepo).default_branch;
         try {
-            await this.initializeUserInfo(conflictsResolutionEmailSuffix);
+            await this.initializeUserInfo(CONFLICTS_RESOLUTION_EMAIL_SUFFIX);
             await this.git.raw('merge', '--no-commit', '--no-ff', trueRef);
         }
         catch (reason) {
@@ -383,7 +382,7 @@ class RepositorySynchronizer {
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
             issue_number: pullRequest.number,
-            labels: [pullRequestLabel],
+            labels: [PULL_REQUEST_LABEL],
         });
         return pullRequest;
     }
@@ -606,9 +605,13 @@ class Remote {
     }
 }
 exports.Remote = Remote;
-const pullRequestLabel = 'sync-with-template';
-const synchronizationEmailSuffix = '+sync-with-template@users.noreply.github.com';
-const conflictsResolutionEmailSuffix = '+sync-with-template-conflicts-resolution@users.noreply.github.com';
+const PULL_REQUEST_LABEL = 'sync-with-template';
+const SYNCHRONIZATION_EMAIL_SUFFIX = '+sync-with-template@users.noreply.github.com';
+const CONFLICTS_RESOLUTION_EMAIL_SUFFIX = '+sync-with-template-conflicts-resolution@users.noreply.github.com';
+const DEFAULT_GIT_ENV = {
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_ASK_YESNO: 'false',
+};
 async function forceCheckout(git, branchName, ref) {
     core.info(`Checkouting '${branchName}' branch from '${ref}' Git ref`);
     await git.raw('checkout', '-f', '-B', branchName, ref);
