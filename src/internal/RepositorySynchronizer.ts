@@ -323,10 +323,7 @@ export class RepositorySynchronizer {
             return false
         }
 
-        const trueRef = ref || (await this.currentRepo).default_branch
-
-        await this.origin.then(it => it.fetch(trueRef))
-        const mergeStatus = await this.mergeAndGetStatus(trueRef)
+        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref))
         const conflicted = mergeStatus.conflicted
         if (!conflicted.length) {
             core.info('No merge conflicts detected')
@@ -356,7 +353,7 @@ export class RepositorySynchronizer {
                 await this.git.raw(
                     'checkout',
                     '-f',
-                    `remotes/${remote.name}/${this.syncBranchName}`,
+                    this.syncBranchName,
                     '--',
                     conflictedPath
                 )
