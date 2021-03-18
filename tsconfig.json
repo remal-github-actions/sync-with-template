@@ -9,6 +9,7 @@
     "experimentalDecorators": true,
     "esModuleInterop": true,
     "moduleResolution": "Node",
+    "removeComments": true,
     "types": [
       "node",
       "jest"
