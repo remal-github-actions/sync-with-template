@@ -289,10 +289,10 @@ export class RepositorySynchronizer {
                 core.info(`  Ignored file: unstaging: ${filePath}`)
                 await this.git.raw('reset', '-q', 'HEAD', '--', filePath)
                 if (status.created.includes(filePath)) {
-                    core.info(`    Ignored file: removing created: ${filePath}`)
+                    core.info(`    Removing created: ${filePath}`)
                     await this.git.rm(filePath)
                 } else {
-                    core.info(`    Ignored file: reverting modified/deleted: ${filePath}`)
+                    core.info(`    Reverting modified/deleted: ${filePath}`)
                     await this.git.raw('checkout', 'HEAD', '--', filePath)
                 }
                 unstagedFiles.push(filePath)
