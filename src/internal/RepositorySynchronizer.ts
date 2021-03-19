@@ -223,6 +223,7 @@ export class RepositorySynchronizer {
 
 
     async cherryPick(logItem: DefaultLogFields) {
+        core.info(`Cherry-picking (at ${logItem.date}): ${logItem.message}`)
         try {
             await this.git.raw(
                 'cherry-pick',
@@ -250,16 +251,16 @@ export class RepositorySynchronizer {
                     const fileInfo = status.files.find(file => file.path === conflictedPath)
                     if (fileInfo !== undefined && fileInfo.working_dir === 'U') {
                         if (fileInfo.index === 'A') {
-                            core.info(`Resolving conflict: adding file: ${conflictedPath}`)
+                            core.info(`  Resolving conflict: adding file: ${conflictedPath}`)
                             await this.git.add(conflictedPath)
                             continue
                         } else if (fileInfo.index === 'D') {
-                            core.info(`Resolving conflict: removing file: ${conflictedPath}`)
+                            core.info(`  Resolving conflict: removing file: ${conflictedPath}`)
                             await this.git.rm(conflictedPath)
                             continue
                         }
                     }
-                    core.error(`Unresolved conflict: ${conflictedPath}`)
+                    core.error(`  Unresolved conflict: ${conflictedPath}`)
                     unresolvedConflictedFiles.push(conflictedPath)
                 }
                 if (unresolvedConflictedFiles.length === 0) {
@@ -285,13 +286,13 @@ export class RepositorySynchronizer {
         const status = await this.git.status()
         for (const filePath of status.staged) {
             if (ignorePathMatcher(filePath)) {
-                core.info(`Ignored file: unstaging: ${filePath}`)
+                core.info(`  Ignored file: unstaging: ${filePath}`)
                 await this.git.raw('reset', '-q', 'HEAD', '--', filePath)
                 if (status.created.includes(filePath)) {
-                    core.info(`Ignored file: removing created: ${filePath}`)
+                    core.info(`    Ignored file: removing created: ${filePath}`)
                     await this.git.rm(filePath)
                 } else {
-                    core.info(`Ignored file: reverting modified/deleted: ${filePath}`)
+                    core.info(`    Ignored file: reverting modified/deleted: ${filePath}`)
                     await this.git.raw('checkout', 'HEAD', '--', filePath)
                 }
                 unstagedFiles.push(filePath)

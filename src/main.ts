@@ -106,7 +106,6 @@ async function run(): Promise<void> {
                 }
 
                 ++count
-                core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`)
                 await synchronizer.cherryPick(logItem)
 
                 let message = logItem.message
