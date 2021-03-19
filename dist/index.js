@@ -198,7 +198,7 @@ class RepositorySynchronizer {
         return notIgnoredFile == null;
     }
     async cherryPick(logItem) {
-        core.info(`Cherry-picking (at ${logItem.date}): ${logItem.message}`);
+        core.info(`Cherry-picking: ${logItem.message} (commit made at ${logItem.date})`);
         try {
             await this.git.raw('cherry-pick', '--no-commit', '-r', '--allow-empty', '--allow-empty-message', '--strategy=recursive', '-Xours', logItem.hash);
         }
