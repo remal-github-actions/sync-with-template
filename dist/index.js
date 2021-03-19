@@ -182,6 +182,21 @@ class RepositorySynchronizer {
         await forceCheckout(this.git, this.syncBranchName, firstRepositoryCommit.hash);
         return firstRepositoryCommit;
     }
+    async retrieveChangedFiles(logItem) {
+        return this.git.raw('diff-tree', '--no-commit-id', '--name-only', '-r', logItem.hash)
+            .then(content => content.trim().split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length));
+    }
+    async checkIfCommitHasOnlyIgnoredFiles(logItem) {
+        const ignorePathMatcher = this.ignorePathMatcher;
+        if (ignorePathMatcher == null) {
+            return false;
+        }
+        const changedFiles = await this.retrieveChangedFiles(logItem);
+        const notIgnoredFile = changedFiles.find(filePath => !ignorePathMatcher(filePath));
+        return notIgnoredFile == null;
+    }
     async cherryPick(logItem) {
         try {
             await this.git.raw('cherry-pick', '--no-commit', '-r', '--allow-empty', '--allow-empty-message', '--strategy=recursive', '-Xours', logItem.hash);
@@ -884,6 +899,16 @@ async function run() {
             for (const logItem of templateBranchLog.all) {
                 const logDate = new Date(logItem.date);
                 if (logDate.getTime() <= lastSynchronizedCommitDate.getTime()) {
+                    continue;
+                }
+                const isCommitEmpty = await synchronizer.retrieveChangedFiles(logItem).then(files => !files.length);
+                if (isCommitEmpty) {
+                    core.info(`Skipping commit, as it's empty (no files are changed): ${templateRepo.html_url}/commit/${logItem.hash}`);
+                    continue;
+                }
+                const hasOnlyIgnoredFiles = await synchronizer.checkIfCommitHasOnlyIgnoredFiles(logItem);
+                if (hasOnlyIgnoredFiles) {
+                    core.info(`Skipping commit, as it has only ignored files changed: ${templateRepo.html_url}/commit/${logItem.hash}`);
                     continue;
                 }
                 ++count;
