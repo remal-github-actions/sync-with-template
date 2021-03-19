@@ -93,7 +93,6 @@ class RepositorySynchronizer {
         await git.addConfig('gc.auto', '0');
         await git.addConfig('user.useConfigOnly', 'true');
         await git.addConfig('diff.algorithm', 'patience');
-        //await git.addConfig('core.pager', 'cat')
         await git.addConfig('fetch.recurseSubmodules', 'no');
         core.info('Setting up credentials');
         const basicCredentials = Buffer.from(`x-access-token:${this.githubToken}`, 'utf8').toString('base64');
@@ -340,7 +339,6 @@ class RepositorySynchronizer {
         catch (reason) {
             if (reason instanceof simple_git_1.GitError
                 && reason.message.includes('Automatic merge failed; fix conflicts')) {
-                // Merge conflicts will be resolved later
             }
             else {
                 throw reason;
@@ -355,7 +353,6 @@ class RepositorySynchronizer {
         catch (reason) {
             if (reason instanceof simple_git_1.GitError
                 && reason.message.includes('There is no merge to abort')) {
-                // OK
             }
             else {
                 throw reason;
@@ -785,7 +782,7 @@ function newOctokitInstance(token) {
             },
             onAbuseLimit: (retryAfter, options) => {
                 core.warning(`Abuse detected for request ${options.method} ${options.url}`);
-                return false; // Don't repeat
+                return false;
             }
         }
     };
@@ -839,12 +836,10 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const conventional_commits_1 = __nccwpck_require__(6421);
 const RepositorySynchronizer_1 = __nccwpck_require__(2798);
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 const githubToken = core.getInput('githubToken', { required: true });
 core.setSecret(githubToken);
 const conventionalCommits = core.getInput('conventionalCommits', { required: true }).toLowerCase() === 'true';
 const syncBranchName = getSyncBranchName();
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 async function run() {
     try {
         const templateRepositoryFullName = core.getInput('templateRepository');
@@ -922,7 +917,6 @@ async function run() {
                 }
                 if (conventionalCommits) {
                     if (conventional_commits_1.isConventionalCommit(message)) {
-                        // do nothing
                     }
                     else {
                         message = `chore(template): ${message}`;
@@ -987,9 +981,7 @@ async function run() {
         core.setFailed(error);
     }
 }
-//noinspection JSIgnoredPromiseFromCall
 run();
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 function getSyncBranchName() {
     const name = core.getInput('syncBranchName', { required: true });
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
