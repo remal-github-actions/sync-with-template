@@ -223,7 +223,7 @@ export class RepositorySynchronizer {
 
 
     async cherryPick(logItem: DefaultLogFields) {
-        core.info(`Cherry-picking (at ${logItem.date}): ${logItem.message}`)
+        core.info(`Cherry-picking: ${logItem.message} (commit made at ${logItem.date})`)
         try {
             await this.git.raw(
                 'cherry-pick',
