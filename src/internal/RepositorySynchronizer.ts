@@ -202,6 +202,26 @@ export class RepositorySynchronizer {
     }
 
 
+    async retrieveChangedFiles(logItem: DefaultLogFields): Promise<string[]> {
+        return this.git.raw('diff-tree', '--no-commit-id', '--name-only', '-r', logItem.hash)
+            .then(content => content.trim().split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length)
+            )
+    }
+
+    async checkIfCommitHasOnlyIgnoredFiles(logItem: DefaultLogFields): Promise<boolean> {
+        const ignorePathMatcher = this.ignorePathMatcher
+        if (ignorePathMatcher == null) {
+            return false
+        }
+
+        const changedFiles = await this.retrieveChangedFiles(logItem)
+        const notIgnoredFile = changedFiles.find(filePath => !ignorePathMatcher(filePath))
+        return notIgnoredFile == null
+    }
+
+
     async cherryPick(logItem: DefaultLogFields) {
         try {
             await this.git.raw(
