@@ -35,7 +35,7 @@
     "@types/conventional-commits-detector": "1.0.0",
     "@types/jest": "26.0.22",
     "@types/is-windows": "1.0.0",
-    "@types/node": "14.14.35",
+    "@types/node": "14.14.36",
     "@types/picomatch": "2.2.1",
     "@types/rimraf": "3.0.0",
     "@typescript-eslint/parser": "4.19.0",
