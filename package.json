@@ -39,7 +39,7 @@
     "@types/picomatch": "2.2.1",
     "@types/rimraf": "3.0.0",
     "@typescript-eslint/parser": "4.22.0",
-    "@vercel/ncc": "0.28.2",
+    "@vercel/ncc": "0.28.3",
     "console-log-level": "1.4.1",
     "eslint": "7.24.0",
     "eslint-config-prettier": "8.1.0",
