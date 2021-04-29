@@ -189,7 +189,7 @@ export class RepositorySynchronizer {
     @cache
     get firstRepositoryCommit(): Promise<DefaultLogFields> {
         return this.origin
-            .then(remote => remote.parseLog())
+            .then(remote => remote.parseLog(undefined, true))
             .then(log => log.latest!!)
     }
 
