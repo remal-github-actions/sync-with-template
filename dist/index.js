@@ -170,7 +170,7 @@ class RepositorySynchronizer {
     }
     get firstRepositoryCommit() {
         return this.origin
-            .then(remote => remote.parseLog())
+            .then(remote => remote.parseLog(undefined, true))
             .then(log => log.latest);
     }
     async checkoutFirstRepositoryCommit() {
