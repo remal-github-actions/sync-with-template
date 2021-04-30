@@ -323,8 +323,10 @@ export class RepositorySynchronizer {
     }
 
 
-    async retrieveChangedFilesAfterMerge(ref?: string): Promise<string[]> {
-        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref))
+    async retrieveChangedFilesAfterMerge(targetBranch: string, sourceRef: string): Promise<string[]> {
+        const currentBranch = await this.currentBranch
+        await this.origin.then(remote => remote.checkout(targetBranch))
+        const mergeStatus = await this.mergeAndGetStatus(sourceRef)
 
         const changedFiles: string[] = []
         const ignorePathMatcher = this.ignorePathMatcher
@@ -338,6 +340,7 @@ export class RepositorySynchronizer {
         }
 
         await this.abortMerge()
+        await this.git.raw('checkout', '-f', currentBranch)
 
         return changedFiles
     }
@@ -530,6 +533,12 @@ export class RepositorySynchronizer {
                 ? `${pullRequest.title} - ${titleSuffix}`
                 : pullRequest.title
         }).then(it => it.data)
+    }
+
+
+    get currentBranch(): Promise<string> {
+        return this.git.raw('rev-parse', '--abbrev-ref', 'HEAD')
+            .then(text => text.trim())
     }
 
 
