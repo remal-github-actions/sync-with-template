@@ -93,8 +93,19 @@ async function run(): Promise<void> {
                     continue
                 }
 
+                const isCommitEmpty = await synchronizer.retrieveChangedFiles(logItem).then(files => !files.length)
+                if (isCommitEmpty) {
+                    core.info(`Skipping commit, as it's empty (no files are changed): ${templateRepo.html_url}/commit/${logItem.hash}`)
+                    continue
+                }
+
+                const hasOnlyIgnoredFiles = await synchronizer.checkIfCommitHasOnlyIgnoredFiles(logItem)
+                if (hasOnlyIgnoredFiles) {
+                    core.info(`Skipping commit, as it has only ignored files changed: ${templateRepo.html_url}/commit/${logItem.hash}`)
+                    continue
+                }
+
                 ++count
-                core.info(`Cherry-picking ${templateRepo.html_url}/commit/${logItem.hash} (${logItem.date}): ${logItem.message}`)
                 await synchronizer.cherryPick(logItem)
 
                 let message = logItem.message

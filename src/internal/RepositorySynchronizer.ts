@@ -57,14 +57,18 @@ export class RepositorySynchronizer {
     @cache
     get git(): SimpleGit {
         if (process.env.ACTIONS_STEP_DEBUG?.toLowerCase() === 'true') {
-            require('debug').enable('simple-git')
+            require('debug').enable('simple-git,simple-git:*')
             process.env.DEBUG = [
                 process.env.DEBUG || '',
                 'simple-git',
                 'simple-git:*'
             ].filter(it => it.length).join(',')
         }
-        return simpleGit(this.workspacePath)
+
+        const git = simpleGit(this.workspacePath)
+            .env(DEFAULT_GIT_ENV)
+
+        return git
     }
 
 
@@ -93,7 +97,7 @@ export class RepositorySynchronizer {
     private currentUserName: string | undefined = undefined
     private previousUserEmail: string | undefined = undefined
 
-    async initializeUserInfo(userEmailSuffix: string = synchronizationEmailSuffix) {
+    async initializeUserInfo(userEmailSuffix: string = SYNCHRONIZATION_EMAIL_SUFFIX) {
         const repo = await this.currentRepo
 
         const userName = repo.owner != null
@@ -174,7 +178,7 @@ export class RepositorySynchronizer {
     async retrieveLatestSyncCommit(): Promise<DefaultLogFields | undefined> {
         const log = await this.parseLog()
         for (const logItem of log.all) {
-            if (logItem.author_email.endsWith(synchronizationEmailSuffix)) {
+            if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
                 return logItem
             }
         }
@@ -185,7 +189,7 @@ export class RepositorySynchronizer {
     @cache
     get firstRepositoryCommit(): Promise<DefaultLogFields> {
         return this.origin
-            .then(remote => remote.parseLog())
+            .then(remote => remote.parseLog(undefined, true))
             .then(log => log.latest!!)
     }
 
@@ -198,7 +202,28 @@ export class RepositorySynchronizer {
     }
 
 
+    async retrieveChangedFiles(logItem: DefaultLogFields): Promise<string[]> {
+        return this.git.raw('diff-tree', '--no-commit-id', '--name-only', '-r', logItem.hash)
+            .then(content => content.trim().split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length)
+            )
+    }
+
+    async checkIfCommitHasOnlyIgnoredFiles(logItem: DefaultLogFields): Promise<boolean> {
+        const ignorePathMatcher = this.ignorePathMatcher
+        if (ignorePathMatcher == null) {
+            return false
+        }
+
+        const changedFiles = await this.retrieveChangedFiles(logItem)
+        const notIgnoredFile = changedFiles.find(filePath => !ignorePathMatcher(filePath))
+        return notIgnoredFile == null
+    }
+
+
     async cherryPick(logItem: DefaultLogFields) {
+        core.info(`Cherry-picking: ${logItem.message} (commit made at ${logItem.date})`)
         try {
             await this.git.raw(
                 'cherry-pick',
@@ -226,16 +251,16 @@ export class RepositorySynchronizer {
                     const fileInfo = status.files.find(file => file.path === conflictedPath)
                     if (fileInfo !== undefined && fileInfo.working_dir === 'U') {
                         if (fileInfo.index === 'A') {
-                            core.info(`Resolving conflict: adding file: ${conflictedPath}`)
+                            core.info(`  Resolving conflict: adding file: ${conflictedPath}`)
                             await this.git.add(conflictedPath)
                             continue
                         } else if (fileInfo.index === 'D') {
-                            core.info(`Resolving conflict: removing file: ${conflictedPath}`)
+                            core.info(`  Resolving conflict: removing file: ${conflictedPath}`)
                             await this.git.rm(conflictedPath)
                             continue
                         }
                     }
-                    core.error(`Unresolved conflict: ${conflictedPath}`)
+                    core.error(`  Unresolved conflict: ${conflictedPath}`)
                     unresolvedConflictedFiles.push(conflictedPath)
                 }
                 if (unresolvedConflictedFiles.length === 0) {
@@ -261,13 +286,13 @@ export class RepositorySynchronizer {
         const status = await this.git.status()
         for (const filePath of status.staged) {
             if (ignorePathMatcher(filePath)) {
-                core.info(`Ignored file: unstaging: ${filePath}`)
+                core.info(`  Ignored file: unstaging: ${filePath}`)
                 await this.git.raw('reset', '-q', 'HEAD', '--', filePath)
                 if (status.created.includes(filePath)) {
-                    core.info(`Ignored file: removing created: ${filePath}`)
+                    core.info(`    Removing created: ${filePath}`)
                     await this.git.rm(filePath)
                 } else {
-                    core.info(`Ignored file: reverting modified/deleted: ${filePath}`)
+                    core.info(`    Reverting modified/deleted: ${filePath}`)
                     await this.git.raw('checkout', 'HEAD', '--', filePath)
                 }
                 unstagedFiles.push(filePath)
@@ -277,23 +302,24 @@ export class RepositorySynchronizer {
     }
 
 
-    async commit(message: string, date?: string | Date, userEmailSuffix: string = synchronizationEmailSuffix) {
+    async commit(message: string, date?: string | Date, userEmailSuffix: string = SYNCHRONIZATION_EMAIL_SUFFIX) {
         await this.initializeUserInfo(userEmailSuffix)
 
         if (date) {
-            this.git.env({
-                GIT_AUTHOR_DATE: date.toString(),
-                GIT_COMMITTER_DATE: date.toString(),
-            })
-        } else {
-            this.git.env({})
+            this.git.env(Object.assign(
+                {
+                    GIT_AUTHOR_DATE: date.toString(),
+                    GIT_COMMITTER_DATE: date.toString(),
+                },
+                DEFAULT_GIT_ENV
+            ))
         }
 
         await this.git.commit(message, {
             '--allow-empty': null,
         })
 
-        this.git.env({})
+        this.git.env(DEFAULT_GIT_ENV)
     }
 
 
@@ -361,7 +387,7 @@ export class RepositorySynchronizer {
         }
 
         core.info('Committing changes')
-        await this.initializeUserInfo(conflictsResolutionEmailSuffix)
+        await this.initializeUserInfo(CONFLICTS_RESOLUTION_EMAIL_SUFFIX)
         await this.git.raw('commit', '--no-edit')
 
         return true
@@ -371,7 +397,7 @@ export class RepositorySynchronizer {
         const trueRef = ref || (await this.currentRepo).default_branch
 
         try {
-            await this.initializeUserInfo(conflictsResolutionEmailSuffix)
+            await this.initializeUserInfo(CONFLICTS_RESOLUTION_EMAIL_SUFFIX)
             await this.git.raw('merge', '--no-commit', '--no-ff', trueRef)
 
         } catch (reason) {
@@ -444,7 +470,7 @@ export class RepositorySynchronizer {
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: pullRequest.number,
-            labels: [pullRequestLabel],
+            labels: [PULL_REQUEST_LABEL],
         })
 
         return pullRequest
@@ -692,9 +718,13 @@ type GlobMatcher = (filePath: string) => boolean
 
 type RemoteName = 'origin' | 'template'
 
-const pullRequestLabel = 'sync-with-template'
-const synchronizationEmailSuffix = '+sync-with-template@users.noreply.github.com'
-const conflictsResolutionEmailSuffix = '+sync-with-template-conflicts-resolution@users.noreply.github.com'
+const PULL_REQUEST_LABEL = 'sync-with-template'
+const SYNCHRONIZATION_EMAIL_SUFFIX = '+sync-with-template@users.noreply.github.com'
+const CONFLICTS_RESOLUTION_EMAIL_SUFFIX = '+sync-with-template-conflicts-resolution@users.noreply.github.com'
+const DEFAULT_GIT_ENV: Record<string, string> = {
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_ASK_YESNO: 'false',
+}
 
 async function forceCheckout(git: SimpleGit, branchName: string, ref: string) {
     core.info(`Checkouting '${branchName}' branch from '${ref}' Git ref`)
