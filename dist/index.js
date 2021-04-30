@@ -276,8 +276,10 @@ class RepositorySynchronizer {
         });
         this.git.env(DEFAULT_GIT_ENV);
     }
-    async retrieveChangedFilesAfterMerge(ref) {
-        const mergeStatus = await this.origin.then(remote => remote.mergeAndGetStatus(ref));
+    async retrieveChangedFilesAfterMerge(targetBranch, sourceRef) {
+        const currentBranch = await this.currentBranch;
+        await this.origin.then(remote => remote.checkout(targetBranch));
+        const mergeStatus = await this.mergeAndGetStatus(sourceRef);
         const changedFiles = [];
         const ignorePathMatcher = this.ignorePathMatcher;
         for (const filePath of [...mergeStatus.staged, ...mergeStatus.conflicted]) {
@@ -289,6 +291,7 @@ class RepositorySynchronizer {
             }
         }
         await this.abortMerge();
+        await this.git.raw('checkout', '-f', currentBranch);
         return changedFiles;
     }
     async resolveMergeConflictsForIgnoredFiles(ref) {
@@ -442,6 +445,10 @@ class RepositorySynchronizer {
                 ? `${pullRequest.title} - ${titleSuffix}`
                 : pullRequest.title
         }).then(it => it.data);
+    }
+    get currentBranch() {
+        return this.git.raw('rev-parse', '--abbrev-ref', 'HEAD')
+            .then(text => text.trim());
     }
     get currentRepo() {
         return this.getRepo(github_1.context.repo.owner, github_1.context.repo.repo);
@@ -938,7 +945,7 @@ async function run() {
                 }
             });
         }
-        const changedFiles = await synchronizer.retrieveChangedFilesAfterMerge();
+        const changedFiles = await synchronizer.retrieveChangedFilesAfterMerge(defaultBranchName, syncBranchName);
         if (!changedFiles.length) {
             core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
                 + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`);
