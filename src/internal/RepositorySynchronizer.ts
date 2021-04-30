@@ -57,7 +57,7 @@ export class RepositorySynchronizer {
     @cache
     get git(): SimpleGit {
         if (process.env.ACTIONS_STEP_DEBUG?.toLowerCase() === 'true') {
-            require('debug').enable('simple-git')
+            require('debug').enable('simple-git,simple-git:*')
             process.env.DEBUG = [
                 process.env.DEBUG || '',
                 'simple-git',
