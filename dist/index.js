@@ -139,7 +139,6 @@ class RepositorySynchronizer {
         core.info(`Fetching last commit of pull request ${pullRequest.html_url}`);
         const remote = await this.origin;
         await remote.fetch(`refs/pull/${pullRequest.number}/head`);
-        debug('end fetch 4');
     }
     async checkoutPullRequestHead(pullRequest, branchName) {
         const trueBranchName = branchName || this.syncBranchName;
@@ -210,10 +209,14 @@ class RepositorySynchronizer {
                 const status = await this.git.status();
                 const unresolvedConflictedFiles = [];
                 for (const conflictedPath of status.conflicted) {
+                    debug(`  conflictedPath=${conflictedPath}`);
                     if (unstagedFiles.includes(conflictedPath)) {
+                        debug(`      UNSTAGED`);
                         continue;
                     }
                     const fileInfo = status.files.find(file => file.path === conflictedPath);
+                    debug(`      fileInfo.working_dir=${fileInfo === null || fileInfo === void 0 ? void 0 : fileInfo.working_dir}`);
+                    debug(`      fileInfo.index=${fileInfo === null || fileInfo === void 0 ? void 0 : fileInfo.index}`);
                     if (fileInfo !== undefined && fileInfo.working_dir === 'U') {
                         if (fileInfo.index === 'A') {
                             core.info(`  Resolving conflict: adding file: ${conflictedPath}`);
@@ -554,7 +557,6 @@ class Remote {
     async checkout(ref) {
         const trueRef = ref || this.defaultBranch;
         await this.fetch(trueRef);
-        debug('end fetch 1');
         await forceCheckout(this.git, trueRef, `remotes/${this.name}/${trueRef}`);
     }
     get remoteBranches() {
@@ -590,8 +592,7 @@ class Remote {
     parseLog(ref, reverse, since) {
         const trueRef = ref || this.defaultBranch;
         return this.fetch(trueRef)
-            .then(() => this.synchronizer.parseLog(`remotes/${this.name}/${trueRef}`, reverse, since))
-            .finally(() => debug('end fetch 3'));
+            .then(() => this.synchronizer.parseLog(`remotes/${this.name}/${trueRef}`, reverse, since));
     }
     async push(ref) {
         const currentBranch = await this.git.raw('rev-parse', '--abbrev-ref', 'HEAD').then(content => content.trim());
@@ -625,7 +626,6 @@ class Remote {
     async mergeAndGetStatus(ref) {
         const trueRef = ref || this.defaultBranch;
         await this.fetch(trueRef);
-        debug('end fetch 2');
         return this.synchronizer.mergeAndGetStatus(`remotes/${this.name}/${trueRef}`);
     }
 }
