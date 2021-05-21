@@ -38,7 +38,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Remote = exports.RepositorySynchronizer = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const github_1 = __nccwpck_require__(5438);
-const is_windows_1 = __importDefault(__nccwpck_require__(9125));
 const picomatch_1 = __importDefault(__nccwpck_require__(8569));
 const simple_git_1 = __importStar(__nccwpck_require__(1477));
 const url_1 = __nccwpck_require__(8835);
@@ -56,7 +55,7 @@ class RepositorySynchronizer {
         this.octokit = octokit_1.newOctokitInstance(githubToken);
         if (ignorePathPatterns.length) {
             core.info(`Ignored files:\n  ${ignorePathPatterns.join('\n  ')}`);
-            this.ignorePathMatcher = picomatch_1.default(ignorePathPatterns, { windows: is_windows_1.default() });
+            this.ignorePathMatcher = picomatch_1.default(ignorePathPatterns);
         }
         else {
             this.ignorePathMatcher = undefined;
@@ -10239,40 +10238,6 @@ if (typeof Object.create === 'function') {
     }
   }
 }
-
-
-/***/ }),
-
-/***/ 9125:
-/***/ ((module, exports) => {
-
-/*!
- * is-windows <https://github.com/jonschlinkert/is-windows>
- *
- * Copyright © 2015-2018, Jon Schlinkert.
- * Released under the MIT License.
- */
-
-(function(factory) {
-  if (exports && typeof exports === 'object' && "object" !== 'undefined') {
-    module.exports = factory();
-  } else if (typeof define === 'function' && define.amd) {
-    define([], factory);
-  } else if (typeof window !== 'undefined') {
-    window.isWindows = factory();
-  } else if (typeof global !== 'undefined') {
-    global.isWindows = factory();
-  } else if (typeof self !== 'undefined') {
-    self.isWindows = factory();
-  } else {
-    this.isWindows = factory();
-  }
-})(function() {
-  'use strict';
-  return function isWindows() {
-    return process && (process.platform === 'win32' || /^(msys|cygwin)$/.test(process.env.OSTYPE));
-  };
-});
 
 
 /***/ }),
