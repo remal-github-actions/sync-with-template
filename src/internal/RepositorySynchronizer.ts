@@ -203,7 +203,7 @@ export class RepositorySynchronizer {
     }
 
 
-    async retrieveChangedFiles(logItem: DefaultLogFields): Promise<string[]> {
+    retrieveChangedFiles(logItem: DefaultLogFields): Promise<string[]> {
         return this.git.raw('diff-tree', '--no-commit-id', '--name-only', '-r', logItem.hash)
             .then(content => content.trim().split('\n')
                 .map(line => line.trim())
@@ -232,6 +232,7 @@ export class RepositorySynchronizer {
                 '-r',
                 '--allow-empty',
                 '--allow-empty-message',
+                '--keep-redundant-commits',
                 '--strategy=recursive',
                 '-Xours',
                 logItem.hash
@@ -244,11 +245,10 @@ export class RepositorySynchronizer {
                 debug('  Trying to resolve merge conflicts')
                 const unstagedFiles = await this.unstageIgnoredFiles()
 
+                debug(`  Collecting rename/delete conflicts: ${error.message}`)
+                const renamedDeletedPaths: string[] = []
+
                 const status = await this.git.status()
-                debug('  renames:')
-                status.renamed.forEach(info => {
-                    debug(`    from=${info.from}; to=${info.to}`)
-                })
                 const unresolvedConflictedFiles: string[] = []
                 for (const conflictedPath of status.conflicted) {
                     debug(`  conflictedPath=${conflictedPath}`)
