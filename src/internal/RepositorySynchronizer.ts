@@ -245,6 +245,9 @@ export class RepositorySynchronizer {
                 const unstagedFiles = await this.unstageIgnoredFiles()
 
                 const status = await this.git.status()
+                status.renamed.forEach(info => {
+                    debug(`  renamed from=${info.from}; to=${info.to}`)
+                })
                 const unresolvedConflictedFiles: string[] = []
                 for (const conflictedPath of status.conflicted) {
                     debug(`  conflictedPath=${conflictedPath}`)
