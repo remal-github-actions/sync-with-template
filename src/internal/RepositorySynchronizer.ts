@@ -146,6 +146,7 @@ export class RepositorySynchronizer {
         core.info(`Fetching last commit of pull request ${pullRequest.html_url}`)
         const remote = await this.origin
         await remote.fetch(`refs/pull/${pullRequest.number}/head`)
+        debug('end fetch 4')
     }
 
     async checkoutPullRequestHead(pullRequest: PullRequest | PullRequestSimple, branchName?: string) {
@@ -638,6 +639,7 @@ export class Remote {
     async checkout(ref?: string) {
         const trueRef = ref || this.defaultBranch
         await this.fetch(trueRef)
+        debug('end fetch 1')
         await forceCheckout(this.git, trueRef, `remotes/${this.name}/${trueRef}`)
     }
 
@@ -676,6 +678,7 @@ export class Remote {
     async parseLog(ref?: string, reverse?: boolean, since?: Date): Promise<LogResult> {
         const trueRef = ref || this.defaultBranch
         await this.fetch(trueRef)
+        debug('end fetch 3')
         return this.synchronizer.parseLog(`remotes/${this.name}/${trueRef}`, reverse, since)
     }
 
@@ -718,6 +721,7 @@ export class Remote {
     async mergeAndGetStatus(ref?: string): Promise<StatusResult> {
         const trueRef = ref || this.defaultBranch
         await this.fetch(trueRef)
+        debug('end fetch 2')
         return this.synchronizer.mergeAndGetStatus(`remotes/${this.name}/${trueRef}`)
     }
 
