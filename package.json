@@ -34,7 +34,7 @@
     "@types/conventional-commits-detector": "1.0.0",
     "@types/jest": "26.0.23",
     "@types/node": "14.17.0",
-    "@types/picomatch": "2.2.2",
+    "@types/picomatch": "2.2.4",
     "@types/rimraf": "3.0.0",
     "@typescript-eslint/parser": "4.24.0",
     "@vercel/ncc": "0.28.5",
