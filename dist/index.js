@@ -203,11 +203,17 @@ class RepositorySynchronizer {
         }
         catch (error) {
             if (error instanceof simple_git_1.GitError
-                && error.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)) {
+                && error.message.includes(`error: could not apply ${logItem.hash.substring(0, 6)}`)) {
+                debug(`  Collecting rename/delete conflicts`);
+                const renamedDeletedPaths = [];
+                const renamedDeletedPathsMatches = error.message.matchAll(/CONFLICT \(rename\/delete\): ([^\n]*?) deleted in HEAD and renamed to ([^\n]*?) in ([^\n]*?)\. Version \3 of \2 left in tree\./g);
+                for (const renamedDeletedPathsMatch of renamedDeletedPathsMatches) {
+                    const deletedPath = renamedDeletedPathsMatch[1];
+                    const renamedPath = renamedDeletedPathsMatch[2];
+                    debug(`    deletedPath=${deletedPath}; renamedPath=${renamedPath}`);
+                }
                 debug('  Trying to resolve merge conflicts');
                 const unstagedFiles = await this.unstageIgnoredFiles();
-                debug(`  Collecting rename/delete conflicts: ${error.message}`);
-                const renamedDeletedPaths = [];
                 const status = await this.git.status();
                 const unresolvedConflictedFiles = [];
                 for (const conflictedPath of status.conflicted) {
