@@ -1,7 +1,6 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
 import {components, operations} from '@octokit/openapi-types/generated/types'
-import isWindows from 'is-windows'
 import picomatch from 'picomatch'
 import simpleGit, {GitError, LogResult, SimpleGit, StatusResult} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
@@ -37,7 +36,7 @@ export class RepositorySynchronizer {
 
         if (ignorePathPatterns.length) {
             core.info(`Ignored files:\n  ${ignorePathPatterns.join('\n  ')}`)
-            this.ignorePathMatcher = picomatch(ignorePathPatterns, {windows: isWindows()})
+            this.ignorePathMatcher = picomatch(ignorePathPatterns)
         } else {
             this.ignorePathMatcher = undefined
         }
