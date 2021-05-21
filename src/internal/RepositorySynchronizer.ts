@@ -132,9 +132,10 @@ export class RepositorySynchronizer {
     }
 
 
-    async doesSyncBranchExists(): Promise<boolean> {
-        const remoteBranches = await this.origin.then(it => it.remoteBranches)
-        return remoteBranches.includes(this.syncBranchName)
+    doesSyncBranchExists(): Promise<boolean> {
+        return this.origin
+            .then(it => it.remoteBranches)
+            .then(remoteBranches => remoteBranches.includes(this.syncBranchName))
     }
 
     async checkoutSyncBranch() {
@@ -156,7 +157,7 @@ export class RepositorySynchronizer {
     }
 
 
-    async parseLog(ref?: string, reverse?: boolean, since?: Date): Promise<LogResult> {
+    parseLog(ref?: string, reverse?: boolean, since?: Date): Promise<LogResult> {
         const options: string[] = []
 
         if (reverse) {
@@ -175,14 +176,15 @@ export class RepositorySynchronizer {
         return this.git.log(options)
     }
 
-    async retrieveLatestSyncCommit(): Promise<DefaultLogFields | undefined> {
-        const log = await this.parseLog()
-        for (const logItem of log.all) {
-            if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
-                return logItem
+    retrieveLatestSyncCommit(): Promise<DefaultLogFields | undefined> {
+        return this.parseLog().then(log => {
+            for (const logItem of log.all) {
+                if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
+                    return logItem
+                }
             }
-        }
-        return undefined
+            return undefined
+        })
     }
 
 
@@ -675,11 +677,11 @@ export class Remote {
         })
     }
 
-    async parseLog(ref?: string, reverse?: boolean, since?: Date): Promise<LogResult> {
+    parseLog(ref?: string, reverse?: boolean, since?: Date): Promise<LogResult> {
         const trueRef = ref || this.defaultBranch
-        await this.fetch(trueRef)
-        debug('end fetch 3')
-        return this.synchronizer.parseLog(`remotes/${this.name}/${trueRef}`, reverse, since)
+        return this.fetch(trueRef)
+            .then(() => this.synchronizer.parseLog(`remotes/${this.name}/${trueRef}`, reverse, since))
+            .finally(() => debug('end fetch 3'))
     }
 
     async push(ref?: string) {
