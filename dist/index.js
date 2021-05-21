@@ -138,6 +138,7 @@ class RepositorySynchronizer {
         core.info(`Fetching last commit of pull request ${pullRequest.html_url}`);
         const remote = await this.origin;
         await remote.fetch(`refs/pull/${pullRequest.number}/head`);
+        debug('end fetch 4');
     }
     async checkoutPullRequestHead(pullRequest, branchName) {
         const trueBranchName = branchName || this.syncBranchName;
@@ -551,6 +552,7 @@ class Remote {
     async checkout(ref) {
         const trueRef = ref || this.defaultBranch;
         await this.fetch(trueRef);
+        debug('end fetch 1');
         await forceCheckout(this.git, trueRef, `remotes/${this.name}/${trueRef}`);
     }
     get remoteBranches() {
@@ -586,6 +588,7 @@ class Remote {
     async parseLog(ref, reverse, since) {
         const trueRef = ref || this.defaultBranch;
         await this.fetch(trueRef);
+        debug('end fetch 3');
         return this.synchronizer.parseLog(`remotes/${this.name}/${trueRef}`, reverse, since);
     }
     async push(ref) {
@@ -620,6 +623,7 @@ class Remote {
     async mergeAndGetStatus(ref) {
         const trueRef = ref || this.defaultBranch;
         await this.fetch(trueRef);
+        debug('end fetch 2');
         return this.synchronizer.mergeAndGetStatus(`remotes/${this.name}/${trueRef}`);
     }
 }
