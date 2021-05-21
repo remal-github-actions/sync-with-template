@@ -1,12 +1,11 @@
 import * as core from '@actions/core'
-import {debug} from 'debug'
 import * as util from 'util'
 import {isConventionalCommit} from './internal/conventional-commits'
 import {RepositorySynchronizer} from './internal/RepositorySynchronizer'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-debug.log = function log(...args) {
+require('debug').log = function log(...args) {
     return process.stdout.write(`${util.format(...args)}\n`)
 }
 
