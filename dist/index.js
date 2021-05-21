@@ -72,7 +72,7 @@ class RepositorySynchronizer {
     get git() {
         var _a;
         if (((_a = process.env.ACTIONS_STEP_DEBUG) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === 'true') {
-            __nccwpck_require__(8231).enable('simple-git,simple-git:*');
+            __nccwpck_require__(8237).enable('simple-git,simple-git:*');
             process.env.DEBUG = [
                 process.env.DEBUG || '',
                 'simple-git',
@@ -858,8 +858,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
+const debug_1 = __nccwpck_require__(8237);
+const util = __importStar(__nccwpck_require__(1669));
 const conventional_commits_1 = __nccwpck_require__(6421);
 const RepositorySynchronizer_1 = __nccwpck_require__(2798);
+debug_1.debug.log = function log(...args) {
+    return process.stdout.write(`${util.format(...args)}\n`);
+};
 const githubToken = core.getInput('githubToken', { required: true });
 core.setSecret(githubToken);
 const conventionalCommits = core.getInput('conventionalCommits', { required: true }).toLowerCase() === 'true';
@@ -2256,7 +2261,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const fs_1 = __nccwpck_require__(5747);
-const debug_1 = __importDefault(__nccwpck_require__(8231));
+const debug_1 = __importDefault(__nccwpck_require__(8237));
 const log = debug_1.default('@kwsites/file-exists');
 function check(path, isFile, isDirectory) {
     log(`checking %s`, path);
@@ -7889,7 +7894,7 @@ module.exports = setup;
 
 /***/ }),
 
-/***/ 8231:
+/***/ 8237:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 /**
@@ -16687,7 +16692,7 @@ exports.gitInstanceFactory = gitInstanceFactory;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GitLogger = exports.createLogger = void 0;
-const debug_1 = __nccwpck_require__(8231);
+const debug_1 = __nccwpck_require__(8237);
 const utils_1 = __nccwpck_require__(847);
 debug_1.default.formatters.L = (value) => String(utils_1.filterHasLength(value) ? value.length : '-');
 debug_1.default.formatters.B = (value) => {
@@ -19758,7 +19763,7 @@ exports.isEmptyTask = isEmptyTask;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.filterHasLength = exports.filterFunction = exports.filterPlainObject = exports.filterStringOrStringArray = exports.filterStringArray = exports.filterString = exports.filterPrimitives = exports.filterArray = exports.filterType = void 0;
-const util_1 = __nccwpck_require__(8237);
+const util_1 = __nccwpck_require__(3518);
 function filterType(input, filter, def) {
     if (filter(input)) {
         return input;
@@ -19870,7 +19875,7 @@ __exportStar(__nccwpck_require__(9536), exports);
 __exportStar(__nccwpck_require__(5218), exports);
 __exportStar(__nccwpck_require__(3546), exports);
 __exportStar(__nccwpck_require__(1351), exports);
-__exportStar(__nccwpck_require__(8237), exports);
+__exportStar(__nccwpck_require__(3518), exports);
 //# sourceMappingURL=index.js.map
 
 /***/ }),
@@ -19965,7 +19970,7 @@ exports.createInstanceConfig = createInstanceConfig;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.trailingFunctionArgument = exports.trailingOptionsArgument = exports.getTrailingOptions = exports.appendTaskOptions = void 0;
 const argument_filters_1 = __nccwpck_require__(7366);
-const util_1 = __nccwpck_require__(8237);
+const util_1 = __nccwpck_require__(3518);
 function appendTaskOptions(options, commands = []) {
     if (!argument_filters_1.filterPlainObject(options)) {
         return commands;
@@ -20029,7 +20034,7 @@ exports.trailingFunctionArgument = trailingFunctionArgument;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.parseStringResponse = exports.callTaskParser = void 0;
-const util_1 = __nccwpck_require__(8237);
+const util_1 = __nccwpck_require__(3518);
 function callTaskParser(parser, streams) {
     return parser(streams.stdOut, streams.stdErr);
 }
@@ -20053,7 +20058,7 @@ exports.parseStringResponse = parseStringResponse;
 
 /***/ }),
 
-/***/ 8237:
+/***/ 3518:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
