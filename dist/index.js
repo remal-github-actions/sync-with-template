@@ -67,7 +67,7 @@ class RepositorySynchronizer {
     }
     get workspacePath() {
         const workspacePath = __nccwpck_require__(8517).dirSync().name;
-        core.debug(`Workspace path: ${workspacePath}`);
+        debug(`Workspace path: ${workspacePath}`);
         return workspacePath;
     }
     get git() {
@@ -203,6 +203,7 @@ class RepositorySynchronizer {
         catch (error) {
             if (error instanceof simple_git_1.GitError
                 && error.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)) {
+                debug('  Trying to resolve merge conflicts');
                 const unstagedFiles = await this.unstageIgnoredFiles();
                 const status = await this.git.status();
                 const unresolvedConflictedFiles = [];
@@ -534,7 +535,7 @@ class Remote {
     }
     async addRemoteIfNotAdded() {
         if (!this.isRemoteAdded) {
-            core.debug(`Adding '${this.name}' remote: ${this.repo.svn_url}`);
+            debug(`Adding '${this.name}' remote: ${this.repo.svn_url}`);
             await this.git.addRemote(this.name, this.repo.svn_url);
             this.isRemoteAdded = true;
         }
@@ -543,7 +544,7 @@ class Remote {
         const trueRef = ref || this.defaultBranch;
         if (!this.fetchedRefs.includes(trueRef)) {
             await this.addRemoteIfNotAdded();
-            core.debug(`Fetching from '${this.name}' remote: ${trueRef}`);
+            debug(`Fetching from '${this.name}' remote: ${trueRef}`);
             await this.git.fetch(this.name, trueRef);
             this.fetchedRefs.push(trueRef);
         }
@@ -637,9 +638,18 @@ async function forceCheckout(git, branchName, ref) {
     const status = await git.status();
     const notAdded = status.not_added;
     if (notAdded.length) {
-        core.debug(`Removing not added files:\n  ${notAdded.join('\n  ')}`);
+        debug(`Removing not added files:\n  ${notAdded.join('\n  ')}`);
         await git.add(notAdded);
         await git.rm(notAdded);
+    }
+}
+function debug(message) {
+    var _a;
+    if (((_a = process.env.ACTIONS_STEP_DEBUG) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === 'true') {
+        core.info(message);
+    }
+    else {
+        core.debug(message);
     }
 }
 
