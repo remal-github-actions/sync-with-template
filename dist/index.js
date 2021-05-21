@@ -207,6 +207,9 @@ class RepositorySynchronizer {
                 debug('  Trying to resolve merge conflicts');
                 const unstagedFiles = await this.unstageIgnoredFiles();
                 const status = await this.git.status();
+                status.renamed.forEach(info => {
+                    debug(`  renamed from=${info.from}; to=${info.to}`);
+                });
                 const unresolvedConflictedFiles = [];
                 for (const conflictedPath of status.conflicted) {
                     debug(`  conflictedPath=${conflictedPath}`);
