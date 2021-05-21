@@ -50,7 +50,7 @@ export class RepositorySynchronizer {
     @cache
     get workspacePath(): string {
         const workspacePath = require('tmp').dirSync().name
-        core.debug(`Workspace path: ${workspacePath}`)
+        debug(`Workspace path: ${workspacePath}`)
         return workspacePath
     }
 
@@ -240,6 +240,7 @@ export class RepositorySynchronizer {
             if (error instanceof GitError
                 && error.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)
             ) {
+                debug('  Trying to resolve merge conflicts')
                 const unstagedFiles = await this.unstageIgnoredFiles()
 
                 const status = await this.git.status()
@@ -617,7 +618,7 @@ export class Remote {
 
     private async addRemoteIfNotAdded() {
         if (!this.isRemoteAdded) {
-            core.debug(`Adding '${this.name}' remote: ${this.repo.svn_url}`)
+            debug(`Adding '${this.name}' remote: ${this.repo.svn_url}`)
             await this.git.addRemote(this.name, this.repo.svn_url)
             this.isRemoteAdded = true
         }
@@ -629,7 +630,7 @@ export class Remote {
         const trueRef = ref || this.defaultBranch
         if (!this.fetchedRefs.includes(trueRef)) {
             await this.addRemoteIfNotAdded()
-            core.debug(`Fetching from '${this.name}' remote: ${trueRef}`)
+            debug(`Fetching from '${this.name}' remote: ${trueRef}`)
             await this.git.fetch(this.name, trueRef)
             this.fetchedRefs.push(trueRef)
         }
@@ -742,8 +743,17 @@ async function forceCheckout(git: SimpleGit, branchName: string, ref: string) {
     const status = await git.status()
     const notAdded = status.not_added
     if (notAdded.length) {
-        core.debug(`Removing not added files:\n  ${notAdded.join('\n  ')}`)
+        debug(`Removing not added files:\n  ${notAdded.join('\n  ')}`)
         await git.add(notAdded)
         await git.rm(notAdded)
+    }
+}
+
+
+function debug(message: string) {
+    if (process.env.ACTIONS_STEP_DEBUG?.toLowerCase() === 'true') {
+        core.info(message)
+    } else {
+        core.debug(message)
     }
 }
