@@ -181,7 +181,7 @@ class RepositorySynchronizer {
         await forceCheckout(this.git, this.syncBranchName, firstRepositoryCommit.hash);
         return firstRepositoryCommit;
     }
-    async retrieveChangedFiles(logItem) {
+    retrieveChangedFiles(logItem) {
         return this.git.raw('diff-tree', '--no-commit-id', '--name-only', '-r', logItem.hash)
             .then(content => content.trim().split('\n')
             .map(line => line.trim())
@@ -199,18 +199,16 @@ class RepositorySynchronizer {
     async cherryPick(logItem) {
         core.info(`Cherry-picking: ${logItem.message} (commit made at ${logItem.date})`);
         try {
-            await this.git.raw('cherry-pick', '--no-commit', '-r', '--allow-empty', '--allow-empty-message', '--strategy=recursive', '-Xours', logItem.hash);
+            await this.git.raw('cherry-pick', '--no-commit', '-r', '--allow-empty', '--allow-empty-message', '--keep-redundant-commits', '--strategy=recursive', '-Xours', logItem.hash);
         }
         catch (error) {
             if (error instanceof simple_git_1.GitError
                 && error.message.includes(`could not apply ${logItem.hash.substring(0, 6)}`)) {
                 debug('  Trying to resolve merge conflicts');
                 const unstagedFiles = await this.unstageIgnoredFiles();
+                debug(`  Collecting rename/delete conflicts: ${error.message}`);
+                const renamedDeletedPaths = [];
                 const status = await this.git.status();
-                debug('  renames:');
-                status.renamed.forEach(info => {
-                    debug(`    from=${info.from}; to=${info.to}`);
-                });
                 const unresolvedConflictedFiles = [];
                 for (const conflictedPath of status.conflicted) {
                     debug(`  conflictedPath=${conflictedPath}`);
