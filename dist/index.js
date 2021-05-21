@@ -210,6 +210,7 @@ class RepositorySynchronizer {
                 for (const renamedDeletedPathsMatch of renamedDeletedPathsMatches) {
                     const deletedPath = renamedDeletedPathsMatch[1];
                     const renamedPath = renamedDeletedPathsMatch[2];
+                    renamedDeletedPaths.push(renamedPath);
                     debug(`    deletedPath=${deletedPath}; renamedPath=${renamedPath}`);
                 }
                 debug('  Trying to resolve merge conflicts');
@@ -220,6 +221,11 @@ class RepositorySynchronizer {
                     debug(`  conflictedPath=${conflictedPath}`);
                     if (unstagedFiles.includes(conflictedPath)) {
                         debug(`      UNSTAGED`);
+                        continue;
+                    }
+                    if (renamedDeletedPaths.includes(conflictedPath)) {
+                        core.info(`  Resolving conflict: removing file: ${conflictedPath}`);
+                        await this.git.rm(conflictedPath);
                         continue;
                     }
                     const fileInfo = status.files.find(file => file.path === conflictedPath);
