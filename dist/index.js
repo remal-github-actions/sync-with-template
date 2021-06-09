@@ -15757,50 +15757,6 @@ Git.prototype.env = function (name, value) {
 };
 
 /**
- * Sets a handler function to be called whenever a new child process is created, the handler function will be called
- * with the name of the command being run and the stdout & stderr streams used by the ChildProcess.
- *
- * @example
- * require('simple-git')
- *    .outputHandler(function (command, stdout, stderr) {
- *       stdout.pipe(process.stdout);
- *    })
- *    .checkout('https://github.com/user/repo.git');
- *
- * @see https://nodejs.org/api/child_process.html#child_process_class_childprocess
- * @see https://nodejs.org/api/stream.html#stream_class_stream_readable
- * @param {Function} outputHandler
- * @returns {Git}
- */
-Git.prototype.outputHandler = function (outputHandler) {
-   this._executor.outputHandler = outputHandler;
-   return this;
-};
-
-/**
- * Initialize a git repo
- *
- * @param {Boolean} [bare=false]
- * @param {Function} [then]
- */
-Git.prototype.init = function (bare, then) {
-   return this._runTask(
-      initTask(bare === true, this._executor.cwd, getTrailingOptions(arguments)),
-      trailingFunctionArgument(arguments),
-   );
-};
-
-/**
- * Check the status of the local repo
- */
-Git.prototype.status = function () {
-   return this._runTask(
-      statusTask(getTrailingOptions(arguments)),
-      trailingFunctionArgument(arguments),
-   );
-};
-
-/**
  * List the stash(s) of the local repo
  */
 Git.prototype.stashList = function (options) {
@@ -15809,19 +15765,6 @@ Git.prototype.stashList = function (options) {
          trailingOptionsArgument(arguments) || {},
          filterArray(options) && options || []
       ),
-      trailingFunctionArgument(arguments),
-   );
-};
-
-/**
- * Stash the local repo
- *
- * @param {Object|Array} [options]
- * @param {Function} [then]
- */
-Git.prototype.stash = function (options, then) {
-   return this._runTask(
-      straightThroughStringTask(['stash', ...getTrailingOptions(arguments)]),
       trailingFunctionArgument(arguments),
    );
 };
@@ -16241,49 +16184,6 @@ Git.prototype.remote = function (options, then) {
 };
 
 /**
- * Merges from one branch to another, equivalent to running `git merge ${from} $[to}`, the `options` argument can
- * either be an array of additional parameters to pass to the command or null / omitted to be ignored.
- *
- * @param {string} from
- * @param {string} to
- */
-Git.prototype.mergeFromTo = function (from, to) {
-   if (!(filterString(from) && filterString(to))) {
-      return this._runTask(configurationErrorTask(
-         `Git.mergeFromTo requires that the 'from' and 'to' arguments are supplied as strings`
-      ));
-   }
-
-   return this._runTask(
-      mergeTask([from, to, ...getTrailingOptions(arguments)]),
-      trailingFunctionArgument(arguments, false),
-   );
-};
-
-/**
- * Runs a merge, `options` can be either an array of arguments
- * supported by the [`git merge`](https://git-scm.com/docs/git-merge)
- * or an options object.
- *
- * Conflicts during the merge result in an error response,
- * the response type whether it was an error or success will be a MergeSummary instance.
- * When successful, the MergeSummary has all detail from a the PullSummary
- *
- * @param {Object | string[]} [options]
- * @param {Function} [then]
- * @returns {*}
- *
- * @see ./responses/MergeSummary.js
- * @see ./responses/PullSummary.js
- */
-Git.prototype.merge = function () {
-   return this._runTask(
-      mergeTask(getTrailingOptions(arguments)),
-      trailingFunctionArgument(arguments),
-   );
-};
-
-/**
  * Call any `git tag` function with arguments passed as an array of strings.
  *
  * @param {string[]} options
@@ -16456,10 +16356,6 @@ Git.prototype.clean = function (mode, options, then) {
    );
 };
 
-/**
- * Call a simple function at the next step in the chain.
- * @param {Function} [then]
- */
 Git.prototype.exec = function (then) {
    const task = {
       commands: [],
@@ -18794,7 +18690,10 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SimpleGitApi = void 0;
 const task_callback_1 = __nccwpck_require__(8850);
 const change_working_directory_1 = __nccwpck_require__(4415);
+const init_1 = __nccwpck_require__(6016);
+const merge_1 = __nccwpck_require__(8829);
 const push_1 = __nccwpck_require__(1435);
+const status_1 = __nccwpck_require__(9197);
 const task_1 = __nccwpck_require__(2815);
 const utils_1 = __nccwpck_require__(847);
 class SimpleGitApi {
@@ -18826,12 +18725,34 @@ class SimpleGitApi {
         }
         return this._runTask(task_1.configurationErrorTask('Git.cwd: workingDirectory must be supplied as a string'), next);
     }
+    init(bare) {
+        return this._runTask(init_1.initTask(bare === true, this._executor.cwd, utils_1.getTrailingOptions(arguments)), utils_1.trailingFunctionArgument(arguments));
+    }
+    merge() {
+        return this._runTask(merge_1.mergeTask(utils_1.getTrailingOptions(arguments)), utils_1.trailingFunctionArgument(arguments));
+    }
+    mergeFromTo(remote, branch) {
+        if (!(utils_1.filterString(remote) && utils_1.filterString(branch))) {
+            return this._runTask(task_1.configurationErrorTask(`Git.mergeFromTo requires that the 'remote' and 'branch' arguments are supplied as strings`));
+        }
+        return this._runTask(merge_1.mergeTask([remote, branch, ...utils_1.getTrailingOptions(arguments)]), utils_1.trailingFunctionArgument(arguments, false));
+    }
+    outputHandler(handler) {
+        this._executor.outputHandler = handler;
+        return this;
+    }
     push() {
         const task = push_1.pushTask({
             remote: utils_1.filterType(arguments[0], utils_1.filterString),
             branch: utils_1.filterType(arguments[1], utils_1.filterString),
         }, utils_1.getTrailingOptions(arguments));
         return this._runTask(task, utils_1.trailingFunctionArgument(arguments));
+    }
+    stash() {
+        return this._runTask(task_1.straightThroughStringTask(['stash', ...utils_1.getTrailingOptions(arguments)]), utils_1.trailingFunctionArgument(arguments));
+    }
+    status() {
+        return this._runTask(status_1.statusTask(utils_1.getTrailingOptions(arguments)), utils_1.trailingFunctionArgument(arguments));
     }
 }
 exports.SimpleGitApi = SimpleGitApi;
