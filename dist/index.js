@@ -4695,7 +4695,7 @@ function _defineProperty(obj, key, value) {
   return obj;
 }
 
-const VERSION = "3.4.2";
+const VERSION = "3.4.3";
 
 const noop = () => Promise.resolve(); // @ts-ignore
 
@@ -4828,7 +4828,7 @@ function throttling(octokit, octokitOptions = {}) {
   } = octokitOptions.throttle || {};
 
   if (!enabled) {
-    return;
+    return {};
   }
 
   const common = {
@@ -4923,6 +4923,7 @@ function throttling(octokit, octokitOptions = {}) {
     }
   });
   octokit.hook.wrap("request", wrapRequest.bind(null, state));
+  return {};
 }
 throttling.VERSION = VERSION;
 throttling.triggersNotification = triggersNotification;
