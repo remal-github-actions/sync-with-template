@@ -3372,7 +3372,7 @@ exports.paginateRest = paginateRest;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 
 /**
  * @param octokit Octokit instance
