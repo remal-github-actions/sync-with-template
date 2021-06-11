@@ -143,7 +143,7 @@ export class RepositorySynchronizer {
     }
 
 
-    async fetchPullRequest(pullRequest: PullRequest | PullRequestSimple) {
+    private async fetchPullRequest(pullRequest: PullRequest | PullRequestSimple) {
         core.info(`Fetching last commit of pull request ${pullRequest.html_url}`)
         const remote = await this.origin
         await remote.fetch(`refs/pull/${pullRequest.number}/head`)
@@ -151,8 +151,16 @@ export class RepositorySynchronizer {
 
     async checkoutPullRequestHead(pullRequest: PullRequest | PullRequestSimple, branchName?: string) {
         const trueBranchName = branchName || this.syncBranchName
+        //*
+        const mergeCommitSha = pullRequest.merge_commit_sha
+        if (mergeCommitSha == null) {
+            throw new Error(`Merge commit SHA is empty for pull request ${pullRequest.html_url}`)
+        }
+        await forceCheckout(this.git, trueBranchName, mergeCommitSha)
+        /*/
         await this.fetchPullRequest(pullRequest)
         await forceCheckout(this.git, trueBranchName, pullRequest.head.sha)
+        //*/
     }
 
 
