@@ -143,12 +143,6 @@ export class RepositorySynchronizer {
     }
 
 
-    private async fetchPullRequest(pullRequest: PullRequest | PullRequestSimple) {
-        core.info(`Fetching last commit of pull request ${pullRequest.html_url}`)
-        const remote = await this.origin
-        await remote.fetch(`refs/pull/${pullRequest.number}/head`)
-    }
-
     async checkoutPullRequestHead(pullRequest: PullRequest | PullRequestSimple, branchName?: string) {
         const trueBranchName = branchName || this.syncBranchName
         //*
@@ -161,6 +155,12 @@ export class RepositorySynchronizer {
         await this.fetchPullRequest(pullRequest)
         await forceCheckout(this.git, trueBranchName, pullRequest.head.sha)
         //*/
+    }
+
+    private async fetchPullRequest(pullRequest: PullRequest | PullRequestSimple) {
+        core.info(`Fetching last commit of pull request ${pullRequest.html_url}`)
+        const remote = await this.origin
+        await remote.fetch(`refs/pull/${pullRequest.number}/head`)
     }
 
 
