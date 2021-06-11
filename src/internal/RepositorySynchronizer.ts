@@ -145,16 +145,25 @@ export class RepositorySynchronizer {
 
     async checkoutPullRequestHead(pullRequest: PullRequest | PullRequestSimple, branchName?: string) {
         const trueBranchName = branchName || this.syncBranchName
-        //*
         const mergeCommitSha = pullRequest.merge_commit_sha
         if (mergeCommitSha == null) {
             throw new Error(`Merge commit SHA is empty for pull request ${pullRequest.html_url}`)
         }
-        await forceCheckout(this.git, trueBranchName, mergeCommitSha)
-        /*/
-        await this.fetchPullRequest(pullRequest)
-        await forceCheckout(this.git, trueBranchName, pullRequest.head.sha)
-        //*/
+        try {
+            await this.origin.then(remote => remote.fetch())
+            await forceCheckout(this.git, trueBranchName, mergeCommitSha)
+
+        } catch (error) {
+            if (error instanceof GitError
+                && error.message.includes(`reference is not a tree ${mergeCommitSha}`)
+            ) {
+                await this.fetchPullRequest(pullRequest)
+                await forceCheckout(this.git, trueBranchName, pullRequest.head.sha)
+
+            } else {
+                throw error
+            }
+        }
     }
 
     private async fetchPullRequest(pullRequest: PullRequest | PullRequestSimple) {
