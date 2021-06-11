@@ -135,15 +135,31 @@ class RepositorySynchronizer {
     async checkoutSyncBranch() {
         await this.origin.then(it => it.checkout(this.syncBranchName));
     }
+    async checkoutPullRequestHead(pullRequest, branchName) {
+        const trueBranchName = branchName || this.syncBranchName;
+        const mergeCommitSha = pullRequest.merge_commit_sha;
+        if (mergeCommitSha == null) {
+            throw new Error(`Merge commit SHA is empty for pull request ${pullRequest.html_url}`);
+        }
+        try {
+            await this.origin.then(remote => remote.fetch());
+            await forceCheckout(this.git, trueBranchName, mergeCommitSha);
+        }
+        catch (error) {
+            if (error instanceof simple_git_1.GitError
+                && error.message.includes(`reference is not a tree ${mergeCommitSha}`)) {
+                await this.fetchPullRequest(pullRequest);
+                await forceCheckout(this.git, trueBranchName, pullRequest.head.sha);
+            }
+            else {
+                throw error;
+            }
+        }
+    }
     async fetchPullRequest(pullRequest) {
         core.info(`Fetching last commit of pull request ${pullRequest.html_url}`);
         const remote = await this.origin;
         await remote.fetch(`refs/pull/${pullRequest.number}/head`);
-    }
-    async checkoutPullRequestHead(pullRequest, branchName) {
-        const trueBranchName = branchName || this.syncBranchName;
-        await this.fetchPullRequest(pullRequest);
-        await forceCheckout(this.git, trueBranchName, pullRequest.head.sha);
     }
     parseLog(ref, reverse, since) {
         const options = [];
