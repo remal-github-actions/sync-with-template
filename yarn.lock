@@ -771,10 +771,10 @@
     "@octokit/types" "^6.6.0"
     deprecation "^2.3.1"
 
-"@octokit/plugin-retry@3.0.7":
-  version "3.0.7"
-  resolved "https://registry.yarnpkg.com/@octokit/plugin-retry/-/plugin-retry-3.0.7.tgz#174516f2b80b7140aee71ebc2b506db2c5c1d3d6"
-  integrity sha512-n08BPfVeKj5wnyH7IaOWnuKbx+e9rSJkhDHMJWXLPv61625uWjsN8G7sAW3zWm9n9vnS4friE7LL/XLcyGeG8Q==
+"@octokit/plugin-retry@3.0.8":
+  version "3.0.8"
+  resolved "https://registry.yarnpkg.com/@octokit/plugin-retry/-/plugin-retry-3.0.8.tgz#4f018ac3bbd10249f01f47a60eb54f1ae76fab19"
+  integrity sha512-Pv1At5Wm6ywA2QbB1IElpyrfXVPzdTIbdeXjKRh9sJ/7fT+cZVSHTiQwm+YzoFZsoNBHhYSdS3JKNZzKsH0KdA==
   dependencies:
     "@octokit/types" "^6.0.3"
     bottleneck "^2.15.3"
