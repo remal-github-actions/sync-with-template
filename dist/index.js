@@ -4712,7 +4712,7 @@ function _defineProperty(obj, key, value) {
   return obj;
 }
 
-const VERSION = "3.4.3";
+const VERSION = "3.5.0";
 
 const noop = () => Promise.resolve(); // @ts-ignore
 
@@ -4762,7 +4762,7 @@ async function doRequest(state, request, options) {
     if (res.data.errors != null && // @ts-ignore
     res.data.errors.some(error => error.type === "RATE_LIMITED")) {
       const error = Object.assign(new Error("GraphQL Rate Limit Exceeded"), {
-        headers: res.headers,
+        response: res,
         data: res.data
       });
       throw error;
@@ -4909,7 +4909,7 @@ function throttling(octokit, octokitOptions = {}) {
         // https://docs.github.com/en/rest/overview/resources-in-the-rest-api#abuse-rate-limits
         // The Retry-After header can sometimes be blank when hitting an abuse limit,
         // but is always present after 2-3s, so make sure to set `retryAfter` to at least 5s by default.
-        const retryAfter = Math.max(~~error.headers["retry-after"], state.minimumAbuseRetryAfter);
+        const retryAfter = Math.max(~~error.response.headers["retry-after"], state.minimumAbuseRetryAfter);
         const wantRetry = await emitter.trigger("abuse-limit", retryAfter, options, octokit);
         return {
           wantRetry,
@@ -4917,11 +4917,11 @@ function throttling(octokit, octokitOptions = {}) {
         };
       }
 
-      if (error.headers != null && error.headers["x-ratelimit-remaining"] === "0") {
+      if (error.response.headers != null && error.response.headers["x-ratelimit-remaining"] === "0") {
         // The user has used all their allowed calls for the current time period (REST and GraphQL)
         // https://docs.github.com/en/rest/reference/rate-limit (REST)
         // https://docs.github.com/en/graphql/overview/resource-limitations#rate-limit (GraphQL)
-        const rateLimitReset = new Date(~~error.headers["x-ratelimit-reset"] * 1000).getTime();
+        const rateLimitReset = new Date(~~error.response.headers["x-ratelimit-reset"] * 1000).getTime();
         const retryAfter = Math.max(Math.ceil((rateLimitReset - Date.now()) / 1000), 0);
         const wantRetry = await emitter.trigger("rate-limit", retryAfter, options, octokit);
         return {
