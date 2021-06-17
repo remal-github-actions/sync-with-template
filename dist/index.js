@@ -142,12 +142,14 @@ class RepositorySynchronizer {
             throw new Error(`Merge commit SHA is empty for pull request ${pullRequest.html_url}`);
         }
         try {
+            debug(`Checkouting merge commit of ${pullRequest.html_url}: ${mergeCommitSha}`);
             await this.origin.then(remote => remote.fetch());
             await forceCheckout(this.git, trueBranchName, mergeCommitSha);
         }
         catch (error) {
             if (error instanceof simple_git_1.GitError
                 && error.message.includes(`reference is not a tree ${mergeCommitSha}`)) {
+                debug(`Checkouting HEAD commit of ${pullRequest.html_url}: ${pullRequest.head.sha}`);
                 await this.fetchPullRequest(pullRequest);
                 await forceCheckout(this.git, trueBranchName, pullRequest.head.sha);
             }
