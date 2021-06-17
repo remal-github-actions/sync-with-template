@@ -168,10 +168,14 @@ export class RepositorySynchronizer {
         }
     }
 
+    private static getPullRequestHeadRef(pullRequest: PullRequest | PullRequestSimple): string {
+        return `refs/pull/${pullRequest.number}/head`
+    }
+
     private async fetchPullRequest(pullRequest: PullRequest | PullRequestSimple) {
         core.info(`Fetching last commit of pull request ${pullRequest.html_url}`)
         const remote = await this.origin
-        await remote.fetch(`refs/pull/${pullRequest.number}/head`)
+        await remote.fetch(RepositorySynchronizer.getPullRequestHeadRef(pullRequest))
     }
 
 
@@ -194,15 +198,21 @@ export class RepositorySynchronizer {
         return this.git.log(options)
     }
 
-    retrieveLatestSyncCommit(): Promise<DefaultLogFields | undefined> {
-        return this.parseLog().then(log => {
-            for (const logItem of log.all) {
-                if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
-                    return logItem
-                }
+    async retrieveLatestSyncCommit(pullRequest?: PullRequest | PullRequestSimple): Promise<DefaultLogFields | undefined> {
+        let logResult: LogResult
+        if (pullRequest) {
+            await this.fetchPullRequest(pullRequest)
+            logResult = await this.parseLog(pullRequest.head.sha)
+        } else {
+            logResult = await this.parseLog()
+        }
+
+        for (const logItem of logResult.all) {
+            if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
+                return logItem
             }
-            return undefined
-        })
+        }
+        return undefined
     }
 
 
