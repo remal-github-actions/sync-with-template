@@ -183,6 +183,7 @@ class RepositorySynchronizer {
     async retrieveLatestSyncCommit(pullRequest) {
         let logResult;
         if (pullRequest) {
+            debug(`Retrieving latest sync commit from pull request HEAD commit ${pullRequest.html_url}`);
             await this.fetchPullRequest(pullRequest);
             logResult = await this.parseLog(pullRequest.head.sha);
         }
