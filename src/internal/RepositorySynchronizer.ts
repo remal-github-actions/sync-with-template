@@ -205,6 +205,7 @@ export class RepositorySynchronizer {
             await this.fetchPullRequest(pullRequest)
             logResult = await this.parseLog(pullRequest.head.sha)
         } else {
+            debug(`Retrieving latest sync commit from current branch`)
             logResult = await this.parseLog()
         }
 
