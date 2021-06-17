@@ -158,7 +158,7 @@ export class RepositorySynchronizer {
             if (error instanceof GitError
                 && error.message.includes(`reference is not a tree ${mergeCommitSha}`)
             ) {
-                debug(`Checkouting HEAD commit of ${pullRequest.html_url}: ${mergeCommitSha}`)
+                debug(`Checkouting HEAD commit of ${pullRequest.html_url}: ${pullRequest.head.sha}`)
                 await this.fetchPullRequest(pullRequest)
                 await forceCheckout(this.git, trueBranchName, pullRequest.head.sha)
 
