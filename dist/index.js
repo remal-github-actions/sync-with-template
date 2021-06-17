@@ -158,10 +158,13 @@ class RepositorySynchronizer {
             }
         }
     }
+    static getPullRequestHeadRef(pullRequest) {
+        return `refs/pull/${pullRequest.number}/head`;
+    }
     async fetchPullRequest(pullRequest) {
         core.info(`Fetching last commit of pull request ${pullRequest.html_url}`);
         const remote = await this.origin;
-        await remote.fetch(`refs/pull/${pullRequest.number}/head`);
+        await remote.fetch(RepositorySynchronizer.getPullRequestHeadRef(pullRequest));
     }
     parseLog(ref, reverse, since) {
         const options = [];
@@ -177,15 +180,21 @@ class RepositorySynchronizer {
         }
         return this.git.log(options);
     }
-    retrieveLatestSyncCommit() {
-        return this.parseLog().then(log => {
-            for (const logItem of log.all) {
-                if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
-                    return logItem;
-                }
+    async retrieveLatestSyncCommit(pullRequest) {
+        let logResult;
+        if (pullRequest) {
+            await this.fetchPullRequest(pullRequest);
+            logResult = await this.parseLog(pullRequest.head.sha);
+        }
+        else {
+            logResult = await this.parseLog();
+        }
+        for (const logItem of logResult.all) {
+            if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
+                return logItem;
             }
-            return undefined;
-        });
+        }
+        return undefined;
     }
     get firstRepositoryCommit() {
         return this.origin
@@ -926,21 +935,22 @@ async function run() {
         await core.group("Initializing the repository", async () => {
             await synchronizer.initializeRepository();
         });
-        await core.group("Fetching sync branch", async () => {
+        const pullRequest = await core.group("Fetching sync branch", async () => {
             const doesOriginHasSyncBranch = await synchronizer.doesSyncBranchExists();
             if (doesOriginHasSyncBranch) {
                 await synchronizer.checkoutSyncBranch();
-                return;
+                return undefined;
             }
-            const pullRequest = await synchronizer.latestMergedPullRequest;
-            if (pullRequest) {
-                await synchronizer.checkoutPullRequestHead(pullRequest);
-                return;
+            const pr = await synchronizer.latestMergedPullRequest;
+            if (pr) {
+                await synchronizer.checkoutPullRequestHead(pr);
+                return pr;
             }
             await synchronizer.checkoutFirstRepositoryCommit();
+            return undefined;
         });
         const lastSynchronizedCommitDate = await core.group("Retrieving last synchronized commit date", async () => {
-            const latestSyncCommit = (await synchronizer.retrieveLatestSyncCommit())
+            const latestSyncCommit = (await synchronizer.retrieveLatestSyncCommit(pullRequest))
                 || (await synchronizer.firstRepositoryCommit);
             core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestSyncCommit.hash} (${latestSyncCommit.date}): ${latestSyncCommit.message}`);
             return new Date(latestSyncCommit.date);
