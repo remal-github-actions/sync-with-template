@@ -188,6 +188,7 @@ class RepositorySynchronizer {
             logResult = await this.parseLog(pullRequest.head.sha);
         }
         else {
+            debug(`Retrieving latest sync commit from current branch`);
             logResult = await this.parseLog();
         }
         for (const logItem of logResult.all) {
