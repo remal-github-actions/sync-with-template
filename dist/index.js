@@ -4626,7 +4626,7 @@ async function wrapRequest(state, request, options) {
   return limiter.schedule(request, options);
 }
 
-const VERSION = "3.0.8";
+const VERSION = "3.0.9";
 function retry(octokit, octokitOptions) {
   const state = Object.assign({
     enabled: true,
