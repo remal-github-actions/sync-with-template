@@ -4726,7 +4726,7 @@ function _defineProperty(obj, key, value) {
   return obj;
 }
 
-const VERSION = "3.5.0";
+const VERSION = "3.5.1";
 
 const noop = () => Promise.resolve(); // @ts-ignore
 
@@ -4737,8 +4737,11 @@ function wrapRequest(state, request, options) {
 
 async function doRequest(state, request, options) {
   const isWrite = options.method !== "GET" && options.method !== "HEAD";
-  const isSearch = options.method === "GET" && options.url.startsWith("/search/");
-  const isGraphQL = options.url.startsWith("/graphql");
+  const {
+    pathname
+  } = new URL(options.url, "http://github.test");
+  const isSearch = options.method === "GET" && pathname.startsWith("/search/");
+  const isGraphQL = pathname.startsWith("/graphql");
   const retryCount = ~~options.request.retryCount;
   const jobOptions = retryCount > 0 ? {
     priority: 0,
@@ -4759,7 +4762,7 @@ async function doRequest(state, request, options) {
   } // Guarantee at least 3000ms between requests that trigger notifications
 
 
-  if (isWrite && state.triggersNotification(options.url)) {
+  if (isWrite && state.triggersNotification(pathname)) {
     await state.notifications.key(state.id).schedule(jobOptions, noop);
   } // Guarantee at least 2000ms between search requests
 
@@ -4906,7 +4909,10 @@ function throttling(octokit, octokitOptions = {}) {
 
   state.retryLimiter.on("failed", async function (error, info) {
     const options = info.args[info.args.length - 1];
-    const shouldRetryGraphQL = options.url.startsWith("/graphql") && error.status !== 401;
+    const {
+      pathname
+    } = new URL(options.url, "http://github.test");
+    const shouldRetryGraphQL = pathname.startsWith("/graphql") && error.status !== 401;
 
     if (!(shouldRetryGraphQL || error.status === 403)) {
       return;
