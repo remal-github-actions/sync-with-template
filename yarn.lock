@@ -998,10 +998,10 @@
   resolved "https://registry.yarnpkg.com/@types/normalize-package-data/-/normalize-package-data-2.4.0.tgz#e486d0d97396d79beedd0a6e33f4534ff6b4973e"
   integrity sha512-f5j5b/Gf71L+dbqxIpQ4Z2WlmI/mPJ0fOkGGmFgtb6sAu97EPczzbS3/tJKxmcYDj55OX6ssqwDAWOHIYDRDGA==
 
-"@types/picomatch@2.2.4":
-  version "2.2.4"
-  resolved "https://registry.yarnpkg.com/@types/picomatch/-/picomatch-2.2.4.tgz#71acb6361deb7a68a9fd857c2fe6ccb2edf5c090"
-  integrity sha512-O4Cf3nFZbS1mFGbCjkimivto15zsf1uaEIT3Fxx3+Ek9PtAA8tu6jrsjt775GOAyHFJSjkZsz5gT3c/7gUYCRQ==
+"@types/picomatch@2.2.5":
+  version "2.2.5"
+  resolved "https://registry.yarnpkg.com/@types/picomatch/-/picomatch-2.2.5.tgz#c1243b1c43c635feb04130d549d0ec7bdb396298"
+  integrity sha512-HiwR+rLX7EGhQ0AjPKxjI98ABvLOCrky3fGEcrfsmpQBKcIlseFSCr6KLdgNayhThH6O3Jimyn6x4XZuLVdy/Q==
 
 "@types/prettier@^2.1.5":
   version "2.2.3"
