@@ -17356,22 +17356,17 @@ const {branchTask, branchLocalTask, deleteBranchesTask, deleteBranchTask} = __nc
 const {checkIgnoreTask} = __nccwpck_require__(3293);
 const {checkIsRepoTask} = __nccwpck_require__(221);
 const {cloneTask, cloneMirrorTask} = __nccwpck_require__(3173);
-const {addConfigTask, listConfigTask} = __nccwpck_require__(7597);
 const {cleanWithOptionsTask, isCleanOptionsArray} = __nccwpck_require__(4386);
 const {commitTask} = __nccwpck_require__(5494);
 const {diffSummaryTask} = __nccwpck_require__(9241);
 const {fetchTask} = __nccwpck_require__(8823);
-const {hashObjectTask} = __nccwpck_require__(8199);
-const {initTask} = __nccwpck_require__(6016);
 const {logTask, parseLogOptions} = __nccwpck_require__(8627);
-const {mergeTask} = __nccwpck_require__(8829);
 const {moveTask} = __nccwpck_require__(6520);
 const {pullTask} = __nccwpck_require__(4636);
 const {pushTagsTask} = __nccwpck_require__(1435);
 const {addRemoteTask, getRemotesTask, listRemotesTask, remoteTask, removeRemoteTask} = __nccwpck_require__(9866);
 const {getResetMode, resetTask} = __nccwpck_require__(2377);
 const {stashListTask} = __nccwpck_require__(810);
-const {statusTask} = __nccwpck_require__(9197);
 const {addSubModuleTask, initSubModuleTask, subModuleTask, updateSubModuleTask} = __nccwpck_require__(8772);
 const {addAnnotatedTagTask, addTagTask, tagListTask} = __nccwpck_require__(8540);
 const {straightThroughBufferTask, straightThroughStringTask} = __nccwpck_require__(2815);
@@ -17713,25 +17708,6 @@ Git.prototype.branchLocal = function (then) {
 };
 
 /**
- * Add config to local git instance
- *
- * @param {string} key configuration key (e.g user.name)
- * @param {string} value for the given key (e.g your name)
- * @param {boolean} [append=false] optionally append the key/value pair (equivalent of passing `--add` option).
- * @param {Function} [then]
- */
-Git.prototype.addConfig = function (key, value, append, then) {
-   return this._runTask(
-      addConfigTask(key, value, typeof append === "boolean" ? append : false),
-      trailingFunctionArgument(arguments),
-   );
-};
-
-Git.prototype.listConfig = function () {
-   return this._runTask(listConfigTask(), trailingFunctionArgument(arguments));
-};
-
-/**
  * Executes any command against the git binary.
  */
 Git.prototype.raw = function (commands) {
@@ -17823,16 +17799,6 @@ Git.prototype.removeRemote = function (remoteName, then) {
 Git.prototype.getRemotes = function (verbose, then) {
    return this._runTask(
       getRemotesTask(verbose === true),
-      trailingFunctionArgument(arguments),
-   );
-};
-
-/**
- * Compute object ID from a file
- */
-Git.prototype.hashObject = function (path, write) {
-   return this._runTask(
-      hashObjectTask(path, write === true),
       trailingFunctionArgument(arguments),
    );
 };
@@ -18132,10 +18098,12 @@ const git_response_error_1 = __nccwpck_require__(5131);
 const task_configuration_error_1 = __nccwpck_require__(740);
 const check_is_repo_1 = __nccwpck_require__(221);
 const clean_1 = __nccwpck_require__(4386);
+const config_1 = __nccwpck_require__(7597);
 const reset_1 = __nccwpck_require__(2377);
 const api = {
     CheckRepoActions: check_is_repo_1.CheckRepoActions,
     CleanOptions: clean_1.CleanOptions,
+    GitConfigScope: config_1.GitConfigScope,
     GitConstructError: git_construct_error_1.GitConstructError,
     GitError: git_error_1.GitError,
     GitPluginError: git_plugin_error_1.GitPluginError,
@@ -18539,7 +18507,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.parseCommitResult = void 0;
 const utils_1 = __nccwpck_require__(847);
 const parsers = [
-    new utils_1.LineParser(/\[([^\s]+)( \([^)]+\))? ([^\]]+)/, (result, [branch, root, commit]) => {
+    new utils_1.LineParser(/^\[([^\s]+)( \([^)]+\))? ([^\]]+)/, (result, [branch, root, commit]) => {
         result.branch = branch;
         result.commit = commit;
         result.root = !!root;
@@ -20381,6 +20349,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SimpleGitApi = void 0;
 const task_callback_1 = __nccwpck_require__(8850);
 const change_working_directory_1 = __nccwpck_require__(4415);
+const config_1 = __nccwpck_require__(7597);
+const hash_object_1 = __nccwpck_require__(8199);
 const init_1 = __nccwpck_require__(6016);
 const merge_1 = __nccwpck_require__(8829);
 const push_1 = __nccwpck_require__(1435);
@@ -20416,6 +20386,9 @@ class SimpleGitApi {
         }
         return this._runTask(task_1.configurationErrorTask('Git.cwd: workingDirectory must be supplied as a string'), next);
     }
+    hashObject(path, write) {
+        return this._runTask(hash_object_1.hashObjectTask(path, write === true), utils_1.trailingFunctionArgument(arguments));
+    }
     init(bare) {
         return this._runTask(init_1.initTask(bare === true, this._executor.cwd, utils_1.getTrailingOptions(arguments)), utils_1.trailingFunctionArgument(arguments));
     }
@@ -20447,6 +20420,7 @@ class SimpleGitApi {
     }
 }
 exports.SimpleGitApi = SimpleGitApi;
+Object.assign(SimpleGitApi.prototype, config_1.default());
 //# sourceMappingURL=simple-git-api.js.map
 
 /***/ }),
@@ -20859,10 +20833,24 @@ exports.commitTask = commitTask;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.listConfigTask = exports.addConfigTask = void 0;
+exports.GitConfigScope = void 0;
 const ConfigList_1 = __nccwpck_require__(7219);
-function addConfigTask(key, value, append = false) {
-    const commands = ['config', '--local'];
+const utils_1 = __nccwpck_require__(847);
+var GitConfigScope;
+(function (GitConfigScope) {
+    GitConfigScope["system"] = "system";
+    GitConfigScope["global"] = "global";
+    GitConfigScope["local"] = "local";
+    GitConfigScope["worktree"] = "worktree";
+})(GitConfigScope = exports.GitConfigScope || (exports.GitConfigScope = {}));
+function asConfigScope(scope) {
+    if (typeof scope === 'string' && GitConfigScope.hasOwnProperty(scope)) {
+        return scope;
+    }
+    return GitConfigScope.local;
+}
+function addConfigTask(key, value, append, scope) {
+    const commands = ['config', `--${scope}`];
     if (append) {
         commands.push('--add');
     }
@@ -20875,7 +20863,6 @@ function addConfigTask(key, value, append = false) {
         }
     };
 }
-exports.addConfigTask = addConfigTask;
 function listConfigTask() {
     return {
         commands: ['config', '--list', '--show-origin', '--null'],
@@ -20885,7 +20872,17 @@ function listConfigTask() {
         },
     };
 }
-exports.listConfigTask = listConfigTask;
+function default_1() {
+    return {
+        addConfig(key, value, ...rest) {
+            return this._runTask(addConfigTask(key, value, rest[0] === true, asConfigScope(rest[1])), utils_1.trailingFunctionArgument(arguments));
+        },
+        listConfig() {
+            return this._runTask(listConfigTask(), utils_1.trailingFunctionArgument(arguments));
+        },
+    };
+}
+exports.default = default_1;
 //# sourceMappingURL=config.js.map
 
 /***/ }),
