@@ -14,11 +14,12 @@ const OctokitWithPlugins = GitHub
     .defaults({
         previews: [
             'baptiste',
+            'mercy',
         ]
     })
 
 
-export type Octokit = OctokitCore & RestEndpointMethods & { paginate: PaginateInterface }
+export type Octokit = RestEndpointMethods & { paginate: PaginateInterface }
 
 export function newOctokitInstance(token: string): Octokit {
     const baseOptions = getOctokitOptions(token)
@@ -27,7 +28,7 @@ export function newOctokitInstance(token: string): Octokit {
         throttle: {
             onRateLimit: (retryAfter, options) => {
                 const retryCount = options.request.retryCount
-                const retryLogInfo = `${retryCount === 0 ? '' : ` (retry #$retryCount)`}`
+                const retryLogInfo = retryCount === 0 ? '' : ` (retry #${retryCount})`
                 core.debug(`Request quota exhausted for request ${options.method} ${options.url}${retryLogInfo}`)
 
                 return retryCount <= 4
@@ -45,7 +46,7 @@ export function newOctokitInstance(token: string): Octokit {
         }
     }
 
-    const logOptions: { log?: Octokit['log'] } = {}
+    const logOptions: { log?: OctokitCore['log'] } = {}
     if (process.env.ACTIONS_STEP_DEBUG?.toLowerCase() === 'true') {
         logOptions.log = require('console-log-level')({level: 'trace'})
     }
@@ -57,5 +58,10 @@ export function newOctokitInstance(token: string): Octokit {
         ...logOptions
     }
 
-    return new OctokitWithPlugins(allOptions)
+    const octokit = new OctokitWithPlugins(allOptions)
+    return Object.assign(
+        {},
+        octokit.rest,
+        {paginate: octokit.paginate}
+    )
 }
