@@ -143,16 +143,39 @@ export class RepositorySynchronizer {
     }
 
 
-    async fetchPullRequest(pullRequest: PullRequest | PullRequestSimple) {
-        core.info(`Fetching last commit of pull request ${pullRequest.html_url}`)
-        const remote = await this.origin
-        await remote.fetch(`refs/pull/${pullRequest.number}/head`)
-    }
-
     async checkoutPullRequestHead(pullRequest: PullRequest | PullRequestSimple, branchName?: string) {
         const trueBranchName = branchName || this.syncBranchName
-        await this.fetchPullRequest(pullRequest)
-        await forceCheckout(this.git, trueBranchName, pullRequest.head.sha)
+        const mergeCommitSha = pullRequest.merge_commit_sha
+        if (mergeCommitSha == null) {
+            throw new Error(`Merge commit SHA is empty for pull request ${pullRequest.html_url}`)
+        }
+        try {
+            debug(`Checkouting merge commit of ${pullRequest.html_url}: ${mergeCommitSha}`)
+            await this.origin.then(remote => remote.fetch())
+            await forceCheckout(this.git, trueBranchName, mergeCommitSha)
+
+        } catch (error) {
+            if (error instanceof GitError
+                && error.message.includes(`reference is not a tree ${mergeCommitSha}`)
+            ) {
+                debug(`Checkouting HEAD commit of ${pullRequest.html_url}: ${pullRequest.head.sha}`)
+                await this.fetchPullRequest(pullRequest)
+                await forceCheckout(this.git, trueBranchName, pullRequest.head.sha)
+
+            } else {
+                throw error
+            }
+        }
+    }
+
+    private static getPullRequestHeadRef(pullRequest: PullRequest | PullRequestSimple): string {
+        return `refs/pull/${pullRequest.number}/head`
+    }
+
+    private async fetchPullRequest(pullRequest: PullRequest | PullRequestSimple) {
+        core.info(`Fetching last commit of pull request ${pullRequest.html_url}`)
+        const remote = await this.origin
+        await remote.fetch(RepositorySynchronizer.getPullRequestHeadRef(pullRequest))
     }
 
 
@@ -175,15 +198,23 @@ export class RepositorySynchronizer {
         return this.git.log(options)
     }
 
-    retrieveLatestSyncCommit(): Promise<DefaultLogFields | undefined> {
-        return this.parseLog().then(log => {
-            for (const logItem of log.all) {
-                if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
-                    return logItem
-                }
+    async retrieveLatestSyncCommit(pullRequest?: PullRequest | PullRequestSimple): Promise<DefaultLogFields | undefined> {
+        let logResult: LogResult
+        if (pullRequest) {
+            debug(`Retrieving latest sync commit from pull request HEAD commit ${pullRequest.html_url}`)
+            await this.fetchPullRequest(pullRequest)
+            logResult = await this.parseLog(pullRequest.head.sha)
+        } else {
+            debug(`Retrieving latest sync commit from current branch`)
+            logResult = await this.parseLog()
+        }
+
+        for (const logItem of logResult.all) {
+            if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
+                return logItem
             }
-            return undefined
-        })
+        }
+        return undefined
     }
 
 

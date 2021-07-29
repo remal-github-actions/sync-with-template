@@ -135,15 +135,36 @@ class RepositorySynchronizer {
     async checkoutSyncBranch() {
         await this.origin.then(it => it.checkout(this.syncBranchName));
     }
+    async checkoutPullRequestHead(pullRequest, branchName) {
+        const trueBranchName = branchName || this.syncBranchName;
+        const mergeCommitSha = pullRequest.merge_commit_sha;
+        if (mergeCommitSha == null) {
+            throw new Error(`Merge commit SHA is empty for pull request ${pullRequest.html_url}`);
+        }
+        try {
+            debug(`Checkouting merge commit of ${pullRequest.html_url}: ${mergeCommitSha}`);
+            await this.origin.then(remote => remote.fetch());
+            await forceCheckout(this.git, trueBranchName, mergeCommitSha);
+        }
+        catch (error) {
+            if (error instanceof simple_git_1.GitError
+                && error.message.includes(`reference is not a tree ${mergeCommitSha}`)) {
+                debug(`Checkouting HEAD commit of ${pullRequest.html_url}: ${pullRequest.head.sha}`);
+                await this.fetchPullRequest(pullRequest);
+                await forceCheckout(this.git, trueBranchName, pullRequest.head.sha);
+            }
+            else {
+                throw error;
+            }
+        }
+    }
+    static getPullRequestHeadRef(pullRequest) {
+        return `refs/pull/${pullRequest.number}/head`;
+    }
     async fetchPullRequest(pullRequest) {
         core.info(`Fetching last commit of pull request ${pullRequest.html_url}`);
         const remote = await this.origin;
-        await remote.fetch(`refs/pull/${pullRequest.number}/head`);
-    }
-    async checkoutPullRequestHead(pullRequest, branchName) {
-        const trueBranchName = branchName || this.syncBranchName;
-        await this.fetchPullRequest(pullRequest);
-        await forceCheckout(this.git, trueBranchName, pullRequest.head.sha);
+        await remote.fetch(RepositorySynchronizer.getPullRequestHeadRef(pullRequest));
     }
     parseLog(ref, reverse, since) {
         const options = [];
@@ -159,15 +180,23 @@ class RepositorySynchronizer {
         }
         return this.git.log(options);
     }
-    retrieveLatestSyncCommit() {
-        return this.parseLog().then(log => {
-            for (const logItem of log.all) {
-                if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
-                    return logItem;
-                }
+    async retrieveLatestSyncCommit(pullRequest) {
+        let logResult;
+        if (pullRequest) {
+            debug(`Retrieving latest sync commit from pull request HEAD commit ${pullRequest.html_url}`);
+            await this.fetchPullRequest(pullRequest);
+            logResult = await this.parseLog(pullRequest.head.sha);
+        }
+        else {
+            debug(`Retrieving latest sync commit from current branch`);
+            logResult = await this.parseLog();
+        }
+        for (const logItem of logResult.all) {
+            if (logItem.author_email.endsWith(SYNCHRONIZATION_EMAIL_SUFFIX)) {
+                return logItem;
             }
-            return undefined;
-        });
+        }
+        return undefined;
     }
     get firstRepositoryCommit() {
         return this.origin
@@ -908,21 +937,22 @@ async function run() {
         await core.group("Initializing the repository", async () => {
             await synchronizer.initializeRepository();
         });
-        await core.group("Fetching sync branch", async () => {
+        const pullRequest = await core.group("Fetching sync branch", async () => {
             const doesOriginHasSyncBranch = await synchronizer.doesSyncBranchExists();
             if (doesOriginHasSyncBranch) {
                 await synchronizer.checkoutSyncBranch();
-                return;
+                return undefined;
             }
-            const pullRequest = await synchronizer.latestMergedPullRequest;
-            if (pullRequest) {
-                await synchronizer.checkoutPullRequestHead(pullRequest);
-                return;
+            const pr = await synchronizer.latestMergedPullRequest;
+            if (pr) {
+                await synchronizer.checkoutPullRequestHead(pr);
+                return pr;
             }
             await synchronizer.checkoutFirstRepositoryCommit();
+            return undefined;
         });
         const lastSynchronizedCommitDate = await core.group("Retrieving last synchronized commit date", async () => {
-            const latestSyncCommit = (await synchronizer.retrieveLatestSyncCommit())
+            const latestSyncCommit = (await synchronizer.retrieveLatestSyncCommit(pullRequest))
                 || (await synchronizer.firstRepositoryCommit);
             core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestSyncCommit.hash} (${latestSyncCommit.date}): ${latestSyncCommit.message}`);
             return new Date(latestSyncCommit.date);
@@ -2353,7 +2383,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const fs_1 = __nccwpck_require__(5747);
-const debug_1 = __importDefault(__nccwpck_require__(8231));
+const debug_1 = __importDefault(__nccwpck_require__(5485));
 const log = debug_1.default('@kwsites/file-exists');
 function check(path, isFile, isDirectory) {
     log(`checking %s`, path);
@@ -2402,6 +2432,837 @@ exports.FOLDER = 2;
  */
 exports.READABLE = exports.FILE + exports.FOLDER;
 //# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 2902:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+/* eslint-env browser */
+
+/**
+ * This is the web browser implementation of `debug()`.
+ */
+
+exports.formatArgs = formatArgs;
+exports.save = save;
+exports.load = load;
+exports.useColors = useColors;
+exports.storage = localstorage();
+exports.destroy = (() => {
+	let warned = false;
+
+	return () => {
+		if (!warned) {
+			warned = true;
+			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+		}
+	};
+})();
+
+/**
+ * Colors.
+ */
+
+exports.colors = [
+	'#0000CC',
+	'#0000FF',
+	'#0033CC',
+	'#0033FF',
+	'#0066CC',
+	'#0066FF',
+	'#0099CC',
+	'#0099FF',
+	'#00CC00',
+	'#00CC33',
+	'#00CC66',
+	'#00CC99',
+	'#00CCCC',
+	'#00CCFF',
+	'#3300CC',
+	'#3300FF',
+	'#3333CC',
+	'#3333FF',
+	'#3366CC',
+	'#3366FF',
+	'#3399CC',
+	'#3399FF',
+	'#33CC00',
+	'#33CC33',
+	'#33CC66',
+	'#33CC99',
+	'#33CCCC',
+	'#33CCFF',
+	'#6600CC',
+	'#6600FF',
+	'#6633CC',
+	'#6633FF',
+	'#66CC00',
+	'#66CC33',
+	'#9900CC',
+	'#9900FF',
+	'#9933CC',
+	'#9933FF',
+	'#99CC00',
+	'#99CC33',
+	'#CC0000',
+	'#CC0033',
+	'#CC0066',
+	'#CC0099',
+	'#CC00CC',
+	'#CC00FF',
+	'#CC3300',
+	'#CC3333',
+	'#CC3366',
+	'#CC3399',
+	'#CC33CC',
+	'#CC33FF',
+	'#CC6600',
+	'#CC6633',
+	'#CC9900',
+	'#CC9933',
+	'#CCCC00',
+	'#CCCC33',
+	'#FF0000',
+	'#FF0033',
+	'#FF0066',
+	'#FF0099',
+	'#FF00CC',
+	'#FF00FF',
+	'#FF3300',
+	'#FF3333',
+	'#FF3366',
+	'#FF3399',
+	'#FF33CC',
+	'#FF33FF',
+	'#FF6600',
+	'#FF6633',
+	'#FF9900',
+	'#FF9933',
+	'#FFCC00',
+	'#FFCC33'
+];
+
+/**
+ * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+ * and the Firebug extension (any Firefox version) are known
+ * to support "%c" CSS customizations.
+ *
+ * TODO: add a `localStorage` variable to explicitly enable/disable colors
+ */
+
+// eslint-disable-next-line complexity
+function useColors() {
+	// NB: In an Electron preload script, document will be defined but not fully
+	// initialized. Since we know we're in Chrome, we'll just detect this case
+	// explicitly
+	if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
+		return true;
+	}
+
+	// Internet Explorer and Edge do not support colors.
+	if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
+		return false;
+	}
+
+	// Is webkit? http://stackoverflow.com/a/16459606/376773
+	// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+	return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
+		// Is firebug? http://stackoverflow.com/a/398120/376773
+		(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
+		// Is firefox >= v31?
+		// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31) ||
+		// Double check webkit in userAgent just in case we are in a worker
+		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
+}
+
+/**
+ * Colorize log arguments if enabled.
+ *
+ * @api public
+ */
+
+function formatArgs(args) {
+	args[0] = (this.useColors ? '%c' : '') +
+		this.namespace +
+		(this.useColors ? ' %c' : ' ') +
+		args[0] +
+		(this.useColors ? '%c ' : ' ') +
+		'+' + module.exports.humanize(this.diff);
+
+	if (!this.useColors) {
+		return;
+	}
+
+	const c = 'color: ' + this.color;
+	args.splice(1, 0, c, 'color: inherit');
+
+	// The final "%c" is somewhat tricky, because there could be other
+	// arguments passed either before or after the %c, so we need to
+	// figure out the correct index to insert the CSS into
+	let index = 0;
+	let lastC = 0;
+	args[0].replace(/%[a-zA-Z%]/g, match => {
+		if (match === '%%') {
+			return;
+		}
+		index++;
+		if (match === '%c') {
+			// We only are interested in the *last* %c
+			// (the user may have provided their own)
+			lastC = index;
+		}
+	});
+
+	args.splice(lastC, 0, c);
+}
+
+/**
+ * Invokes `console.debug()` when available.
+ * No-op when `console.debug` is not a "function".
+ * If `console.debug` is not available, falls back
+ * to `console.log`.
+ *
+ * @api public
+ */
+exports.log = console.debug || console.log || (() => {});
+
+/**
+ * Save `namespaces`.
+ *
+ * @param {String} namespaces
+ * @api private
+ */
+function save(namespaces) {
+	try {
+		if (namespaces) {
+			exports.storage.setItem('debug', namespaces);
+		} else {
+			exports.storage.removeItem('debug');
+		}
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+}
+
+/**
+ * Load `namespaces`.
+ *
+ * @return {String} returns the previously persisted debug modes
+ * @api private
+ */
+function load() {
+	let r;
+	try {
+		r = exports.storage.getItem('debug');
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+
+	// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+	if (!r && typeof process !== 'undefined' && 'env' in process) {
+		r = process.env.DEBUG;
+	}
+
+	return r;
+}
+
+/**
+ * Localstorage attempts to return the localstorage.
+ *
+ * This is necessary because safari throws
+ * when a user disables cookies/localstorage
+ * and you attempt to access it.
+ *
+ * @return {LocalStorage}
+ * @api private
+ */
+
+function localstorage() {
+	try {
+		// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+		// The Browser also has localStorage in the global context.
+		return localStorage;
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+}
+
+module.exports = __nccwpck_require__(8285)(exports);
+
+const {formatters} = module.exports;
+
+/**
+ * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+ */
+
+formatters.j = function (v) {
+	try {
+		return JSON.stringify(v);
+	} catch (error) {
+		return '[UnexpectedJSONParseError]: ' + error.message;
+	}
+};
+
+
+/***/ }),
+
+/***/ 8285:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+
+/**
+ * This is the common logic for both the Node.js and web browser
+ * implementations of `debug()`.
+ */
+
+function setup(env) {
+	createDebug.debug = createDebug;
+	createDebug.default = createDebug;
+	createDebug.coerce = coerce;
+	createDebug.disable = disable;
+	createDebug.enable = enable;
+	createDebug.enabled = enabled;
+	createDebug.humanize = __nccwpck_require__(900);
+	createDebug.destroy = destroy;
+
+	Object.keys(env).forEach(key => {
+		createDebug[key] = env[key];
+	});
+
+	/**
+	* The currently active debug mode names, and names to skip.
+	*/
+
+	createDebug.names = [];
+	createDebug.skips = [];
+
+	/**
+	* Map of special "%n" handling functions, for the debug "format" argument.
+	*
+	* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+	*/
+	createDebug.formatters = {};
+
+	/**
+	* Selects a color for a debug namespace
+	* @param {String} namespace The namespace string for the for the debug instance to be colored
+	* @return {Number|String} An ANSI color code for the given namespace
+	* @api private
+	*/
+	function selectColor(namespace) {
+		let hash = 0;
+
+		for (let i = 0; i < namespace.length; i++) {
+			hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
+			hash |= 0; // Convert to 32bit integer
+		}
+
+		return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+	}
+	createDebug.selectColor = selectColor;
+
+	/**
+	* Create a debugger with the given `namespace`.
+	*
+	* @param {String} namespace
+	* @return {Function}
+	* @api public
+	*/
+	function createDebug(namespace) {
+		let prevTime;
+		let enableOverride = null;
+
+		function debug(...args) {
+			// Disabled?
+			if (!debug.enabled) {
+				return;
+			}
+
+			const self = debug;
+
+			// Set `diff` timestamp
+			const curr = Number(new Date());
+			const ms = curr - (prevTime || curr);
+			self.diff = ms;
+			self.prev = prevTime;
+			self.curr = curr;
+			prevTime = curr;
+
+			args[0] = createDebug.coerce(args[0]);
+
+			if (typeof args[0] !== 'string') {
+				// Anything else let's inspect with %O
+				args.unshift('%O');
+			}
+
+			// Apply any `formatters` transformations
+			let index = 0;
+			args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
+				// If we encounter an escaped % then don't increase the array index
+				if (match === '%%') {
+					return '%';
+				}
+				index++;
+				const formatter = createDebug.formatters[format];
+				if (typeof formatter === 'function') {
+					const val = args[index];
+					match = formatter.call(self, val);
+
+					// Now we need to remove `args[index]` since it's inlined in the `format`
+					args.splice(index, 1);
+					index--;
+				}
+				return match;
+			});
+
+			// Apply env-specific formatting (colors, etc.)
+			createDebug.formatArgs.call(self, args);
+
+			const logFn = self.log || createDebug.log;
+			logFn.apply(self, args);
+		}
+
+		debug.namespace = namespace;
+		debug.useColors = createDebug.useColors();
+		debug.color = createDebug.selectColor(namespace);
+		debug.extend = extend;
+		debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
+
+		Object.defineProperty(debug, 'enabled', {
+			enumerable: true,
+			configurable: false,
+			get: () => enableOverride === null ? createDebug.enabled(namespace) : enableOverride,
+			set: v => {
+				enableOverride = v;
+			}
+		});
+
+		// Env-specific initialization logic for debug instances
+		if (typeof createDebug.init === 'function') {
+			createDebug.init(debug);
+		}
+
+		return debug;
+	}
+
+	function extend(namespace, delimiter) {
+		const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+		newDebug.log = this.log;
+		return newDebug;
+	}
+
+	/**
+	* Enables a debug mode by namespaces. This can include modes
+	* separated by a colon and wildcards.
+	*
+	* @param {String} namespaces
+	* @api public
+	*/
+	function enable(namespaces) {
+		createDebug.save(namespaces);
+
+		createDebug.names = [];
+		createDebug.skips = [];
+
+		let i;
+		const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
+		const len = split.length;
+
+		for (i = 0; i < len; i++) {
+			if (!split[i]) {
+				// ignore empty strings
+				continue;
+			}
+
+			namespaces = split[i].replace(/\*/g, '.*?');
+
+			if (namespaces[0] === '-') {
+				createDebug.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
+			} else {
+				createDebug.names.push(new RegExp('^' + namespaces + '$'));
+			}
+		}
+	}
+
+	/**
+	* Disable debug output.
+	*
+	* @return {String} namespaces
+	* @api public
+	*/
+	function disable() {
+		const namespaces = [
+			...createDebug.names.map(toNamespace),
+			...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+		].join(',');
+		createDebug.enable('');
+		return namespaces;
+	}
+
+	/**
+	* Returns true if the given mode name is enabled, false otherwise.
+	*
+	* @param {String} name
+	* @return {Boolean}
+	* @api public
+	*/
+	function enabled(name) {
+		if (name[name.length - 1] === '*') {
+			return true;
+		}
+
+		let i;
+		let len;
+
+		for (i = 0, len = createDebug.skips.length; i < len; i++) {
+			if (createDebug.skips[i].test(name)) {
+				return false;
+			}
+		}
+
+		for (i = 0, len = createDebug.names.length; i < len; i++) {
+			if (createDebug.names[i].test(name)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	* Convert regexp to namespace
+	*
+	* @param {RegExp} regxep
+	* @return {String} namespace
+	* @api private
+	*/
+	function toNamespace(regexp) {
+		return regexp.toString()
+			.substring(2, regexp.toString().length - 2)
+			.replace(/\.\*\?$/, '*');
+	}
+
+	/**
+	* Coerce `val`.
+	*
+	* @param {Mixed} val
+	* @return {Mixed}
+	* @api private
+	*/
+	function coerce(val) {
+		if (val instanceof Error) {
+			return val.stack || val.message;
+		}
+		return val;
+	}
+
+	/**
+	* XXX DO NOT USE. This is a temporary stub function.
+	* XXX It WILL be removed in the next major release.
+	*/
+	function destroy() {
+		console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+	}
+
+	createDebug.enable(createDebug.load());
+
+	return createDebug;
+}
+
+module.exports = setup;
+
+
+/***/ }),
+
+/***/ 5485:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+/**
+ * Detect Electron renderer / nwjs process, which is node, but we should
+ * treat as a browser.
+ */
+
+if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
+	module.exports = __nccwpck_require__(2902);
+} else {
+	module.exports = __nccwpck_require__(1628);
+}
+
+
+/***/ }),
+
+/***/ 1628:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+/**
+ * Module dependencies.
+ */
+
+const tty = __nccwpck_require__(3867);
+const util = __nccwpck_require__(1669);
+
+/**
+ * This is the Node.js implementation of `debug()`.
+ */
+
+exports.init = init;
+exports.log = log;
+exports.formatArgs = formatArgs;
+exports.save = save;
+exports.load = load;
+exports.useColors = useColors;
+exports.destroy = util.deprecate(
+	() => {},
+	'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
+);
+
+/**
+ * Colors.
+ */
+
+exports.colors = [6, 2, 3, 4, 5, 1];
+
+try {
+	// Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
+	// eslint-disable-next-line import/no-extraneous-dependencies
+	const supportsColor = __nccwpck_require__(9318);
+
+	if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
+		exports.colors = [
+			20,
+			21,
+			26,
+			27,
+			32,
+			33,
+			38,
+			39,
+			40,
+			41,
+			42,
+			43,
+			44,
+			45,
+			56,
+			57,
+			62,
+			63,
+			68,
+			69,
+			74,
+			75,
+			76,
+			77,
+			78,
+			79,
+			80,
+			81,
+			92,
+			93,
+			98,
+			99,
+			112,
+			113,
+			128,
+			129,
+			134,
+			135,
+			148,
+			149,
+			160,
+			161,
+			162,
+			163,
+			164,
+			165,
+			166,
+			167,
+			168,
+			169,
+			170,
+			171,
+			172,
+			173,
+			178,
+			179,
+			184,
+			185,
+			196,
+			197,
+			198,
+			199,
+			200,
+			201,
+			202,
+			203,
+			204,
+			205,
+			206,
+			207,
+			208,
+			209,
+			214,
+			215,
+			220,
+			221
+		];
+	}
+} catch (error) {
+	// Swallow - we only care if `supports-color` is available; it doesn't have to be.
+}
+
+/**
+ * Build up the default `inspectOpts` object from the environment variables.
+ *
+ *   $ DEBUG_COLORS=no DEBUG_DEPTH=10 DEBUG_SHOW_HIDDEN=enabled node script.js
+ */
+
+exports.inspectOpts = Object.keys(process.env).filter(key => {
+	return /^debug_/i.test(key);
+}).reduce((obj, key) => {
+	// Camel-case
+	const prop = key
+		.substring(6)
+		.toLowerCase()
+		.replace(/_([a-z])/g, (_, k) => {
+			return k.toUpperCase();
+		});
+
+	// Coerce string value into JS value
+	let val = process.env[key];
+	if (/^(yes|on|true|enabled)$/i.test(val)) {
+		val = true;
+	} else if (/^(no|off|false|disabled)$/i.test(val)) {
+		val = false;
+	} else if (val === 'null') {
+		val = null;
+	} else {
+		val = Number(val);
+	}
+
+	obj[prop] = val;
+	return obj;
+}, {});
+
+/**
+ * Is stdout a TTY? Colored output is enabled when `true`.
+ */
+
+function useColors() {
+	return 'colors' in exports.inspectOpts ?
+		Boolean(exports.inspectOpts.colors) :
+		tty.isatty(process.stderr.fd);
+}
+
+/**
+ * Adds ANSI color escape codes if enabled.
+ *
+ * @api public
+ */
+
+function formatArgs(args) {
+	const {namespace: name, useColors} = this;
+
+	if (useColors) {
+		const c = this.color;
+		const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
+		const prefix = `  ${colorCode};1m${name} \u001B[0m`;
+
+		args[0] = prefix + args[0].split('\n').join('\n' + prefix);
+		args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
+	} else {
+		args[0] = getDate() + name + ' ' + args[0];
+	}
+}
+
+function getDate() {
+	if (exports.inspectOpts.hideDate) {
+		return '';
+	}
+	return new Date().toISOString() + ' ';
+}
+
+/**
+ * Invokes `util.format()` with the specified arguments and writes to stderr.
+ */
+
+function log(...args) {
+	return process.stderr.write(util.format(...args) + '\n');
+}
+
+/**
+ * Save `namespaces`.
+ *
+ * @param {String} namespaces
+ * @api private
+ */
+function save(namespaces) {
+	if (namespaces) {
+		process.env.DEBUG = namespaces;
+	} else {
+		// If you set a process.env field to null or undefined, it gets cast to the
+		// string 'null' or 'undefined'. Just delete instead.
+		delete process.env.DEBUG;
+	}
+}
+
+/**
+ * Load `namespaces`.
+ *
+ * @return {String} returns the previously persisted debug modes
+ * @api private
+ */
+
+function load() {
+	return process.env.DEBUG;
+}
+
+/**
+ * Init logic for `debug` instances.
+ *
+ * Create a new `inspectOpts` object in case `useColors` is set
+ * differently for a particular `debug` instance.
+ */
+
+function init(debug) {
+	debug.inspectOpts = {};
+
+	const keys = Object.keys(exports.inspectOpts);
+	for (let i = 0; i < keys.length; i++) {
+		debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
+	}
+}
+
+module.exports = __nccwpck_require__(8285)(exports);
+
+const {formatters} = module.exports;
+
+/**
+ * Map %o to `util.inspect()`, all on a single line.
+ */
+
+formatters.o = function (v) {
+	this.inspectOpts.colors = this.useColors;
+	return util.inspect(v, this.inspectOpts)
+		.split('\n')
+		.map(str => str.trim())
+		.join(' ');
+};
+
+/**
+ * Map %O to `util.inspect()`, allowing multiple lines if needed.
+ */
+
+formatters.O = function (v) {
+	this.inspectOpts.colors = this.useColors;
+	return util.inspect(v, this.inspectOpts);
+};
+
 
 /***/ }),
 
@@ -3372,7 +4233,7 @@ exports.paginateRest = paginateRest;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 
 /**
  * @param octokit Octokit instance
@@ -4596,30 +5457,31 @@ async function wrapRequest(state, request, options) {
   return limiter.schedule(request, options);
 }
 
-const VERSION = "3.0.7";
-function retry(octokit, octokitOptions = {}) {
+const VERSION = "3.0.9";
+function retry(octokit, octokitOptions) {
   const state = Object.assign({
     enabled: true,
     retryAfterBaseValue: 1000,
     doNotRetry: [400, 401, 403, 404, 422],
     retries: 3
   }, octokitOptions.retry);
-  octokit.retry = {
-    retryRequest: (error, retries, retryAfter) => {
-      error.request.request = Object.assign({}, error.request.request, {
-        retries: retries,
-        retryAfter: retryAfter
-      });
-      return error;
-    }
-  };
 
-  if (!state.enabled) {
-    return;
+  if (state.enabled) {
+    octokit.hook.error("request", errorRequest.bind(null, octokit, state));
+    octokit.hook.wrap("request", wrapRequest.bind(null, state));
   }
 
-  octokit.hook.error("request", errorRequest.bind(null, octokit, state));
-  octokit.hook.wrap("request", wrapRequest.bind(null, state));
+  return {
+    retry: {
+      retryRequest: (error, retries, retryAfter) => {
+        error.request.request = Object.assign({}, error.request.request, {
+          retries: retries,
+          retryAfter: retryAfter
+        });
+        return error;
+      }
+    }
+  };
 }
 retry.VERSION = VERSION;
 
@@ -4695,7 +5557,7 @@ function _defineProperty(obj, key, value) {
   return obj;
 }
 
-const VERSION = "3.4.2";
+const VERSION = "3.5.1";
 
 const noop = () => Promise.resolve(); // @ts-ignore
 
@@ -4706,8 +5568,11 @@ function wrapRequest(state, request, options) {
 
 async function doRequest(state, request, options) {
   const isWrite = options.method !== "GET" && options.method !== "HEAD";
-  const isSearch = options.method === "GET" && options.url.startsWith("/search/");
-  const isGraphQL = options.url.startsWith("/graphql");
+  const {
+    pathname
+  } = new URL(options.url, "http://github.test");
+  const isSearch = options.method === "GET" && pathname.startsWith("/search/");
+  const isGraphQL = pathname.startsWith("/graphql");
   const retryCount = ~~options.request.retryCount;
   const jobOptions = retryCount > 0 ? {
     priority: 0,
@@ -4728,7 +5593,7 @@ async function doRequest(state, request, options) {
   } // Guarantee at least 3000ms between requests that trigger notifications
 
 
-  if (isWrite && state.triggersNotification(options.url)) {
+  if (isWrite && state.triggersNotification(pathname)) {
     await state.notifications.key(state.id).schedule(jobOptions, noop);
   } // Guarantee at least 2000ms between search requests
 
@@ -4745,7 +5610,7 @@ async function doRequest(state, request, options) {
     if (res.data.errors != null && // @ts-ignore
     res.data.errors.some(error => error.type === "RATE_LIMITED")) {
       const error = Object.assign(new Error("GraphQL Rate Limit Exceeded"), {
-        headers: res.headers,
+        response: res,
         data: res.data
       });
       throw error;
@@ -4828,7 +5693,7 @@ function throttling(octokit, octokitOptions = {}) {
   } = octokitOptions.throttle || {};
 
   if (!enabled) {
-    return;
+    return {};
   }
 
   const common = {
@@ -4875,7 +5740,10 @@ function throttling(octokit, octokitOptions = {}) {
 
   state.retryLimiter.on("failed", async function (error, info) {
     const options = info.args[info.args.length - 1];
-    const shouldRetryGraphQL = options.url.startsWith("/graphql") && error.status !== 401;
+    const {
+      pathname
+    } = new URL(options.url, "http://github.test");
+    const shouldRetryGraphQL = pathname.startsWith("/graphql") && error.status !== 401;
 
     if (!(shouldRetryGraphQL || error.status === 403)) {
       return;
@@ -4892,7 +5760,7 @@ function throttling(octokit, octokitOptions = {}) {
         // https://docs.github.com/en/rest/overview/resources-in-the-rest-api#abuse-rate-limits
         // The Retry-After header can sometimes be blank when hitting an abuse limit,
         // but is always present after 2-3s, so make sure to set `retryAfter` to at least 5s by default.
-        const retryAfter = Math.max(~~error.headers["retry-after"], state.minimumAbuseRetryAfter);
+        const retryAfter = Math.max(~~error.response.headers["retry-after"], state.minimumAbuseRetryAfter);
         const wantRetry = await emitter.trigger("abuse-limit", retryAfter, options, octokit);
         return {
           wantRetry,
@@ -4900,11 +5768,11 @@ function throttling(octokit, octokitOptions = {}) {
         };
       }
 
-      if (error.headers != null && error.headers["x-ratelimit-remaining"] === "0") {
+      if (error.response.headers != null && error.response.headers["x-ratelimit-remaining"] === "0") {
         // The user has used all their allowed calls for the current time period (REST and GraphQL)
         // https://docs.github.com/en/rest/reference/rate-limit (REST)
         // https://docs.github.com/en/graphql/overview/resource-limitations#rate-limit (GraphQL)
-        const rateLimitReset = new Date(~~error.headers["x-ratelimit-reset"] * 1000).getTime();
+        const rateLimitReset = new Date(~~error.response.headers["x-ratelimit-reset"] * 1000).getTime();
         const retryAfter = Math.max(Math.ceil((rateLimitReset - Date.now()) / 1000), 0);
         const wantRetry = await emitter.trigger("rate-limit", retryAfter, options, octokit);
         return {
@@ -4923,6 +5791,7 @@ function throttling(octokit, octokitOptions = {}) {
     }
   });
   octokit.hook.wrap("request", wrapRequest.bind(null, state));
+  return {};
 }
 throttling.VERSION = VERSION;
 throttling.triggersNotification = triggersNotification;
@@ -7696,6 +8565,8 @@ function setup(env) {
 	function createDebug(namespace) {
 		let prevTime;
 		let enableOverride = null;
+		let namespacesCache;
+		let enabledCache;
 
 		function debug(...args) {
 			// Disabled?
@@ -7756,7 +8627,17 @@ function setup(env) {
 		Object.defineProperty(debug, 'enabled', {
 			enumerable: true,
 			configurable: false,
-			get: () => enableOverride === null ? createDebug.enabled(namespace) : enableOverride,
+			get: () => {
+				if (enableOverride !== null) {
+					return enableOverride;
+				}
+				if (namespacesCache !== createDebug.namespaces) {
+					namespacesCache = createDebug.namespaces;
+					enabledCache = createDebug.enabled(namespace);
+				}
+
+				return enabledCache;
+			},
 			set: v => {
 				enableOverride = v;
 			}
@@ -7785,6 +8666,7 @@ function setup(env) {
 	*/
 	function enable(namespaces) {
 		createDebug.save(namespaces);
+		createDebug.namespaces = namespaces;
 
 		createDebug.names = [];
 		createDebug.skips = [];
@@ -15618,6 +16500,837 @@ rimraf.sync = rimrafSync
 
 /***/ }),
 
+/***/ 254:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+/* eslint-env browser */
+
+/**
+ * This is the web browser implementation of `debug()`.
+ */
+
+exports.formatArgs = formatArgs;
+exports.save = save;
+exports.load = load;
+exports.useColors = useColors;
+exports.storage = localstorage();
+exports.destroy = (() => {
+	let warned = false;
+
+	return () => {
+		if (!warned) {
+			warned = true;
+			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+		}
+	};
+})();
+
+/**
+ * Colors.
+ */
+
+exports.colors = [
+	'#0000CC',
+	'#0000FF',
+	'#0033CC',
+	'#0033FF',
+	'#0066CC',
+	'#0066FF',
+	'#0099CC',
+	'#0099FF',
+	'#00CC00',
+	'#00CC33',
+	'#00CC66',
+	'#00CC99',
+	'#00CCCC',
+	'#00CCFF',
+	'#3300CC',
+	'#3300FF',
+	'#3333CC',
+	'#3333FF',
+	'#3366CC',
+	'#3366FF',
+	'#3399CC',
+	'#3399FF',
+	'#33CC00',
+	'#33CC33',
+	'#33CC66',
+	'#33CC99',
+	'#33CCCC',
+	'#33CCFF',
+	'#6600CC',
+	'#6600FF',
+	'#6633CC',
+	'#6633FF',
+	'#66CC00',
+	'#66CC33',
+	'#9900CC',
+	'#9900FF',
+	'#9933CC',
+	'#9933FF',
+	'#99CC00',
+	'#99CC33',
+	'#CC0000',
+	'#CC0033',
+	'#CC0066',
+	'#CC0099',
+	'#CC00CC',
+	'#CC00FF',
+	'#CC3300',
+	'#CC3333',
+	'#CC3366',
+	'#CC3399',
+	'#CC33CC',
+	'#CC33FF',
+	'#CC6600',
+	'#CC6633',
+	'#CC9900',
+	'#CC9933',
+	'#CCCC00',
+	'#CCCC33',
+	'#FF0000',
+	'#FF0033',
+	'#FF0066',
+	'#FF0099',
+	'#FF00CC',
+	'#FF00FF',
+	'#FF3300',
+	'#FF3333',
+	'#FF3366',
+	'#FF3399',
+	'#FF33CC',
+	'#FF33FF',
+	'#FF6600',
+	'#FF6633',
+	'#FF9900',
+	'#FF9933',
+	'#FFCC00',
+	'#FFCC33'
+];
+
+/**
+ * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+ * and the Firebug extension (any Firefox version) are known
+ * to support "%c" CSS customizations.
+ *
+ * TODO: add a `localStorage` variable to explicitly enable/disable colors
+ */
+
+// eslint-disable-next-line complexity
+function useColors() {
+	// NB: In an Electron preload script, document will be defined but not fully
+	// initialized. Since we know we're in Chrome, we'll just detect this case
+	// explicitly
+	if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
+		return true;
+	}
+
+	// Internet Explorer and Edge do not support colors.
+	if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
+		return false;
+	}
+
+	// Is webkit? http://stackoverflow.com/a/16459606/376773
+	// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+	return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
+		// Is firebug? http://stackoverflow.com/a/398120/376773
+		(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
+		// Is firefox >= v31?
+		// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31) ||
+		// Double check webkit in userAgent just in case we are in a worker
+		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
+}
+
+/**
+ * Colorize log arguments if enabled.
+ *
+ * @api public
+ */
+
+function formatArgs(args) {
+	args[0] = (this.useColors ? '%c' : '') +
+		this.namespace +
+		(this.useColors ? ' %c' : ' ') +
+		args[0] +
+		(this.useColors ? '%c ' : ' ') +
+		'+' + module.exports.humanize(this.diff);
+
+	if (!this.useColors) {
+		return;
+	}
+
+	const c = 'color: ' + this.color;
+	args.splice(1, 0, c, 'color: inherit');
+
+	// The final "%c" is somewhat tricky, because there could be other
+	// arguments passed either before or after the %c, so we need to
+	// figure out the correct index to insert the CSS into
+	let index = 0;
+	let lastC = 0;
+	args[0].replace(/%[a-zA-Z%]/g, match => {
+		if (match === '%%') {
+			return;
+		}
+		index++;
+		if (match === '%c') {
+			// We only are interested in the *last* %c
+			// (the user may have provided their own)
+			lastC = index;
+		}
+	});
+
+	args.splice(lastC, 0, c);
+}
+
+/**
+ * Invokes `console.debug()` when available.
+ * No-op when `console.debug` is not a "function".
+ * If `console.debug` is not available, falls back
+ * to `console.log`.
+ *
+ * @api public
+ */
+exports.log = console.debug || console.log || (() => {});
+
+/**
+ * Save `namespaces`.
+ *
+ * @param {String} namespaces
+ * @api private
+ */
+function save(namespaces) {
+	try {
+		if (namespaces) {
+			exports.storage.setItem('debug', namespaces);
+		} else {
+			exports.storage.removeItem('debug');
+		}
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+}
+
+/**
+ * Load `namespaces`.
+ *
+ * @return {String} returns the previously persisted debug modes
+ * @api private
+ */
+function load() {
+	let r;
+	try {
+		r = exports.storage.getItem('debug');
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+
+	// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+	if (!r && typeof process !== 'undefined' && 'env' in process) {
+		r = process.env.DEBUG;
+	}
+
+	return r;
+}
+
+/**
+ * Localstorage attempts to return the localstorage.
+ *
+ * This is necessary because safari throws
+ * when a user disables cookies/localstorage
+ * and you attempt to access it.
+ *
+ * @return {LocalStorage}
+ * @api private
+ */
+
+function localstorage() {
+	try {
+		// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+		// The Browser also has localStorage in the global context.
+		return localStorage;
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+}
+
+module.exports = __nccwpck_require__(8867)(exports);
+
+const {formatters} = module.exports;
+
+/**
+ * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+ */
+
+formatters.j = function (v) {
+	try {
+		return JSON.stringify(v);
+	} catch (error) {
+		return '[UnexpectedJSONParseError]: ' + error.message;
+	}
+};
+
+
+/***/ }),
+
+/***/ 8867:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+
+/**
+ * This is the common logic for both the Node.js and web browser
+ * implementations of `debug()`.
+ */
+
+function setup(env) {
+	createDebug.debug = createDebug;
+	createDebug.default = createDebug;
+	createDebug.coerce = coerce;
+	createDebug.disable = disable;
+	createDebug.enable = enable;
+	createDebug.enabled = enabled;
+	createDebug.humanize = __nccwpck_require__(900);
+	createDebug.destroy = destroy;
+
+	Object.keys(env).forEach(key => {
+		createDebug[key] = env[key];
+	});
+
+	/**
+	* The currently active debug mode names, and names to skip.
+	*/
+
+	createDebug.names = [];
+	createDebug.skips = [];
+
+	/**
+	* Map of special "%n" handling functions, for the debug "format" argument.
+	*
+	* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+	*/
+	createDebug.formatters = {};
+
+	/**
+	* Selects a color for a debug namespace
+	* @param {String} namespace The namespace string for the for the debug instance to be colored
+	* @return {Number|String} An ANSI color code for the given namespace
+	* @api private
+	*/
+	function selectColor(namespace) {
+		let hash = 0;
+
+		for (let i = 0; i < namespace.length; i++) {
+			hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
+			hash |= 0; // Convert to 32bit integer
+		}
+
+		return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+	}
+	createDebug.selectColor = selectColor;
+
+	/**
+	* Create a debugger with the given `namespace`.
+	*
+	* @param {String} namespace
+	* @return {Function}
+	* @api public
+	*/
+	function createDebug(namespace) {
+		let prevTime;
+		let enableOverride = null;
+
+		function debug(...args) {
+			// Disabled?
+			if (!debug.enabled) {
+				return;
+			}
+
+			const self = debug;
+
+			// Set `diff` timestamp
+			const curr = Number(new Date());
+			const ms = curr - (prevTime || curr);
+			self.diff = ms;
+			self.prev = prevTime;
+			self.curr = curr;
+			prevTime = curr;
+
+			args[0] = createDebug.coerce(args[0]);
+
+			if (typeof args[0] !== 'string') {
+				// Anything else let's inspect with %O
+				args.unshift('%O');
+			}
+
+			// Apply any `formatters` transformations
+			let index = 0;
+			args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
+				// If we encounter an escaped % then don't increase the array index
+				if (match === '%%') {
+					return '%';
+				}
+				index++;
+				const formatter = createDebug.formatters[format];
+				if (typeof formatter === 'function') {
+					const val = args[index];
+					match = formatter.call(self, val);
+
+					// Now we need to remove `args[index]` since it's inlined in the `format`
+					args.splice(index, 1);
+					index--;
+				}
+				return match;
+			});
+
+			// Apply env-specific formatting (colors, etc.)
+			createDebug.formatArgs.call(self, args);
+
+			const logFn = self.log || createDebug.log;
+			logFn.apply(self, args);
+		}
+
+		debug.namespace = namespace;
+		debug.useColors = createDebug.useColors();
+		debug.color = createDebug.selectColor(namespace);
+		debug.extend = extend;
+		debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
+
+		Object.defineProperty(debug, 'enabled', {
+			enumerable: true,
+			configurable: false,
+			get: () => enableOverride === null ? createDebug.enabled(namespace) : enableOverride,
+			set: v => {
+				enableOverride = v;
+			}
+		});
+
+		// Env-specific initialization logic for debug instances
+		if (typeof createDebug.init === 'function') {
+			createDebug.init(debug);
+		}
+
+		return debug;
+	}
+
+	function extend(namespace, delimiter) {
+		const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+		newDebug.log = this.log;
+		return newDebug;
+	}
+
+	/**
+	* Enables a debug mode by namespaces. This can include modes
+	* separated by a colon and wildcards.
+	*
+	* @param {String} namespaces
+	* @api public
+	*/
+	function enable(namespaces) {
+		createDebug.save(namespaces);
+
+		createDebug.names = [];
+		createDebug.skips = [];
+
+		let i;
+		const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
+		const len = split.length;
+
+		for (i = 0; i < len; i++) {
+			if (!split[i]) {
+				// ignore empty strings
+				continue;
+			}
+
+			namespaces = split[i].replace(/\*/g, '.*?');
+
+			if (namespaces[0] === '-') {
+				createDebug.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
+			} else {
+				createDebug.names.push(new RegExp('^' + namespaces + '$'));
+			}
+		}
+	}
+
+	/**
+	* Disable debug output.
+	*
+	* @return {String} namespaces
+	* @api public
+	*/
+	function disable() {
+		const namespaces = [
+			...createDebug.names.map(toNamespace),
+			...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+		].join(',');
+		createDebug.enable('');
+		return namespaces;
+	}
+
+	/**
+	* Returns true if the given mode name is enabled, false otherwise.
+	*
+	* @param {String} name
+	* @return {Boolean}
+	* @api public
+	*/
+	function enabled(name) {
+		if (name[name.length - 1] === '*') {
+			return true;
+		}
+
+		let i;
+		let len;
+
+		for (i = 0, len = createDebug.skips.length; i < len; i++) {
+			if (createDebug.skips[i].test(name)) {
+				return false;
+			}
+		}
+
+		for (i = 0, len = createDebug.names.length; i < len; i++) {
+			if (createDebug.names[i].test(name)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	* Convert regexp to namespace
+	*
+	* @param {RegExp} regxep
+	* @return {String} namespace
+	* @api private
+	*/
+	function toNamespace(regexp) {
+		return regexp.toString()
+			.substring(2, regexp.toString().length - 2)
+			.replace(/\.\*\?$/, '*');
+	}
+
+	/**
+	* Coerce `val`.
+	*
+	* @param {Mixed} val
+	* @return {Mixed}
+	* @api private
+	*/
+	function coerce(val) {
+		if (val instanceof Error) {
+			return val.stack || val.message;
+		}
+		return val;
+	}
+
+	/**
+	* XXX DO NOT USE. This is a temporary stub function.
+	* XXX It WILL be removed in the next major release.
+	*/
+	function destroy() {
+		console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+	}
+
+	createDebug.enable(createDebug.load());
+
+	return createDebug;
+}
+
+module.exports = setup;
+
+
+/***/ }),
+
+/***/ 2179:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+/**
+ * Detect Electron renderer / nwjs process, which is node, but we should
+ * treat as a browser.
+ */
+
+if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
+	module.exports = __nccwpck_require__(254);
+} else {
+	module.exports = __nccwpck_require__(675);
+}
+
+
+/***/ }),
+
+/***/ 675:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+/**
+ * Module dependencies.
+ */
+
+const tty = __nccwpck_require__(3867);
+const util = __nccwpck_require__(1669);
+
+/**
+ * This is the Node.js implementation of `debug()`.
+ */
+
+exports.init = init;
+exports.log = log;
+exports.formatArgs = formatArgs;
+exports.save = save;
+exports.load = load;
+exports.useColors = useColors;
+exports.destroy = util.deprecate(
+	() => {},
+	'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
+);
+
+/**
+ * Colors.
+ */
+
+exports.colors = [6, 2, 3, 4, 5, 1];
+
+try {
+	// Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
+	// eslint-disable-next-line import/no-extraneous-dependencies
+	const supportsColor = __nccwpck_require__(9318);
+
+	if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
+		exports.colors = [
+			20,
+			21,
+			26,
+			27,
+			32,
+			33,
+			38,
+			39,
+			40,
+			41,
+			42,
+			43,
+			44,
+			45,
+			56,
+			57,
+			62,
+			63,
+			68,
+			69,
+			74,
+			75,
+			76,
+			77,
+			78,
+			79,
+			80,
+			81,
+			92,
+			93,
+			98,
+			99,
+			112,
+			113,
+			128,
+			129,
+			134,
+			135,
+			148,
+			149,
+			160,
+			161,
+			162,
+			163,
+			164,
+			165,
+			166,
+			167,
+			168,
+			169,
+			170,
+			171,
+			172,
+			173,
+			178,
+			179,
+			184,
+			185,
+			196,
+			197,
+			198,
+			199,
+			200,
+			201,
+			202,
+			203,
+			204,
+			205,
+			206,
+			207,
+			208,
+			209,
+			214,
+			215,
+			220,
+			221
+		];
+	}
+} catch (error) {
+	// Swallow - we only care if `supports-color` is available; it doesn't have to be.
+}
+
+/**
+ * Build up the default `inspectOpts` object from the environment variables.
+ *
+ *   $ DEBUG_COLORS=no DEBUG_DEPTH=10 DEBUG_SHOW_HIDDEN=enabled node script.js
+ */
+
+exports.inspectOpts = Object.keys(process.env).filter(key => {
+	return /^debug_/i.test(key);
+}).reduce((obj, key) => {
+	// Camel-case
+	const prop = key
+		.substring(6)
+		.toLowerCase()
+		.replace(/_([a-z])/g, (_, k) => {
+			return k.toUpperCase();
+		});
+
+	// Coerce string value into JS value
+	let val = process.env[key];
+	if (/^(yes|on|true|enabled)$/i.test(val)) {
+		val = true;
+	} else if (/^(no|off|false|disabled)$/i.test(val)) {
+		val = false;
+	} else if (val === 'null') {
+		val = null;
+	} else {
+		val = Number(val);
+	}
+
+	obj[prop] = val;
+	return obj;
+}, {});
+
+/**
+ * Is stdout a TTY? Colored output is enabled when `true`.
+ */
+
+function useColors() {
+	return 'colors' in exports.inspectOpts ?
+		Boolean(exports.inspectOpts.colors) :
+		tty.isatty(process.stderr.fd);
+}
+
+/**
+ * Adds ANSI color escape codes if enabled.
+ *
+ * @api public
+ */
+
+function formatArgs(args) {
+	const {namespace: name, useColors} = this;
+
+	if (useColors) {
+		const c = this.color;
+		const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
+		const prefix = `  ${colorCode};1m${name} \u001B[0m`;
+
+		args[0] = prefix + args[0].split('\n').join('\n' + prefix);
+		args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
+	} else {
+		args[0] = getDate() + name + ' ' + args[0];
+	}
+}
+
+function getDate() {
+	if (exports.inspectOpts.hideDate) {
+		return '';
+	}
+	return new Date().toISOString() + ' ';
+}
+
+/**
+ * Invokes `util.format()` with the specified arguments and writes to stderr.
+ */
+
+function log(...args) {
+	return process.stderr.write(util.format(...args) + '\n');
+}
+
+/**
+ * Save `namespaces`.
+ *
+ * @param {String} namespaces
+ * @api private
+ */
+function save(namespaces) {
+	if (namespaces) {
+		process.env.DEBUG = namespaces;
+	} else {
+		// If you set a process.env field to null or undefined, it gets cast to the
+		// string 'null' or 'undefined'. Just delete instead.
+		delete process.env.DEBUG;
+	}
+}
+
+/**
+ * Load `namespaces`.
+ *
+ * @return {String} returns the previously persisted debug modes
+ * @api private
+ */
+
+function load() {
+	return process.env.DEBUG;
+}
+
+/**
+ * Init logic for `debug` instances.
+ *
+ * Create a new `inspectOpts` object in case `useColors` is set
+ * differently for a particular `debug` instance.
+ */
+
+function init(debug) {
+	debug.inspectOpts = {};
+
+	const keys = Object.keys(exports.inspectOpts);
+	for (let i = 0; i < keys.length; i++) {
+		debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
+	}
+}
+
+module.exports = __nccwpck_require__(8867)(exports);
+
+const {formatters} = module.exports;
+
+/**
+ * Map %o to `util.inspect()`, all on a single line.
+ */
+
+formatters.o = function (v) {
+	this.inspectOpts.colors = this.useColors;
+	return util.inspect(v, this.inspectOpts)
+		.split('\n')
+		.map(str => str.trim())
+		.join(' ');
+};
+
+/**
+ * Map %O to `util.inspect()`, allowing multiple lines if needed.
+ */
+
+formatters.O = function (v) {
+	this.inspectOpts.colors = this.useColors;
+	return util.inspect(v, this.inspectOpts);
+};
+
+
+/***/ }),
+
 /***/ 4966:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -15643,22 +17356,17 @@ const {branchTask, branchLocalTask, deleteBranchesTask, deleteBranchTask} = __nc
 const {checkIgnoreTask} = __nccwpck_require__(3293);
 const {checkIsRepoTask} = __nccwpck_require__(221);
 const {cloneTask, cloneMirrorTask} = __nccwpck_require__(3173);
-const {addConfigTask, listConfigTask} = __nccwpck_require__(7597);
 const {cleanWithOptionsTask, isCleanOptionsArray} = __nccwpck_require__(4386);
 const {commitTask} = __nccwpck_require__(5494);
 const {diffSummaryTask} = __nccwpck_require__(9241);
 const {fetchTask} = __nccwpck_require__(8823);
-const {hashObjectTask} = __nccwpck_require__(8199);
-const {initTask} = __nccwpck_require__(6016);
 const {logTask, parseLogOptions} = __nccwpck_require__(8627);
-const {mergeTask} = __nccwpck_require__(8829);
 const {moveTask} = __nccwpck_require__(6520);
 const {pullTask} = __nccwpck_require__(4636);
 const {pushTagsTask} = __nccwpck_require__(1435);
 const {addRemoteTask, getRemotesTask, listRemotesTask, remoteTask, removeRemoteTask} = __nccwpck_require__(9866);
 const {getResetMode, resetTask} = __nccwpck_require__(2377);
 const {stashListTask} = __nccwpck_require__(810);
-const {statusTask} = __nccwpck_require__(9197);
 const {addSubModuleTask, initSubModuleTask, subModuleTask, updateSubModuleTask} = __nccwpck_require__(8772);
 const {addAnnotatedTagTask, addTagTask, tagListTask} = __nccwpck_require__(8540);
 const {straightThroughBufferTask, straightThroughStringTask} = __nccwpck_require__(2815);
@@ -16000,25 +17708,6 @@ Git.prototype.branchLocal = function (then) {
 };
 
 /**
- * Add config to local git instance
- *
- * @param {string} key configuration key (e.g user.name)
- * @param {string} value for the given key (e.g your name)
- * @param {boolean} [append=false] optionally append the key/value pair (equivalent of passing `--add` option).
- * @param {Function} [then]
- */
-Git.prototype.addConfig = function (key, value, append, then) {
-   return this._runTask(
-      addConfigTask(key, value, typeof append === "boolean" ? append : false),
-      trailingFunctionArgument(arguments),
-   );
-};
-
-Git.prototype.listConfig = function () {
-   return this._runTask(listConfigTask(), trailingFunctionArgument(arguments));
-};
-
-/**
  * Executes any command against the git binary.
  */
 Git.prototype.raw = function (commands) {
@@ -16110,16 +17799,6 @@ Git.prototype.removeRemote = function (remoteName, then) {
 Git.prototype.getRemotes = function (verbose, then) {
    return this._runTask(
       getRemotesTask(verbose === true),
-      trailingFunctionArgument(arguments),
-   );
-};
-
-/**
- * Compute object ID from a file
- */
-Git.prototype.hashObject = function (path, write) {
-   return this._runTask(
-      hashObjectTask(path, write === true),
       trailingFunctionArgument(arguments),
    );
 };
@@ -16419,10 +18098,12 @@ const git_response_error_1 = __nccwpck_require__(5131);
 const task_configuration_error_1 = __nccwpck_require__(740);
 const check_is_repo_1 = __nccwpck_require__(221);
 const clean_1 = __nccwpck_require__(4386);
+const config_1 = __nccwpck_require__(7597);
 const reset_1 = __nccwpck_require__(2377);
 const api = {
     CheckRepoActions: check_is_repo_1.CheckRepoActions,
     CleanOptions: clean_1.CleanOptions,
+    GitConfigScope: config_1.GitConfigScope,
     GitConstructError: git_construct_error_1.GitConstructError,
     GitError: git_error_1.GitError,
     GitPluginError: git_plugin_error_1.GitPluginError,
@@ -16638,6 +18319,7 @@ function gitInstanceFactory(baseDir, options) {
     }
     config.progress && plugins.add(plugins_1.progressMonitorPlugin(config.progress));
     config.timeout && plugins.add(plugins_1.timeoutPlugin(config.timeout));
+    config.spawnOptions && plugins.add(plugins_1.spawnOptionsPlugin(config.spawnOptions));
     plugins.add(plugins_1.errorDetectionPlugin(plugins_1.errorDetectionHandler(true)));
     config.errors && plugins.add(plugins_1.errorDetectionPlugin(config.errors));
     return new Git(config, plugins);
@@ -16654,7 +18336,7 @@ exports.gitInstanceFactory = gitInstanceFactory;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GitLogger = exports.createLogger = void 0;
-const debug_1 = __nccwpck_require__(8231);
+const debug_1 = __nccwpck_require__(2179);
 const utils_1 = __nccwpck_require__(847);
 debug_1.default.formatters.L = (value) => String(utils_1.filterHasLength(value) ? value.length : '-');
 debug_1.default.formatters.B = (value) => {
@@ -16825,7 +18507,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.parseCommitResult = void 0;
 const utils_1 = __nccwpck_require__(847);
 const parsers = [
-    new utils_1.LineParser(/\[([^\s]+)( \([^)]+\))? ([^\]]+)/, (result, [branch, root, commit]) => {
+    new utils_1.LineParser(/^\[([^\s]+)( \([^)]+\))? ([^\]]+)/, (result, [branch, root, commit]) => {
         result.branch = branch;
         result.commit = commit;
         result.root = !!root;
@@ -17396,6 +19078,7 @@ __exportStar(__nccwpck_require__(6713), exports);
 __exportStar(__nccwpck_require__(5067), exports);
 __exportStar(__nccwpck_require__(1738), exports);
 __exportStar(__nccwpck_require__(8436), exports);
+__exportStar(__nccwpck_require__(9109), exports);
 __exportStar(__nccwpck_require__(9504), exports);
 //# sourceMappingURL=index.js.map
 
@@ -17495,6 +19178,28 @@ function progressEventStage(input) {
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 //# sourceMappingURL=simple-git-plugin.js.map
+
+/***/ }),
+
+/***/ 9109:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.spawnOptionsPlugin = void 0;
+const utils_1 = __nccwpck_require__(847);
+function spawnOptionsPlugin(spawnOptions) {
+    const options = utils_1.pick(spawnOptions, ['uid', 'gid']);
+    return {
+        type: 'spawn.options',
+        action(data) {
+            return Object.assign(Object.assign({}, options), data);
+        },
+    };
+}
+exports.spawnOptionsPlugin = spawnOptionsPlugin;
+//# sourceMappingURL=spawn-options-plugin.js.map
 
 /***/ }),
 
@@ -18265,11 +19970,11 @@ class GitExecutorChain {
     gitResponse(task, command, args, outputHandler, logger) {
         return __awaiter(this, void 0, void 0, function* () {
             const outputLogger = logger.sibling('output');
-            const spawnOptions = {
+            const spawnOptions = this._plugins.exec('spawn.options', {
                 cwd: this.cwd,
                 env: this.env,
                 windowsHide: true,
-            };
+            }, pluginContext(task, task.commands));
             return new Promise((done) => {
                 const stdOut = [];
                 const stdErr = [];
@@ -18644,6 +20349,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SimpleGitApi = void 0;
 const task_callback_1 = __nccwpck_require__(8850);
 const change_working_directory_1 = __nccwpck_require__(4415);
+const config_1 = __nccwpck_require__(7597);
+const hash_object_1 = __nccwpck_require__(8199);
 const init_1 = __nccwpck_require__(6016);
 const merge_1 = __nccwpck_require__(8829);
 const push_1 = __nccwpck_require__(1435);
@@ -18679,6 +20386,9 @@ class SimpleGitApi {
         }
         return this._runTask(task_1.configurationErrorTask('Git.cwd: workingDirectory must be supplied as a string'), next);
     }
+    hashObject(path, write) {
+        return this._runTask(hash_object_1.hashObjectTask(path, write === true), utils_1.trailingFunctionArgument(arguments));
+    }
     init(bare) {
         return this._runTask(init_1.initTask(bare === true, this._executor.cwd, utils_1.getTrailingOptions(arguments)), utils_1.trailingFunctionArgument(arguments));
     }
@@ -18710,6 +20420,7 @@ class SimpleGitApi {
     }
 }
 exports.SimpleGitApi = SimpleGitApi;
+Object.assign(SimpleGitApi.prototype, config_1.default());
 //# sourceMappingURL=simple-git-api.js.map
 
 /***/ }),
@@ -19122,10 +20833,24 @@ exports.commitTask = commitTask;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.listConfigTask = exports.addConfigTask = void 0;
+exports.GitConfigScope = void 0;
 const ConfigList_1 = __nccwpck_require__(7219);
-function addConfigTask(key, value, append = false) {
-    const commands = ['config', '--local'];
+const utils_1 = __nccwpck_require__(847);
+var GitConfigScope;
+(function (GitConfigScope) {
+    GitConfigScope["system"] = "system";
+    GitConfigScope["global"] = "global";
+    GitConfigScope["local"] = "local";
+    GitConfigScope["worktree"] = "worktree";
+})(GitConfigScope = exports.GitConfigScope || (exports.GitConfigScope = {}));
+function asConfigScope(scope) {
+    if (typeof scope === 'string' && GitConfigScope.hasOwnProperty(scope)) {
+        return scope;
+    }
+    return GitConfigScope.local;
+}
+function addConfigTask(key, value, append, scope) {
+    const commands = ['config', `--${scope}`];
     if (append) {
         commands.push('--add');
     }
@@ -19138,7 +20863,6 @@ function addConfigTask(key, value, append = false) {
         }
     };
 }
-exports.addConfigTask = addConfigTask;
 function listConfigTask() {
     return {
         commands: ['config', '--list', '--show-origin', '--null'],
@@ -19148,7 +20872,17 @@ function listConfigTask() {
         },
     };
 }
-exports.listConfigTask = listConfigTask;
+function default_1() {
+    return {
+        addConfig(key, value, ...rest) {
+            return this._runTask(addConfigTask(key, value, rest[0] === true, asConfigScope(rest[1])), utils_1.trailingFunctionArgument(arguments));
+        },
+        listConfig() {
+            return this._runTask(listConfigTask(), utils_1.trailingFunctionArgument(arguments));
+        },
+    };
+}
+exports.default = default_1;
 //# sourceMappingURL=config.js.map
 
 /***/ }),
@@ -20051,7 +21785,7 @@ exports.parseStringResponse = parseStringResponse;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.bufferToString = exports.prefixedArray = exports.asNumber = exports.asStringArray = exports.asArray = exports.objectToString = exports.remove = exports.including = exports.append = exports.folderExists = exports.forEachLineWithContent = exports.toLinesWithContent = exports.last = exports.first = exports.splitOn = exports.isUserFunction = exports.asFunction = exports.NOOP = void 0;
+exports.pick = exports.bufferToString = exports.prefixedArray = exports.asNumber = exports.asStringArray = exports.asArray = exports.objectToString = exports.remove = exports.including = exports.append = exports.folderExists = exports.forEachLineWithContent = exports.toLinesWithContent = exports.last = exports.first = exports.splitOn = exports.isUserFunction = exports.asFunction = exports.NOOP = void 0;
 const file_exists_1 = __nccwpck_require__(4751);
 const NOOP = () => {
 };
@@ -20182,6 +21916,13 @@ function bufferToString(input) {
     return (Array.isArray(input) ? Buffer.concat(input) : input).toString('utf-8');
 }
 exports.bufferToString = bufferToString;
+/**
+ * Get a new object from a source object with only the listed properties.
+ */
+function pick(source, properties) {
+    return Object.assign({}, ...properties.map((property) => property in source ? { [property]: source[property] } : {}));
+}
+exports.pick = pick;
 //# sourceMappingURL=util.js.map
 
 /***/ }),
@@ -21474,7 +23215,7 @@ module.exports = eval("require")("encoding");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("assert");;
+module.exports = require("assert");
 
 /***/ }),
 
@@ -21482,7 +23223,7 @@ module.exports = require("assert");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("child_process");;
+module.exports = require("child_process");
 
 /***/ }),
 
@@ -21490,7 +23231,7 @@ module.exports = require("child_process");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("crypto");;
+module.exports = require("crypto");
 
 /***/ }),
 
@@ -21498,7 +23239,7 @@ module.exports = require("crypto");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("events");;
+module.exports = require("events");
 
 /***/ }),
 
@@ -21506,7 +23247,7 @@ module.exports = require("events");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("fs");;
+module.exports = require("fs");
 
 /***/ }),
 
@@ -21514,7 +23255,7 @@ module.exports = require("fs");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("http");;
+module.exports = require("http");
 
 /***/ }),
 
@@ -21522,7 +23263,7 @@ module.exports = require("http");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("https");;
+module.exports = require("https");
 
 /***/ }),
 
@@ -21530,7 +23271,7 @@ module.exports = require("https");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("net");;
+module.exports = require("net");
 
 /***/ }),
 
@@ -21538,7 +23279,7 @@ module.exports = require("net");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("os");;
+module.exports = require("os");
 
 /***/ }),
 
@@ -21546,7 +23287,7 @@ module.exports = require("os");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("path");;
+module.exports = require("path");
 
 /***/ }),
 
@@ -21554,7 +23295,7 @@ module.exports = require("path");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("stream");;
+module.exports = require("stream");
 
 /***/ }),
 
@@ -21562,7 +23303,7 @@ module.exports = require("stream");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("tls");;
+module.exports = require("tls");
 
 /***/ }),
 
@@ -21570,7 +23311,7 @@ module.exports = require("tls");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("tty");;
+module.exports = require("tty");
 
 /***/ }),
 
@@ -21578,7 +23319,7 @@ module.exports = require("tty");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("url");;
+module.exports = require("url");
 
 /***/ }),
 
@@ -21586,7 +23327,7 @@ module.exports = require("url");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("util");;
+module.exports = require("util");
 
 /***/ }),
 
@@ -21594,7 +23335,7 @@ module.exports = require("util");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("zlib");;
+module.exports = require("zlib");
 
 /***/ })
 
@@ -21633,7 +23374,9 @@ module.exports = require("zlib");;
 /************************************************************************/
 /******/ 	/* webpack/runtime/compat */
 /******/ 	
-/******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";/************************************************************************/
+/******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
+/******/ 	
+/************************************************************************/
 /******/ 	
 /******/ 	// startup
 /******/ 	// Load entry module and return exports

@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import * as util from 'util'
 import {isConventionalCommit} from './internal/conventional-commits'
-import {RepositorySynchronizer} from './internal/RepositorySynchronizer'
+import {PullRequest, PullRequestSimple, RepositorySynchronizer} from './internal/RepositorySynchronizer'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -61,27 +61,31 @@ async function run(): Promise<void> {
         })
 
 
-        await core.group("Fetching sync branch", async () => {
-            const doesOriginHasSyncBranch = await synchronizer.doesSyncBranchExists()
-            if (doesOriginHasSyncBranch) {
-                await synchronizer.checkoutSyncBranch()
-                return
-            }
+        const pullRequest: PullRequest | PullRequestSimple | undefined = await core.group(
+            "Fetching sync branch",
+            async () => {
+                const doesOriginHasSyncBranch = await synchronizer.doesSyncBranchExists()
+                if (doesOriginHasSyncBranch) {
+                    await synchronizer.checkoutSyncBranch()
+                    return undefined
+                }
 
-            const pullRequest = await synchronizer.latestMergedPullRequest
-            if (pullRequest) {
-                await synchronizer.checkoutPullRequestHead(pullRequest)
-                return
-            }
+                const pr = await synchronizer.latestMergedPullRequest
+                if (pr) {
+                    await synchronizer.checkoutPullRequestHead(pr)
+                    return pr
+                }
 
-            await synchronizer.checkoutFirstRepositoryCommit()
-        })
+                await synchronizer.checkoutFirstRepositoryCommit()
+                return undefined
+            }
+        )
 
 
         const lastSynchronizedCommitDate: Date = await core.group(
             "Retrieving last synchronized commit date",
             async () => {
-                const latestSyncCommit = (await synchronizer.retrieveLatestSyncCommit())
+                const latestSyncCommit = (await synchronizer.retrieveLatestSyncCommit(pullRequest))
                     || (await synchronizer.firstRepositoryCommit)
                 core.info(`Last synchronized commit is: ${repo.html_url}/commit/${latestSyncCommit.hash} (${latestSyncCommit.date}): ${latestSyncCommit.message}`)
                 return new Date(latestSyncCommit.date)
