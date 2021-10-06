@@ -17502,7 +17502,6 @@ const {cleanWithOptionsTask, isCleanOptionsArray} = __nccwpck_require__(4386);
 const {commitTask} = __nccwpck_require__(5494);
 const {diffSummaryTask} = __nccwpck_require__(9241);
 const {fetchTask} = __nccwpck_require__(8823);
-const {logTask, parseLogOptions} = __nccwpck_require__(8627);
 const {moveTask} = __nccwpck_require__(6520);
 const {pullTask} = __nccwpck_require__(4636);
 const {pushTagsTask} = __nccwpck_require__(1435);
@@ -18146,38 +18145,6 @@ Git.prototype.exec = function (then) {
 };
 
 /**
- * Show commit logs from `HEAD` to the first commit.
- * If provided between `options.from` and `options.to` tags or branch.
- *
- * Additionally you can provide options.file, which is the path to a file in your repository. Then only this file will be considered.
- *
- * To use a custom splitter in the log format, set `options.splitter` to be the string the log should be split on.
- *
- * Options can also be supplied as a standard options object for adding custom properties supported by the git log command.
- * For any other set of options, supply options as an array of strings to be appended to the git log command.
- */
-Git.prototype.log = function (options) {
-   const next = trailingFunctionArgument(arguments);
-
-   if (filterString(arguments[0]) && filterString(arguments[1])) {
-      return this._runTask(
-         configurationErrorTask(`git.log(string, string) should be replaced with git.log({ from: string, to: string })`),
-         next
-      );
-   }
-
-   const parsedOptions = parseLogOptions(
-      trailingOptionsArgument(arguments) || {},
-      filterArray(options) && options || []
-   );
-
-   return this._runTask(
-      logTask(parsedOptions.splitter, parsedOptions.fields, parsedOptions.commands),
-      next,
-   )
-};
-
-/**
  * Clears the queue of pending commands and returns the wrapper instance for chaining.
  *
  * @returns {Git}
@@ -18459,6 +18426,7 @@ function gitInstanceFactory(baseDir, options) {
     if (Array.isArray(config.config)) {
         plugins.add(plugins_1.commandConfigPrefixingPlugin(config.config));
     }
+    plugins.add(plugins_1.completionDetectionPlugin(config.completion));
     config.progress && plugins.add(plugins_1.progressMonitorPlugin(config.progress));
     config.timeout && plugins.add(plugins_1.timeoutPlugin(config.timeout));
     config.spawnOptions && plugins.add(plugins_1.spawnOptionsPlugin(config.spawnOptions));
@@ -19153,6 +19121,93 @@ exports.commandConfigPrefixingPlugin = commandConfigPrefixingPlugin;
 
 /***/ }),
 
+/***/ 179:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.completionDetectionPlugin = void 0;
+const promise_deferred_1 = __nccwpck_require__(9819);
+const utils_1 = __nccwpck_require__(847);
+const never = promise_deferred_1.default().promise;
+function completionDetectionPlugin({ onClose = true, onExit = 50 } = {}) {
+    function createEvents() {
+        let exitCode = -1;
+        const events = {
+            close: promise_deferred_1.default(),
+            closeTimeout: promise_deferred_1.default(),
+            exit: promise_deferred_1.default(),
+            exitTimeout: promise_deferred_1.default(),
+        };
+        const result = Promise.race([
+            onClose === false ? never : events.closeTimeout.promise,
+            onExit === false ? never : events.exitTimeout.promise,
+        ]);
+        configureTimeout(onClose, events.close, events.closeTimeout);
+        configureTimeout(onExit, events.exit, events.exitTimeout);
+        return {
+            close(code) {
+                exitCode = code;
+                events.close.done();
+            },
+            exit(code) {
+                exitCode = code;
+                events.exit.done();
+            },
+            get exitCode() {
+                return exitCode;
+            },
+            result,
+        };
+    }
+    function configureTimeout(flag, event, timeout) {
+        if (flag === false) {
+            return;
+        }
+        (flag === true ? event.promise : event.promise.then(() => utils_1.delay(flag))).then(timeout.done);
+    }
+    return {
+        type: 'spawn.after',
+        action(_data, { spawned, close }) {
+            var _a, _b;
+            return __awaiter(this, void 0, void 0, function* () {
+                const events = createEvents();
+                let deferClose = true;
+                let quickClose = () => void (deferClose = false);
+                (_a = spawned.stdout) === null || _a === void 0 ? void 0 : _a.on('data', quickClose);
+                (_b = spawned.stderr) === null || _b === void 0 ? void 0 : _b.on('data', quickClose);
+                spawned.on('error', quickClose);
+                spawned.on('close', (code) => events.close(code));
+                spawned.on('exit', (code) => events.exit(code));
+                try {
+                    yield events.result;
+                    if (deferClose) {
+                        yield utils_1.delay(50);
+                    }
+                    close(events.exitCode);
+                }
+                catch (err) {
+                    close(events.exitCode, err);
+                }
+            });
+        }
+    };
+}
+exports.completionDetectionPlugin = completionDetectionPlugin;
+//# sourceMappingURL=completion-detection.plugin.js.map
+
+/***/ }),
+
 /***/ 6713:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -19216,6 +19271,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 __exportStar(__nccwpck_require__(2581), exports);
+__exportStar(__nccwpck_require__(179), exports);
 __exportStar(__nccwpck_require__(6713), exports);
 __exportStar(__nccwpck_require__(5067), exports);
 __exportStar(__nccwpck_require__(1738), exports);
@@ -19280,7 +19336,7 @@ function progressMonitorPlugin(progress) {
                 return;
             }
             (_a = context.spawned.stderr) === null || _a === void 0 ? void 0 : _a.on('data', (chunk) => {
-                const message = /^([a-zA-Z ]+):\s*(\d+)% \((\d+)\/(\d+)\)/.exec(chunk.toString('utf8'));
+                const message = /^([\s\S]+?):\s*(\d+)% \((\d+)\/(\d+)\)/.exec(chunk.toString('utf8'));
                 if (!message) {
                     return;
                 }
@@ -19521,7 +19577,7 @@ exports.cleanSummaryParser = cleanSummaryParser;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.configListParser = exports.ConfigList = void 0;
+exports.configGetParser = exports.configListParser = exports.ConfigList = void 0;
 const utils_1 = __nccwpck_require__(847);
 class ConfigList {
     constructor() {
@@ -19561,17 +19617,51 @@ class ConfigList {
 exports.ConfigList = ConfigList;
 function configListParser(text) {
     const config = new ConfigList();
-    const lines = text.split('\0');
-    for (let i = 0, max = lines.length - 1; i < max;) {
-        const file = configFilePath(lines[i++]);
-        const [key, value] = utils_1.splitOn(lines[i++], '\n');
-        config.addValue(file, key, value);
+    for (const item of configParser(text)) {
+        config.addValue(item.file, String(item.key), item.value);
     }
     return config;
 }
 exports.configListParser = configListParser;
+function configGetParser(text, key) {
+    let value = null;
+    const values = [];
+    const scopes = new Map();
+    for (const item of configParser(text, key)) {
+        if (item.key !== key) {
+            continue;
+        }
+        values.push(value = item.value);
+        if (!scopes.has(item.file)) {
+            scopes.set(item.file, []);
+        }
+        scopes.get(item.file).push(value);
+    }
+    return {
+        key,
+        paths: Array.from(scopes.keys()),
+        scopes,
+        value,
+        values
+    };
+}
+exports.configGetParser = configGetParser;
 function configFilePath(filePath) {
     return filePath.replace(/^(file):/, '');
+}
+function* configParser(text, requestedKey = null) {
+    const lines = text.split('\0');
+    for (let i = 0, max = lines.length - 1; i < max;) {
+        const file = configFilePath(lines[i++]);
+        let value = lines[i++];
+        let key = requestedKey;
+        if (value.includes('\n')) {
+            const line = utils_1.splitOn(value, '\n');
+            key = line[0];
+            value = line[1];
+        }
+        yield { file, key, value };
+    }
 }
 //# sourceMappingURL=ConfigList.js.map
 
@@ -20120,40 +20210,26 @@ class GitExecutorChain {
             return new Promise((done) => {
                 const stdOut = [];
                 const stdErr = [];
-                let attempted = false;
                 let rejection;
-                function attemptClose(exitCode, event = 'retry') {
-                    // closing when there is content, terminate immediately
-                    if (attempted || stdErr.length || stdOut.length) {
-                        logger.info(`exitCode=%s event=%s rejection=%o`, exitCode, event, rejection);
-                        done({
-                            stdOut,
-                            stdErr,
-                            exitCode,
-                            rejection,
-                        });
-                        attempted = true;
-                    }
-                    // first attempt at closing but no content yet, wait briefly for the close/exit that may follow
-                    if (!attempted) {
-                        attempted = true;
-                        setTimeout(() => attemptClose(exitCode, 'deferred'), 50);
-                        logger('received %s event before content on stdOut/stdErr', event);
-                    }
-                }
                 logger.info(`%s %o`, command, args);
                 logger('%O', spawnOptions);
                 const spawned = child_process_1.spawn(command, args, spawnOptions);
                 spawned.stdout.on('data', onDataReceived(stdOut, 'stdOut', logger, outputLogger.step('stdOut')));
                 spawned.stderr.on('data', onDataReceived(stdErr, 'stdErr', logger, outputLogger.step('stdErr')));
                 spawned.on('error', onErrorReceived(stdErr, logger));
-                spawned.on('close', (code) => attemptClose(code, 'close'));
-                spawned.on('exit', (code) => attemptClose(code, 'exit'));
                 if (outputHandler) {
                     logger(`Passing child process stdOut/stdErr to custom outputHandler`);
                     outputHandler(command, spawned.stdout, spawned.stderr, [...args]);
                 }
-                this._plugins.exec('spawn.after', undefined, Object.assign(Object.assign({}, pluginContext(task, args)), { spawned, kill(reason) {
+                this._plugins.exec('spawn.after', undefined, Object.assign(Object.assign({}, pluginContext(task, args)), { spawned, close(exitCode, reason) {
+                        done({
+                            stdOut,
+                            stdErr,
+                            exitCode,
+                            rejection: rejection || reason,
+                        });
+                    },
+                    kill(reason) {
                         if (spawned.killed) {
                             return;
                         }
@@ -20494,6 +20570,7 @@ const change_working_directory_1 = __nccwpck_require__(4415);
 const config_1 = __nccwpck_require__(7597);
 const hash_object_1 = __nccwpck_require__(8199);
 const init_1 = __nccwpck_require__(6016);
+const log_1 = __nccwpck_require__(8627);
 const merge_1 = __nccwpck_require__(8829);
 const push_1 = __nccwpck_require__(1435);
 const status_1 = __nccwpck_require__(9197);
@@ -20562,7 +20639,7 @@ class SimpleGitApi {
     }
 }
 exports.SimpleGitApi = SimpleGitApi;
-Object.assign(SimpleGitApi.prototype, config_1.default());
+Object.assign(SimpleGitApi.prototype, config_1.default(), log_1.default());
 //# sourceMappingURL=simple-git-api.js.map
 
 /***/ }),
@@ -20582,10 +20659,7 @@ function taskCallback(task, response, callback = utils_1.NOOP) {
     };
     const onError = (err) => {
         if ((err === null || err === void 0 ? void 0 : err.task) === task) {
-            if (err instanceof git_response_error_1.GitResponseError) {
-                return callback(addDeprecationNoticeToError(err));
-            }
-            callback(err);
+            callback((err instanceof git_response_error_1.GitResponseError) ? addDeprecationNoticeToError(err) : err, undefined);
         }
     };
     response.then(onSuccess, onError);
@@ -20985,11 +21059,11 @@ var GitConfigScope;
     GitConfigScope["local"] = "local";
     GitConfigScope["worktree"] = "worktree";
 })(GitConfigScope = exports.GitConfigScope || (exports.GitConfigScope = {}));
-function asConfigScope(scope) {
+function asConfigScope(scope, fallback) {
     if (typeof scope === 'string' && GitConfigScope.hasOwnProperty(scope)) {
         return scope;
     }
-    return GitConfigScope.local;
+    return fallback;
 }
 function addConfigTask(key, value, append, scope) {
     const commands = ['config', `--${scope}`];
@@ -21005,9 +21079,26 @@ function addConfigTask(key, value, append, scope) {
         }
     };
 }
-function listConfigTask() {
+function getConfigTask(key, scope) {
+    const commands = ['config', '--null', '--show-origin', '--get-all', key];
+    if (scope) {
+        commands.splice(1, 0, `--${scope}`);
+    }
     return {
-        commands: ['config', '--list', '--show-origin', '--null'],
+        commands,
+        format: 'utf-8',
+        parser(text) {
+            return ConfigList_1.configGetParser(text, key);
+        }
+    };
+}
+function listConfigTask(scope) {
+    const commands = ['config', '--list', '--show-origin', '--null'];
+    if (scope) {
+        commands.push(`--${scope}`);
+    }
+    return {
+        commands,
         format: 'utf-8',
         parser(text) {
             return ConfigList_1.configListParser(text);
@@ -21017,10 +21108,13 @@ function listConfigTask() {
 function default_1() {
     return {
         addConfig(key, value, ...rest) {
-            return this._runTask(addConfigTask(key, value, rest[0] === true, asConfigScope(rest[1])), utils_1.trailingFunctionArgument(arguments));
+            return this._runTask(addConfigTask(key, value, rest[0] === true, asConfigScope(rest[1], GitConfigScope.local)), utils_1.trailingFunctionArgument(arguments));
         },
-        listConfig() {
-            return this._runTask(listConfigTask(), utils_1.trailingFunctionArgument(arguments));
+        getConfig(key, scope) {
+            return this._runTask(getConfigTask(key, asConfigScope(scope, undefined)), utils_1.trailingFunctionArgument(arguments));
+        },
+        listConfig(...rest) {
+            return this._runTask(listConfigTask(asConfigScope(rest[0], undefined)), utils_1.trailingFunctionArgument(arguments));
         },
     };
 }
@@ -21137,6 +21231,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.logTask = exports.parseLogOptions = void 0;
 const parse_list_log_summary_1 = __nccwpck_require__(9729);
 const utils_1 = __nccwpck_require__(847);
+const task_1 = __nccwpck_require__(2815);
 var excludeOptions;
 (function (excludeOptions) {
     excludeOptions[excludeOptions["--pretty"] = 0] = "--pretty";
@@ -21149,8 +21244,9 @@ var excludeOptions;
     excludeOptions[excludeOptions["to"] = 7] = "to";
     excludeOptions[excludeOptions["splitter"] = 8] = "splitter";
     excludeOptions[excludeOptions["symmetric"] = 9] = "symmetric";
-    excludeOptions[excludeOptions["multiLine"] = 10] = "multiLine";
-    excludeOptions[excludeOptions["strictDate"] = 11] = "strictDate";
+    excludeOptions[excludeOptions["mailMap"] = 10] = "mailMap";
+    excludeOptions[excludeOptions["multiLine"] = 11] = "multiLine";
+    excludeOptions[excludeOptions["strictDate"] = 12] = "strictDate";
 })(excludeOptions || (excludeOptions = {}));
 function prettyFormat(format, splitter) {
     const fields = [];
@@ -21180,8 +21276,8 @@ function parseLogOptions(opt = {}, customArgs = []) {
         message: '%s',
         refs: '%D',
         body: opt.multiLine ? '%B' : '%b',
-        author_name: '%aN',
-        author_email: '%ae'
+        author_name: opt.mailMap !== false ? '%aN' : '%an',
+        author_email: opt.mailMap !== false ? '%aE' : '%ae'
     };
     const [fields, formatStr] = prettyFormat(format, splitter);
     const suffix = [];
@@ -21219,6 +21315,25 @@ function logTask(splitter, fields, customArgs) {
     };
 }
 exports.logTask = logTask;
+function default_1() {
+    return {
+        log(...rest) {
+            const next = utils_1.trailingFunctionArgument(arguments);
+            const task = rejectDeprecatedSignatures(...rest) ||
+                createLogTask(parseLogOptions(utils_1.trailingOptionsArgument(arguments), utils_1.filterType(arguments[0], utils_1.filterArray)));
+            return this._runTask(task, next);
+        }
+    };
+    function createLogTask(options) {
+        return logTask(options.splitter, options.fields, options.commands);
+    }
+    function rejectDeprecatedSignatures(from, to) {
+        return (utils_1.filterString(from) &&
+            utils_1.filterString(to) &&
+            task_1.configurationErrorTask(`git.log(string, string) should be replaced with git.log({ from: string, to: string })`));
+    }
+}
+exports.default = default_1;
 //# sourceMappingURL=log.js.map
 
 /***/ }),
@@ -21927,7 +22042,7 @@ exports.parseStringResponse = parseStringResponse;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.pick = exports.bufferToString = exports.prefixedArray = exports.asNumber = exports.asStringArray = exports.asArray = exports.objectToString = exports.remove = exports.including = exports.append = exports.folderExists = exports.forEachLineWithContent = exports.toLinesWithContent = exports.last = exports.first = exports.splitOn = exports.isUserFunction = exports.asFunction = exports.NOOP = void 0;
+exports.delay = exports.pick = exports.bufferToString = exports.prefixedArray = exports.asNumber = exports.asStringArray = exports.asArray = exports.objectToString = exports.remove = exports.including = exports.append = exports.folderExists = exports.forEachLineWithContent = exports.toLinesWithContent = exports.last = exports.first = exports.splitOn = exports.isUserFunction = exports.asFunction = exports.NOOP = void 0;
 const file_exists_1 = __nccwpck_require__(4751);
 const NOOP = () => {
 };
@@ -22065,6 +22180,10 @@ function pick(source, properties) {
     return Object.assign({}, ...properties.map((property) => property in source ? { [property]: source[property] } : {}));
 }
 exports.pick = pick;
+function delay(duration = 0) {
+    return new Promise(done => setTimeout(done, duration));
+}
+exports.delay = delay;
 //# sourceMappingURL=util.js.map
 
 /***/ }),
