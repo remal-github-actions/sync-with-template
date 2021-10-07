@@ -22,7 +22,6 @@ pull_request_rules:
   actions:
     merge:
       method: squash
-      strict: smart+fasttrack
 
 - name: Auto approve dependency updates
   conditions:
@@ -58,4 +57,3 @@ pull_request_rules:
     review: { }
     merge:
       method: squash
-      strict: smart+fasttrack
