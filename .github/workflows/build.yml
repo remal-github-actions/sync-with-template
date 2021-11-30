@@ -23,7 +23,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2
       with:
         submodules: recursive
         lfs: true
@@ -31,13 +31,13 @@ jobs:
 
 
     - name: Setup node 12
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@04c56d2f954f1e4c69436aa54cfef261a018f458 # renovate: tag=v2
       with:
         node-version: '12'
 
 
     - name: node_modules cache
-      uses: actions/cache@v2
+      uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed # renovate: tag=v2
       with:
         key: ${{ runner.os }}-node_modules-${{ hashFiles('package.json', '*.lock') }}
         path: |
@@ -71,7 +71,7 @@ jobs:
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
       if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && env.PUSH_BACK_TOKEN }}
-      uses: remal-github-actions/push-back@v1
+      uses: remal-github-actions/push-back@66904157f8f1739e4baf4fb75ffdd8b1c1b6b78f # renovate: tag=v1
       with:
         githubToken: ${{ env.PUSH_BACK_TOKEN }}
         message: '[push-back] Push-back updated files during build'
@@ -80,13 +80,13 @@ jobs:
     - name: Read version
       id: readVersion
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      uses: remal-github-actions/read-nodejs-package-version@v1
+      uses: remal-github-actions/read-nodejs-package-version@5d25d3299980c9e01ba835768ae469b66d98d578 # renovate: tag=v1
 
     - name: Create tag
       env:
         PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.PUSH_BACK_TOKEN }}
-      uses: remal-github-actions/create-tag@v1
+      uses: remal-github-actions/create-tag@b97081c68f4f01187bf6a170a557fb92a68a7592 # renovate: tag=v1
       with:
         githubToken: ${{ env.PUSH_BACK_TOKEN }}
         tagName: 'v${{ steps.readVersion.outputs.majorVersion }}'
