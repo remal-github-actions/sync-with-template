@@ -23,7 +23,7 @@
     "@octokit/plugin-retry": "3.0.9",
     "@octokit/plugin-throttling": "3.5.2",
     "conventional-commits-detector": "1.0.3",
-    "debug": "4.3.3",
+    "debug": "4.3.4",
     "picomatch": "2.3.1",
     "rimraf": "3.0.2",
     "simple-git": "2.48.0",
