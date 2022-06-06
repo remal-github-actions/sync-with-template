@@ -308,6 +308,8 @@ export class RepositorySynchronizer {
                         throw reason
                     })
                     if (!fileExists) {
+                        const remote = await this.origin
+                        debug(`    deleted in ${remote.defaultBranch}`)
                         deletedDeletedPaths.push(modifiedDeletedPath)
                     }
                 }
