@@ -243,8 +243,9 @@ class RepositorySynchronizer {
                     renamedDeletedPaths.push(renamedPath);
                     debug(`    deletedPath=${deletedPath}; renamedPath=${renamedPath}`);
                 }
+                debug(`  Collecting modify/delete conflicts`);
                 const modifiedDeletedPaths = [];
-                const modifiedDeletedPathsMatches = error.message.matchAll(/CONFLICT \(modify\/delete\): ([^\n]*?) deleted in ([^\n]*?) and modified in HEAD\. Version HEAD of \2 left in tree\./g);
+                const modifiedDeletedPathsMatches = error.message.matchAll(/CONFLICT \(modify\/delete\): ([^\n]*?) deleted in ([^\n]*?) and modified in HEAD\. Version HEAD of \1 left in tree\./g);
                 for (const modifiedDeletedPathsMatch of modifiedDeletedPathsMatches) {
                     const deletedPath = modifiedDeletedPathsMatch[1];
                     modifiedDeletedPaths.push(deletedPath);
