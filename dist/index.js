@@ -38,6 +38,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Remote = exports.RepositorySynchronizer = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const github_1 = __nccwpck_require__(5438);
+const request_error_1 = __nccwpck_require__(537);
 const picomatch_1 = __importDefault(__nccwpck_require__(8569));
 const simple_git_1 = __importStar(__nccwpck_require__(1477));
 const url_1 = __nccwpck_require__(7310);
@@ -242,6 +243,29 @@ class RepositorySynchronizer {
                     renamedDeletedPaths.push(renamedPath);
                     debug(`    deletedPath=${deletedPath}; renamedPath=${renamedPath}`);
                 }
+                const modifiedDeletedPaths = [];
+                const modifiedDeletedPathsMatches = error.message.matchAll(/CONFLICT \(modify\/delete\): ([^\n]*?) deleted in ([^\n]*?) and modified in HEAD\. Version HEAD of \2 left in tree\./g);
+                for (const modifiedDeletedPathsMatch of modifiedDeletedPathsMatches) {
+                    const deletedPath = modifiedDeletedPathsMatch[1];
+                    modifiedDeletedPaths.push(deletedPath);
+                    debug(`    deletedPath=${deletedPath}`);
+                }
+                const deletedDeletedPaths = [];
+                for (const modifiedDeletedPath of modifiedDeletedPaths) {
+                    const fileExists = await this.octokit.repos.getContent({
+                        owner: github_1.context.repo.owner,
+                        repo: github_1.context.repo.repo,
+                        path: modifiedDeletedPath
+                    }).then(() => true).catch(reason => {
+                        if (reason instanceof request_error_1.RequestError && reason.status === 404) {
+                            return false;
+                        }
+                        throw reason;
+                    });
+                    if (!fileExists) {
+                        deletedDeletedPaths.push(modifiedDeletedPath);
+                    }
+                }
                 debug('  Trying to resolve merge conflicts');
                 const unstagedFiles = await this.unstageIgnoredFiles();
                 const status = await this.git.status();
@@ -252,7 +276,8 @@ class RepositorySynchronizer {
                         debug(`      UNSTAGED`);
                         continue;
                     }
-                    if (renamedDeletedPaths.includes(conflictedPath)) {
+                    if (renamedDeletedPaths.includes(conflictedPath)
+                        || deletedDeletedPaths.includes(conflictedPath)) {
                         core.info(`  Resolving conflict: removing file: ${conflictedPath}`);
                         await this.git.rm(conflictedPath);
                         continue;
@@ -1032,7 +1057,7 @@ async function run() {
                     if (conventionalCommits) {
                         pullRequestTitle = `chore(template): ${pullRequestTitle}`;
                     }
-                    const pullRequest = await synchronizer.createPullRequest({
+                    const newPullRequest = await synchronizer.createPullRequest({
                         head: syncBranchName,
                         base: defaultBranchName,
                         title: pullRequestTitle,
@@ -1040,7 +1065,7 @@ async function run() {
                             + "\n\nIf you close this PR, it will be recreated automatically.",
                         maintainer_can_modify: true,
                     });
-                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`);
+                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${newPullRequest.html_url}`);
                 }
             }
             else {
