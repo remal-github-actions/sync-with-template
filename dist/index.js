@@ -265,7 +265,7 @@ class RepositorySynchronizer {
                     });
                     if (!fileExists) {
                         const remote = await this.origin;
-                        debug(`    deleted in ${remote.defaultBranch}`);
+                        debug(`    deleted in ${remote.defaultBranch} branch too`);
                         deletedDeletedPaths.push(modifiedDeletedPath);
                     }
                 }
