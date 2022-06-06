@@ -185,7 +185,7 @@ async function run(): Promise<void> {
                         pullRequestTitle = `chore(template): ${pullRequestTitle}`
                     }
 
-                    const pullRequest = await synchronizer.createPullRequest({
+                    const newPullRequest = await synchronizer.createPullRequest({
                         head: syncBranchName,
                         base: defaultBranchName,
                         title: pullRequestTitle,
@@ -194,7 +194,7 @@ async function run(): Promise<void> {
                         maintainer_can_modify: true,
                     })
 
-                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${pullRequest.html_url}`)
+                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${newPullRequest.html_url}`)
                 }
             } else {
                 core.info('No commits were made, nothing to push')

@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
 import {components, operations} from '@octokit/openapi-types/generated/types'
+import {RequestError} from '@octokit/request-error'
 import picomatch from 'picomatch'
 import simpleGit, {GitError, LogResult, SimpleGit, StatusResult} from 'simple-git'
 import {DefaultLogFields} from 'simple-git/src/lib/tasks/log'
@@ -285,6 +286,32 @@ export class RepositorySynchronizer {
                     debug(`    deletedPath=${deletedPath}; renamedPath=${renamedPath}`)
                 }
 
+                const modifiedDeletedPaths: string[] = []
+                const modifiedDeletedPathsMatches = error.message.matchAll(
+                    /CONFLICT \(modify\/delete\): ([^\n]*?) deleted in ([^\n]*?) and modified in HEAD\. Version HEAD of \2 left in tree\./g
+                )
+                for (const modifiedDeletedPathsMatch of modifiedDeletedPathsMatches) {
+                    const deletedPath = modifiedDeletedPathsMatch[1]
+                    modifiedDeletedPaths.push(deletedPath)
+                    debug(`    deletedPath=${deletedPath}`)
+                }
+                const deletedDeletedPaths: string[] = []
+                for (const modifiedDeletedPath of modifiedDeletedPaths) {
+                    const fileExists = await this.octokit.repos.getContent({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        path: modifiedDeletedPath
+                    }).then(() => true).catch(reason => {
+                        if (reason instanceof RequestError && reason.status === 404) {
+                            return false
+                        }
+                        throw reason
+                    })
+                    if (!fileExists) {
+                        deletedDeletedPaths.push(modifiedDeletedPath)
+                    }
+                }
+
                 debug('  Trying to resolve merge conflicts')
                 const unstagedFiles = await this.unstageIgnoredFiles()
                 const status = await this.git.status()
@@ -296,7 +323,9 @@ export class RepositorySynchronizer {
                         continue
                     }
 
-                    if (renamedDeletedPaths.includes(conflictedPath)) {
+                    if (renamedDeletedPaths.includes(conflictedPath)
+                        || deletedDeletedPaths.includes(conflictedPath)
+                    ) {
                         core.info(`  Resolving conflict: removing file: ${conflictedPath}`)
                         await this.git.rm(conflictedPath)
                         continue
