@@ -30,7 +30,7 @@
     "tmp": "0.2.1"
   },
   "devDependencies": {
-    "@tsconfig/node12": "1.0.9",
+    "@tsconfig/node12": "1.0.10",
     "@types/conventional-commits-detector": "1.0.0",
     "@types/jest": "28.1.1",
     "@types/node": "16.11.39",
