@@ -27,8 +27,6 @@ pull_request_rules:
   conditions:
   - '#approved-reviews-by=0'
   - author~=^(dependabot(-preview)?|renovate)\[bot\]$
-  - label!=dependencies-ci
-  - label!=sync-with-template
   - 'check-neutral!=renovate/stability-days'
   - 'check-pending!=renovate/stability-days'
   - 'check-failure!=renovate/stability-days'
@@ -40,8 +38,6 @@ pull_request_rules:
 - name: Merge by authors automatically
   conditions:
   - author=remal
-  - label!=dependencies-ci
-  - label!=sync-with-template
   - -conflict
   - -closed
   - -merged
