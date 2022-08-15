@@ -36,7 +36,7 @@
     "@types/node": "16.11.48",
     "@types/picomatch": "2.3.0",
     "@types/rimraf": "3.0.2",
-    "@typescript-eslint/parser": "5.33.0",
+    "@typescript-eslint/parser": "5.33.1",
     "@vercel/ncc": "0.34.0",
     "console-log-level": "1.4.1",
     "eslint": "8.22.0",
