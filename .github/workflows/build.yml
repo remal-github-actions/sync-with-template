@@ -30,10 +30,10 @@ jobs:
         fetch-depth: 1
 
 
-    - name: Setup node 12
+    - name: Setup node 16
       uses: actions/setup-node@v3
       with:
-        node-version: '12'
+        node-version: '16'
 
 
     - name: node_modules cache
