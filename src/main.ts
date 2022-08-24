@@ -161,13 +161,7 @@ async function run(): Promise<void> {
 
             for (const fileToSync of filesToSync) {
                 core.info(`Checkouting '${fileToSync}'`)
-                const contentBefore = fs.readFileSync(path.join(workspacePath, fileToSync), 'utf8')
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
-                const contentAfter = fs.readFileSync(path.join(workspacePath, fileToSync), 'utf8')
-                if (contentBefore !== contentAfter) {
-                    core.info(`before:\n${contentBefore}`)
-                    core.info(`after:\n${contentAfter}`)
-                }
             }
         })
 
@@ -191,21 +185,12 @@ async function run(): Promise<void> {
         await core.group("Committing and creating PR", async () => {
             const openedPr = await getOpenedPullRequest()
 
-            core.warning(JSON.stringify(await git.status(), null, 2))
-
             const changedFiles = await git.status()
                 .then(response => response.files)
             core.info(`${changedFiles.length} files changed`)
             if (changedFiles.length === 0) {
                 core.info('No files were changed, nothing to commit')
                 if (!dryRun) {
-                    const repoBranches = await getRemoteBranches(git, 'origin')
-                    if (repoBranches.includes(syncBranchName)) {
-                        core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
-                            + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`
-                        )
-                        await git.raw('push', ' --delete', 'origin', syncBranchName)
-                    }
                     if (openedPr != null) {
                         await closePullRequest(
                             openedPr,
@@ -213,6 +198,13 @@ async function run(): Promise<void> {
                             `Autoclosing the PR, as no files will be changed after merging the changes`
                             + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`
                         )
+                    }
+                    const repoBranches = await getRemoteBranches(git, 'origin')
+                    if (repoBranches.includes(syncBranchName)) {
+                        core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
+                            + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`
+                        )
+                        await git.raw('push', ' --delete', 'origin', syncBranchName)
                     }
                 }
                 return
@@ -222,7 +214,7 @@ async function run(): Promise<void> {
             if (dryRun) {
                 core.warning("Skipping Git push and PR creation, as dry run is enabled")
                 core.warning("Changes:")
-                await git.raw('diff').then(content => core.warning(content))
+                await git.raw('diff', '--cached').then(content => core.warning(content))
                 return
             }
 
