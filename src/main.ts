@@ -118,6 +118,9 @@ async function run(): Promise<void> {
             await git.fetch('template', templateRepo.default_branch)
         })
 
+        const originSha = await git.raw('rev-parse', `origin/${repo.default_branch}`).then(it => it.trim())
+        const templateSha = await git.raw('rev-parse', `template/${repo.default_branch}`).then(it => it.trim())
+
         core.info(`Creating '${syncBranchName}' branch`)
         await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`)
 
@@ -160,7 +163,7 @@ async function run(): Promise<void> {
                 })
 
             for (const fileToSync of filesToSync) {
-                core.info(`Checkouting '${fileToSync}'`)
+                core.info(`Checkouting '${fileToSync}' (${templateRepo.html_url})/blob/${templateSha}/${fileToSync})`)
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
             }
         })
@@ -171,14 +174,14 @@ async function run(): Promise<void> {
             let arePatchesApplied = false
             for (const patchFile of patchFiles) {
                 arePatchesApplied = true
-                core.info(`Applying ${patchFile}`)
+                core.info(`Applying ${patchFile} (${repo.html_url})/blob/${originSha}/${patchFile})`)
                 const cmd: string[] = ['apply', '--ignore-whitespace', '--allow-empty']
                 config.includes?.forEach(it => cmd.push(`--include=${it}`))
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`))
                 await git.raw(cmd)
             }
             if (!arePatchesApplied) {
-                core.info(`No patches found for pattern: ${patchFilesPattern}`)
+                core.info(`No patches found by glob '${patchFilesPattern}'`)
             }
         })
 
@@ -187,7 +190,6 @@ async function run(): Promise<void> {
 
             const changedFiles = await git.status()
                 .then(response => response.files)
-            core.info(`${changedFiles.length} files changed`)
             if (changedFiles.length === 0) {
                 core.info('No files were changed, nothing to commit')
                 if (!dryRun) {
@@ -211,10 +213,10 @@ async function run(): Promise<void> {
             }
 
             await git.raw('add', '--all')
+            await git.raw('diff', '--cached').then(content => core.info(`Changes:\n${content}`))
+
             if (dryRun) {
                 core.warning("Skipping Git push and PR creation, as dry run is enabled")
-                core.warning("Changes:")
-                await git.raw('diff', '--cached').then(content => core.warning(content))
                 return
             }
 
