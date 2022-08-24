@@ -1,6 +1,9 @@
 # don't clean istanbul-reports assets
 !istanbul-reports/lib/html/assets
-!yaml
+
+# don't clean yaml
+!yaml/**/doc
+
 
 # test directories
 __tests__
