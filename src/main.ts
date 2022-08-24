@@ -143,7 +143,12 @@ async function run(): Promise<void> {
             const excludesMatcher = config.excludes != null && config.excludes.length
                 ? picomatch(config.excludes)
                 : undefined
-            const filesToSync = await git.raw('ls-tree', '-r', '--name-only', syncBranchName)
+            const filesToSync = await git.raw(
+                'ls-tree',
+                '-r',
+                '--name-only',
+                `remotes/template/${templateRepo.default_branch}`
+            )
                 .then(content => content.split('\n')
                     .map(line => line.trim())
                     .filter(line => line.length > 0)
