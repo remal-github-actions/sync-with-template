@@ -243,19 +243,25 @@ async function run() {
                 }
             }
         });
-        await core.group("Applying diffs", async () => {
+        await core.group("Applying patches", async () => {
             const globber = await glob.create(path_1.default.join(workspacePath, patchFilesPattern));
             const patchFiles = await globber.glob();
+            let arePatchesApplied = false;
             for (const patchFile of patchFiles) {
+                arePatchesApplied = true;
                 core.info(`Applying ${patchFile}`);
                 const cmd = ['apply', '--ignore-whitespace', '--allow-empty'];
                 config.includes?.forEach(it => cmd.push(`--include=${it}`));
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`));
                 await git.raw(cmd);
             }
+            if (!arePatchesApplied) {
+                core.info(`No patches found for pattern: ${patchFilesPattern}`);
+            }
         });
         await core.group("Committing and creating PR", async () => {
             const openedPr = await getOpenedPullRequest();
+            core.warning(JSON.stringify(await git.status(), null, 2));
             const changedFiles = await git.status()
                 .then(response => response.files);
             core.info(`${changedFiles.length} files changed`);
