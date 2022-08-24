@@ -160,8 +160,10 @@ async function run(): Promise<void> {
                 })
 
             for (const fileToSync of filesToSync) {
-                core.info(`Checkouting '${fileToSync}' file from 'remotes/template/${templateRepo.default_branch}'`)
+                core.info(`Checkouting '${fileToSync}'`)
+                core.info(fs.readFileSync(path.join(workspacePath, fileToSync), 'utf8'))
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
+                core.info(fs.readFileSync(path.join(workspacePath, fileToSync), 'utf8'))
             }
         })
 
