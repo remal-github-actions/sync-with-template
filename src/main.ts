@@ -124,6 +124,7 @@ async function run(): Promise<void> {
         const config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configContent = fs.readFileSync(path.join(workspacePath, configFilePath), 'utf8')
             const parsedConfig = YAML.parse(configContent)
+            delete parsedConfig.$schema
 
             const ajv = new Ajv2020()
             const validate = ajv.compile(configSchema)
