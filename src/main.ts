@@ -163,7 +163,7 @@ async function run(): Promise<void> {
                 })
 
             for (const fileToSync of filesToSync) {
-                core.info(`Checkouting '${fileToSync}': ${templateRepo.html_url})/blob/${templateSha}/${fileToSync}`)
+                core.info(`Checkouting '${fileToSync}': ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
             }
         })
@@ -174,7 +174,7 @@ async function run(): Promise<void> {
             let arePatchesApplied = false
             for (const patchFile of patchFiles) {
                 arePatchesApplied = true
-                core.info(`Applying ${patchFile}: ${repo.html_url})/blob/${originSha}/${patchFile}`)
+                core.info(`Applying ${patchFile}: ${repo.html_url}/blob/${originSha}/${patchFile}`)
                 const cmd: string[] = ['apply', '--ignore-whitespace', '--allow-empty']
                 config.includes?.forEach(it => cmd.push(`--include=${it}`))
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`))
