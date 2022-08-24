@@ -129,7 +129,7 @@ async function run(): Promise<void> {
             const validate = ajv.compile(configSchema)
             const valid = validate(parsedConfig)
             if (!valid) {
-                throw new Error(`Config validation error: ${validate.errors}`)
+                throw new Error(`Config validation error: ${JSON.stringify(validate.errors, null, 2)}`)
             }
 
             return parsedConfig as unknown as Config
