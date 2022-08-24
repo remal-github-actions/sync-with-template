@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Config",
+  "description": "Config for sync-with-template GitHub action",
+  "type": "object",
+  "required": [
+    "includes"
+  ],
+  "properties": {
+    "includes": {
+      "description": "Glob patterns for included files",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/glob"
+      },
+      "minItems": 1
+    },
+    "excludes": {
+      "description": "Glob patterns for excluded files",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/glob"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "glob": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^<>:;,?\"|/]+(/[^<>:;,?\"|/]+)*$"
+    }
+  }
+}

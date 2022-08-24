@@ -26,6 +26,7 @@
     "semi": "off",
     "camelcase": "off",
     "no-unused-vars": "off",
+    "import/no-commonjs": "off",
     "import/no-namespace": "off",
     "@typescript-eslint/semi": [
       "error",
