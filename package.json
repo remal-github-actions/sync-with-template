@@ -35,7 +35,6 @@
   },
   "devDependencies": {
     "@tsconfig/node16": "1.0.3",
-    "@types/conventional-commits-detector": "1.0.0",
     "@types/jest": "28.1.7",
     "@types/node": "16.11.55",
     "@types/picomatch": "2.3.0",
