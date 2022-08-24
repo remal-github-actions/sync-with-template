@@ -161,9 +161,13 @@ async function run(): Promise<void> {
 
             for (const fileToSync of filesToSync) {
                 core.info(`Checkouting '${fileToSync}'`)
-                core.info(fs.readFileSync(path.join(workspacePath, fileToSync), 'utf8'))
+                const contentBefore = fs.readFileSync(path.join(workspacePath, fileToSync), 'utf8')
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
-                core.info(fs.readFileSync(path.join(workspacePath, fileToSync), 'utf8'))
+                const contentAfter = fs.readFileSync(path.join(workspacePath, fileToSync), 'utf8')
+                if (contentBefore !== contentAfter) {
+                    core.info(`before:\n${contentBefore}`)
+                    core.info(`after:\n${contentAfter}`)
+                }
             }
         })
 
