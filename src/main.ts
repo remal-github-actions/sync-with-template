@@ -2,7 +2,7 @@ import * as core from '@actions/core'
 import {context} from '@actions/github'
 import * as glob from '@actions/glob'
 import {components, operations} from '@octokit/openapi-types'
-import Ajv from 'ajv'
+import Ajv2020 from 'ajv/dist/2020'
 import * as fs from 'fs'
 import path from 'path'
 import picomatch from 'picomatch'
@@ -118,14 +118,14 @@ async function run(): Promise<void> {
             await git.fetch('template', templateRepo.default_branch)
         })
 
-        core.info(`Checkouting '${syncBranchName}' branch from 'remotes/origin/${repo.default_branch}'`)
+        core.info(`Creating '${syncBranchName}' branch`)
         await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`)
 
         const config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configContent = fs.readFileSync(path.join(workspacePath, configFilePath), 'utf8')
             const parsedConfig = YAML.parse(configContent)
 
-            const ajv = new Ajv()
+            const ajv = new Ajv2020()
             const validate = ajv.compile(configSchema)
             const valid = validate(parsedConfig)
             if (!valid) {
