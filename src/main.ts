@@ -191,15 +191,18 @@ async function run(): Promise<void> {
         })
 
         await core.group("Applying patches", async () => {
-            const globber = await glob.create(path.join(workspacePath, patchFilesPattern))
+            const fullPatchFilesPattern = path.join(workspacePath, patchFilesPattern)
+            const globber = await glob.create(fullPatchFilesPattern)
             const patchFiles = await globber.glob()
             let arePatchesApplied = false
             for (const patchFile of patchFiles) {
                 arePatchesApplied = true
-                core.info(`Applying ${patchFile}: ${repo.html_url}/blob/${originSha}/${patchFile}`)
+                const patchFileRelativePath = path.relative(workspacePath, patchFile)
+                core.info(`Applying ${patchFileRelativePath}: ${repo.html_url}/blob/${originSha}/${patchFileRelativePath}`)
                 const cmd: string[] = ['apply', '--ignore-whitespace', '--allow-empty']
                 config.includes?.forEach(it => cmd.push(`--include=${it}`))
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`))
+                cmd.push(patchFile)
                 await git.raw(cmd)
             }
             if (!arePatchesApplied) {
