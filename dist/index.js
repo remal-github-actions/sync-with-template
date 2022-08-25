@@ -308,12 +308,8 @@ async function run() {
                 const fullFilePath = path_1.default.join(workspacePath, fileToSync);
                 let sections = undefined;
                 if (await isTextFile(fullFilePath)) {
-                    core.info('  text');
                     const content = fs.readFileSync(fullFilePath, 'utf-8');
                     sections = (0, modifiableSections_1.parseModifiableSections)(content);
-                }
-                else {
-                    core.info('  binary');
                 }
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync);
                 if (sections != null && Object.keys(sections).length) {
