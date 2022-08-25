@@ -9,3 +9,5 @@ includes:
 - '.eslint*'
 - '.prettier*'
 - '.yarn*'
+excludes:
+- '.github/workflows-includes/**'
