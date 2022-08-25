@@ -10,4 +10,4 @@ includes:
 - '.prettier*'
 - '.yarn*'
 excludes:
-- '.github/workflows-includes/**'
+- '.github/workflows/*.include.y*ml'
