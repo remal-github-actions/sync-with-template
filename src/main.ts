@@ -169,11 +169,8 @@ async function run(): Promise<void> {
                 const fullFilePath = path.join(workspacePath, fileToSync)
                 let sections: ModifiableSections | undefined = undefined
                 if (await isTextFile(fullFilePath)) {
-                    core.info('  text')
                     const content = fs.readFileSync(fullFilePath, 'utf-8')
                     sections = parseModifiableSections(content)
-                } else {
-                    core.info('  binary')
                 }
 
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
