@@ -12,6 +12,7 @@ import * as util from 'util'
 import YAML from 'yaml'
 import configSchema from '../config.schema.json'
 import {Config} from './internal/config'
+import {injectModifiableSections, ModifiableSections, parseModifiableSections} from './internal/modifiableSections'
 import {newOctokitInstance} from './internal/octokit'
 
 export type Repo = components['schemas']['full-repository']
@@ -164,7 +165,22 @@ async function run(): Promise<void> {
 
             for (const fileToSync of filesToSync) {
                 core.info(`Checkouting '${fileToSync}': ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
+
+                const fullFilePath = path.join(workspacePath, fileToSync)
+                let sections: ModifiableSections | undefined = undefined
+                if (await isTextFile(fullFilePath)) {
+                    const content = fs.readFileSync(fullFilePath, 'utf-8')
+                    sections = parseModifiableSections(content)
+                }
+
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
+
+                if (sections != null && Object.keys(sections).length) {
+                    core.info(`  Processing modifiable sections: ${Object.keys(sections).join(', ')}`)
+                    let content = fs.readFileSync(fullFilePath, 'utf-8')
+                    content = injectModifiableSections(content, sections)
+                    fs.writeFileSync(fullFilePath, content)
+                }
             }
         })
 
@@ -304,6 +320,28 @@ async function getTemplateRepo(currentRepo: Repo): Promise<Repo | undefined> {
     }
 
     return undefined
+}
+
+async function isTextFile(filePath: fs.PathLike): Promise<boolean> {
+    if (!fs.existsSync(filePath)) {
+        return false
+    }
+
+    const bytes = await readFirstNBytes(filePath, 8000)
+    for (const pair of bytes.entries()) {
+        if (pair[1] === 0) {
+            return false
+        }
+    }
+    return true
+}
+
+async function readFirstNBytes(filePath: fs.PathLike, n: number): Promise<Buffer> {
+    const chunks: any = []
+    for await (const chunk of fs.createReadStream(filePath, {start: 0, end: n, encoding: 'binary'})) {
+        chunks.push(chunk)
+    }
+    return Buffer.concat(chunks)
 }
 
 async function getRemoteBranches(git: SimpleGit, remoteName: string): Promise<string[]> {

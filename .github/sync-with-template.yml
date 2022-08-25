@@ -9,5 +9,3 @@ includes:
 - '.eslint*'
 - '.prettier*'
 - '.yarn*'
-excludes:
-- '.github/workflows/*.include.y*ml'

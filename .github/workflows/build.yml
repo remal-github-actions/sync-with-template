@@ -30,16 +30,34 @@ jobs:
         fetch-depth: 1
 
 
-    - name: Setup node 16
+    - name: Read action's Node.js version
+      id: readNodeVersion
+      run: |
+        USING=$( yq .runs.using ./action.yml )
+        if ! [[ "$USING" =~ ^node[0-9]+$ ]]; then
+          echo "::error::action.yml: .runs.using doesn't start with 'node': '$USING'"
+          exit 1
+        fi
+        VERSION=${USING:4}
+        echo "Action's Node.js version: $VERSION"
+        echo "::set-output name=result::$VERSION"
+
+    - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'
+        node-version: '${{steps.readNodeVersion.outputs.result}}'
+
+
+    - name: Update .engines.node in package.json
+      run: |
+        jq --indent 2 '.engines.node = ">=${{steps.readNodeVersion.outputs.result}}"' package.json > package-new.json
+        mv package-new.json package.json
 
 
     - name: node_modules cache
       uses: actions/cache@v3
       with:
-        key: ${{ runner.os }}-node_modules-${{ hashFiles('package.json', '*.lock') }}
+        key: ${{runner.os}}-node_modules-${{hashFiles('package.json', '*.lock')}}
         path: |
           node_modules
 
@@ -53,39 +71,43 @@ jobs:
         npm run build
 
 
+    # $$$sync-with-template-modifiable: validation $$$
+
+
     - name: Run current action
       env:
-        PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
-        #ACTIONS_STEP_DEBUG: true
-        #DEBUG: simple-git:task:*
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.PUSH_BACK_TOKEN }}
+        PUSH_BACK_TOKEN: ${{secrets.PUSH_BACK_TOKEN}}
+      if: ${{genv.PUSH_BACK_TOKEN}}
       uses: ./
       with:
-        githubToken: ${{ env.PUSH_BACK_TOKEN }}
+        githubToken: ${{env.PUSH_BACK_TOKEN}}
         dryRun: true
+
+
+    # $$$sync-with-template-modifiable-end$$$
 
 
     - name: Push back
       env:
-        PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
-      if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && env.PUSH_BACK_TOKEN }}
+        PUSH_BACK_TOKEN: ${{secrets.PUSH_BACK_TOKEN}}
+      if: ${{github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && env.PUSH_BACK_TOKEN}}
       uses: remal-github-actions/push-back@v1
       with:
-        githubToken: ${{ env.PUSH_BACK_TOKEN }}
+        githubToken: ${{env.PUSH_BACK_TOKEN}}
         message: '[push-back] Push-back updated files during build'
 
 
     - name: Read version
       id: readVersion
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      if: ${{github.event_name == 'push' && github.ref == 'refs/heads/main'}}
       uses: remal-github-actions/read-nodejs-package-version@v1
 
     - name: Create tag
       env:
-        PUSH_BACK_TOKEN: ${{ secrets.PUSH_BACK_TOKEN }}
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.PUSH_BACK_TOKEN }}
+        PUSH_BACK_TOKEN: ${{secrets.PUSH_BACK_TOKEN}}
+      if: ${{github.event_name == 'push' && github.ref == 'refs/heads/main' && env.PUSH_BACK_TOKEN}}
       uses: remal-github-actions/create-tag@v1
       with:
-        githubToken: ${{ env.PUSH_BACK_TOKEN }}
-        tagName: 'v${{ steps.readVersion.outputs.majorVersion }}'
+        githubToken: ${{env.PUSH_BACK_TOKEN}}
+        tagName: 'v${{steps.readVersion.outputs.majorVersion}}'
         forcePush: 'true'
