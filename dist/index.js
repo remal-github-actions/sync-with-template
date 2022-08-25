@@ -278,7 +278,8 @@ async function run() {
         const config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path_1.default.join(workspacePath, configFilePath);
             if (!fs.existsSync(configPath)) {
-                return { includes: [configFilePath] };
+                core.info(`The repository doesn't have config ${configFilePath}, checkouting from ${templateRepo.html_url}/blob/${templateSha}/${configFilePath}`);
+                await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', configFilePath);
             }
             const configContent = fs.readFileSync(configPath, 'utf8');
             const parsedConfig = yaml_1.default.parse(configContent);
