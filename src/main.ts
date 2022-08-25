@@ -330,7 +330,7 @@ async function isTextFile(filePath: fs.PathLike): Promise<boolean> {
         return false
     }
 
-    const bytes = await readFirstNBytes(filePath, 8000)
+    const bytes = fs.readFileSync(filePath)
     for (const pair of bytes.entries()) {
         if (pair[1] === 0) {
             return false
