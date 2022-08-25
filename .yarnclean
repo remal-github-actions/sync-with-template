@@ -4,7 +4,6 @@
 # don't clean yaml
 !yaml/**/doc
 
-
 # test directories
 __tests__
 test
@@ -16,7 +15,7 @@ docs
 doc
 website
 images
-assets
+#assets
 
 # examples
 example

@@ -326,6 +326,16 @@ ij_yaml_space_before_colon = false
 ij_asciidoc_formatting_enabled = true
 ij_asciidoc_one_sentence_per_line = true
 
+ij_sql_keyword_case = 2
+ij_sql_type_case = 3
+ij_sql_query_el_line = 0
+ij_sql_query_in_one_string = 0
+ij_sql_table_elements_place = 1
+ij_sql_table_elements_wrap = 2
+ij_sql_table_elements_comma = 2
+ij_sql_create_schema_blank_lines_min = 2
+ij_sql_create_schema_blank_lines_max = 2
+
 ij_editorconfig_align_group_field_declarations = false
 ij_editorconfig_space_after_colon = false
 ij_editorconfig_space_after_comma = true
@@ -337,7 +347,31 @@ ij_editorconfig_spaces_around_assignment_operators = true
 charset = latin1
 max_line_length = 999
 
-[*.{yml, yaml, xml, json, json5, puml, md, svg}]
+[*.{yml, json, json5, yaml, xml, puml, md, svg, xsl, xslt}]
+max_line_length = 999
+tab_width = 2
+indent_size = 2
+continuation_indent_size = 2
+ij_continuation_indent_size = 2
+
+[*.sql]
+max_line_length = 999
+
+[*.{gradle, gradle.kts}]
+max_line_length = 999
+
+[*.{ps1, psm1}]
+charset = utf-8-bom
+end_of_line = crlf
+max_line_length = 999
+tab_width = 4
+indent_size = 4
+continuation_indent_size = 4
+ij_continuation_indent_size = 4
+
+[*.nuspec]
+charset = utf-8-bom
+end_of_line = crlf
 max_line_length = 999
 tab_width = 2
 indent_size = 2
