@@ -276,7 +276,11 @@ async function run() {
         core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`);
         await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`);
         const config = await core.group(`Parsing config: ${configFilePath}`, async () => {
-            const configContent = fs.readFileSync(path_1.default.join(workspacePath, configFilePath), 'utf8');
+            const configPath = path_1.default.join(workspacePath, configFilePath);
+            if (!fs.existsSync(configPath)) {
+                return { includes: [configFilePath] };
+            }
+            const configContent = fs.readFileSync(configPath, 'utf8');
             const parsedConfig = yaml_1.default.parse(configContent);
             delete parsedConfig.$schema;
             const ajv = new _2020_1.default();
