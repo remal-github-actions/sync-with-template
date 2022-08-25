@@ -329,9 +329,12 @@ async function run() {
             const fullPatchFilesPattern = path_1.default.join(workspacePath, patchFilesPattern);
             const globber = await glob.create(fullPatchFilesPattern);
             const patchFiles = await globber.glob();
-            let arePatchesApplied = false;
+            if (!patchFiles.length) {
+                core.info(`No patches found by glob '${patchFilesPattern}'`);
+                return;
+            }
+            patchFiles.sort();
             for (const patchFile of patchFiles) {
-                arePatchesApplied = true;
                 const patchFileRelativePath = path_1.default.relative(workspacePath, patchFile);
                 core.info(`Applying ${patchFileRelativePath}: ${repo.html_url}/blob/${originSha}/${patchFileRelativePath}`);
                 const cmd = ['apply', '--ignore-whitespace', '--allow-empty'];
@@ -339,9 +342,6 @@ async function run() {
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`));
                 cmd.push(patchFile);
                 await git.raw(cmd);
-            }
-            if (!arePatchesApplied) {
-                core.info(`No patches found by glob '${patchFilesPattern}'`);
             }
         });
         await git.raw('add', '--all');
