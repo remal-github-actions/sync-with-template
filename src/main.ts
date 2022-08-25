@@ -125,10 +125,10 @@ async function run(): Promise<void> {
         core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`)
         await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`)
 
-        const config = await core.group(`Parsing config: ${configFilePath}`, async () => {
+        const config: Config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path.join(workspacePath, configFilePath)
             if (!fs.existsSync(configPath)) {
-                return {includes: configFilePath}
+                return {includes: [configFilePath]}
             }
 
             const configContent = fs.readFileSync(configPath, 'utf8')
