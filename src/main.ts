@@ -339,14 +339,6 @@ async function isTextFile(filePath: fs.PathLike): Promise<boolean> {
     return true
 }
 
-async function readFirstNBytes(filePath: fs.PathLike, n: number): Promise<Buffer> {
-    const chunks: any = []
-    for await (const chunk of fs.createReadStream(filePath, {start: 0, end: n, encoding: 'binary'})) {
-        chunks.push(chunk)
-    }
-    return Buffer.concat(chunks)
-}
-
 async function getRemoteBranches(git: SimpleGit, remoteName: string): Promise<string[]> {
     const branchPrefix = `refs/heads/`
     return git.listRemote(['--exit-code', '--refs', '--heads', '--quiet', remoteName]).then(content => {
