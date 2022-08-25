@@ -326,15 +326,18 @@ async function run() {
             }
         });
         await core.group("Applying patches", async () => {
-            const globber = await glob.create(path_1.default.join(workspacePath, patchFilesPattern));
+            const fullPatchFilesPattern = path_1.default.join(workspacePath, patchFilesPattern);
+            const globber = await glob.create(fullPatchFilesPattern);
             const patchFiles = await globber.glob();
             let arePatchesApplied = false;
             for (const patchFile of patchFiles) {
                 arePatchesApplied = true;
-                core.info(`Applying ${patchFile}: ${repo.html_url}/blob/${originSha}/${patchFile}`);
+                const patchFileRelativePath = path_1.default.relative(workspacePath, patchFile);
+                core.info(`Applying ${patchFileRelativePath}: ${repo.html_url}/blob/${originSha}/${patchFileRelativePath}`);
                 const cmd = ['apply', '--ignore-whitespace', '--allow-empty'];
                 config.includes?.forEach(it => cmd.push(`--include=${it}`));
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`));
+                cmd.push(patchFile);
                 await git.raw(cmd);
             }
             if (!arePatchesApplied) {
