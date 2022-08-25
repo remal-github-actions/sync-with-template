@@ -126,7 +126,12 @@ async function run(): Promise<void> {
         await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`)
 
         const config = await core.group(`Parsing config: ${configFilePath}`, async () => {
-            const configContent = fs.readFileSync(path.join(workspacePath, configFilePath), 'utf8')
+            const configPath = path.join(workspacePath, configFilePath)
+            if (!fs.existsSync(configPath)) {
+                return {includes: configFilePath}
+            }
+
+            const configContent = fs.readFileSync(configPath, 'utf8')
             const parsedConfig = YAML.parse(configContent)
             delete parsedConfig.$schema
 
