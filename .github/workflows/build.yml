@@ -77,7 +77,7 @@ jobs:
     - name: Run current action
       env:
         PUSH_BACK_TOKEN: ${{secrets.PUSH_BACK_TOKEN}}
-      if: ${{genv.PUSH_BACK_TOKEN}}
+      if: ${{env.PUSH_BACK_TOKEN}}
       uses: ./
       with:
         githubToken: ${{env.PUSH_BACK_TOKEN}}
