@@ -1,6 +1,74 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 2932:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.injectModifiableSections = exports.parseModifiableSections = void 0;
+const MODIFIABLE_SECTION_PREFIX = /.*\$\$\$sync-with-template-modifiable:\s*([^$]+?)\s*\$\$\$.*/;
+const MODIFIABLE_SECTION_END = /.*\$\$\$sync-with-template-modifiable-end\$\$\$.*/;
+function parseModifiableSections(content) {
+    const sections = {};
+    const lines = content.split('\n');
+    for (let index = 0; index < lines.length; ++index) {
+        const line = lines[index];
+        const section = line.replace(MODIFIABLE_SECTION_PREFIX, '$1');
+        if (section === line) {
+            continue;
+        }
+        if (sections[section] != null) {
+            throw new Error(`Multiple modifiable sections ${section}`);
+        }
+        const sectionLines = [];
+        ++index;
+        for (; index < lines.length; ++index) {
+            const nextLine = lines[index];
+            if (nextLine.match(MODIFIABLE_SECTION_END)) {
+                break;
+            }
+            else {
+                sectionLines.push(nextLine);
+            }
+        }
+        sections[section] = sectionLines;
+    }
+    return sections;
+}
+exports.parseModifiableSections = parseModifiableSections;
+function injectModifiableSections(content, sections) {
+    const newLines = [];
+    const lines = content.split('\n');
+    for (let index = 0; index < lines.length; ++index) {
+        const line = lines[index];
+        newLines.push(line);
+        const section = line.replace(MODIFIABLE_SECTION_PREFIX, '$1');
+        if (section === line) {
+            continue;
+        }
+        const sectionLines = sections[section];
+        if (sectionLines == null) {
+            continue;
+        }
+        newLines.push(...sectionLines);
+        ++index;
+        for (; index < lines.length; ++index) {
+            const nextLine = lines[index];
+            if (nextLine.match(MODIFIABLE_SECTION_END)) {
+                newLines.push(nextLine);
+                break;
+            }
+        }
+    }
+    return newLines.join('\n');
+}
+exports.injectModifiableSections = injectModifiableSections;
+
+
+/***/ }),
+
 /***/ 2931:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -129,6 +197,7 @@ const url_1 = __nccwpck_require__(7310);
 const util = __importStar(__nccwpck_require__(3837));
 const yaml_1 = __importDefault(__nccwpck_require__(4083));
 const config_schema_json_1 = __importDefault(__nccwpck_require__(242));
+const modifiableSections_1 = __nccwpck_require__(2932);
 const octokit_1 = __nccwpck_require__(2931);
 (__nccwpck_require__(8237).log) = function log(...args) {
     return process.stdout.write(`${util.format(...args)}\n`);
@@ -236,7 +305,23 @@ async function run() {
             });
             for (const fileToSync of filesToSync) {
                 core.info(`Checkouting '${fileToSync}': ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`);
+                const fullFilePath = path_1.default.join(workspacePath, fileToSync);
+                let sections = undefined;
+                if (await isTextFile(fullFilePath)) {
+                    core.info('  text');
+                    const content = fs.readFileSync(fullFilePath, 'utf-8');
+                    sections = (0, modifiableSections_1.parseModifiableSections)(content);
+                }
+                else {
+                    core.info('  binary');
+                }
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync);
+                if (sections != null && Object.keys(sections).length) {
+                    core.info(`  Processing modifiable sections: ${Object.keys(sections).join(', ')}`);
+                    let content = fs.readFileSync(fullFilePath, 'utf-8');
+                    content = (0, modifiableSections_1.injectModifiableSections)(content, sections);
+                    fs.writeFileSync(fullFilePath, content);
+                }
             }
         });
         await core.group("Applying patches", async () => {
@@ -353,6 +438,25 @@ async function getTemplateRepo(currentRepo) {
         return octokit.repos.get({ owner, repo }).then(it => it.data);
     }
     return undefined;
+}
+async function isTextFile(filePath) {
+    if (!fs.existsSync(filePath)) {
+        return false;
+    }
+    const bytes = fs.readFileSync(filePath);
+    for (const pair of bytes.entries()) {
+        if (pair[1] === 0) {
+            return false;
+        }
+    }
+    return true;
+}
+async function readFirstNBytes(filePath, n) {
+    const chunks = [];
+    for await (const chunk of fs.createReadStream(filePath, { start: 0, end: n, encoding: 'binary' })) {
+        chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
 }
 async function getRemoteBranches(git, remoteName) {
     const branchPrefix = `refs/heads/`;
