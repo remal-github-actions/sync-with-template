@@ -451,13 +451,6 @@ async function isTextFile(filePath) {
     }
     return true;
 }
-async function readFirstNBytes(filePath, n) {
-    const chunks = [];
-    for await (const chunk of fs.createReadStream(filePath, { start: 0, end: n, encoding: 'binary' })) {
-        chunks.push(chunk);
-    }
-    return Buffer.concat(chunks);
-}
 async function getRemoteBranches(git, remoteName) {
     const branchPrefix = `refs/heads/`;
     return git.listRemote(['--exit-code', '--refs', '--heads', '--quiet', remoteName]).then(content => {
