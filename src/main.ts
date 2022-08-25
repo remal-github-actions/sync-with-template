@@ -231,7 +231,7 @@ async function run(): Promise<void> {
                 '--allow-empty': null,
             })
 
-            await git.raw('push', ' --force', 'origin', syncBranchName)
+            await git.raw('push', '--force', 'origin', syncBranchName)
 
             if (openedPr == null) {
                 let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
