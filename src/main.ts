@@ -171,8 +171,6 @@ async function run(): Promise<void> {
                 if (await isTextFile(fullFilePath)) {
                     const content = fs.readFileSync(fullFilePath, 'utf-8')
                     sections = parseModifiableSections(content)
-                } else {
-                    core.info('  binary')
                 }
 
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
