@@ -311,9 +311,6 @@ async function run() {
                     const content = fs.readFileSync(fullFilePath, 'utf-8');
                     sections = (0, modifiableSections_1.parseModifiableSections)(content);
                 }
-                else {
-                    core.info('  binary');
-                }
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync);
                 if (sections != null && Object.keys(sections).length) {
                     core.info(`  Processing modifiable sections: ${Object.keys(sections).join(', ')}`);
