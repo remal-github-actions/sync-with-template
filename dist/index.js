@@ -391,6 +391,9 @@ async function run() {
                 });
                 core.info(`Pull request for '${syncBranchName}' branch has been created: ${newPullRequest.html_url}`);
             }
+            else {
+                core.info(`Pull request for '${syncBranchName}' branch has been created: ${openedPr.html_url}`);
+            }
         });
     }
     catch (error) {
