@@ -219,7 +219,6 @@ const githubToken = core.getInput('githubToken', { required: true });
 core.setSecret(githubToken);
 const octokit = (0, octokit_1.newOctokitInstance)(githubToken);
 const syncBranchName = getSyncBranchName();
-const commitMessage = getCommitMessage();
 const PULL_REQUEST_LABEL = 'sync-with-template';
 const SYNCHRONIZATION_EMAIL_SUFFIX = '+sync-with-template@users.noreply.github.com';
 const DEFAULT_GIT_ENV = {
@@ -367,6 +366,7 @@ async function run() {
                 core.warning("Skipping Git push and PR creation, as dry run is enabled");
                 return;
             }
+            const commitMessage = getCommitMessage(templateRepo.full_name);
             await git.commit(commitMessage, {
                 '--allow-empty': null,
             });
@@ -413,8 +413,9 @@ function getSyncBranchName() {
         return `chore/${name}`;
     }
 }
-function getCommitMessage() {
-    const message = core.getInput('commitMessage', { required: true });
+function getCommitMessage(templateRepoName) {
+    let message = core.getInput('commitMessage', { required: true });
+    message = message.replaceAll(/<template-repository>/, templateRepoName);
     if (!conventionalCommits || message.toLowerCase().startsWith('chore(')) {
         return message;
     }
