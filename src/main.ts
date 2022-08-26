@@ -1,12 +1,12 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
-import * as glob from '@actions/glob'
 import {components, operations} from '@octokit/openapi-types'
 import Ajv2020 from 'ajv/dist/2020'
 import * as fs from 'fs'
 import path from 'path'
 import picomatch from 'picomatch'
 import simpleGit, {SimpleGit} from 'simple-git'
+import * as tmp from 'tmp'
 import {URL} from 'url'
 import * as util from 'util'
 import YAML from 'yaml'
@@ -38,8 +38,8 @@ if (process.env.RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 const configFilePath = core.getInput('configFile', {required: true})
-const patchFilesPattern = core.getInput('patchFiles', {required: true})
-const conventionalCommits = core.getInput('conventionalCommits', {required: true}).toLowerCase() === 'true'
+const additionalPatch = core.getInput('additionalPatch', {required: false})
+const conventionalCommits = core.getInput('conventionalCommits', {required: false})?.toLowerCase() === 'true'
 const dryRun = core.getInput('dryRun', {required: true}).toLowerCase() === 'true'
 const templateRepositoryFullName = core.getInput('templateRepository', {required: false})
 
@@ -62,7 +62,7 @@ const DEFAULT_GIT_ENV: Record<string, string> = {
 
 async function run(): Promise<void> {
     try {
-        const workspacePath = require('tmp').dirSync().name
+        const workspacePath = tmp.dirSync({unsafeCleanup: true}).name
         debug(`Workspace path: ${workspacePath}`)
 
         const repo = await octokit.repos.get({
@@ -190,26 +190,20 @@ async function run(): Promise<void> {
             }
         })
 
-        await core.group("Applying patches", async () => {
-            const fullPatchFilesPattern = path.join(workspacePath, patchFilesPattern)
-            const globber = await glob.create(fullPatchFilesPattern)
-            const patchFiles = await globber.glob()
-            if (!patchFiles.length) {
-                core.info(`No patches found by glob '${patchFilesPattern}'`)
-                return
-            }
+        if (additionalPatch.length) {
+            await core.group("Applying additional Git patch", async () => {
+                core.info(additionalPatch)
 
-            patchFiles.sort()
-            for (const patchFile of patchFiles) {
-                const patchFileRelativePath = path.relative(workspacePath, patchFile)
-                core.info(`Applying ${patchFileRelativePath}: ${repo.html_url}/blob/${originSha}/${patchFileRelativePath}`)
+                const patchFile = tmp.fileSync().name
+                fs.writeFileSync(patchFile, additionalPatch, 'utf8')
+
                 const cmd: string[] = ['apply', '--ignore-whitespace', '--allow-empty']
                 config.includes?.forEach(it => cmd.push(`--include=${it}`))
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`))
                 cmd.push(patchFile)
                 await git.raw(cmd)
-            }
-        })
+            })
+        }
 
         await git.raw('add', '--all')
         const changedFiles = await git.status().then(response => response.files)
