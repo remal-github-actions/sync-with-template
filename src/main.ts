@@ -302,7 +302,7 @@ function getSyncBranchName(): string {
 function getCommitMessage(templateRepoName: string): string {
     let message = core.getInput('commitMessage', {required: true})
 
-    message = message.replaceAll(/<template-repository>/, templateRepoName)
+    message = message.replaceAll(/<template-repository>/g, templateRepoName)
 
     if (!conventionalCommits || message.toLowerCase().startsWith('chore(')) {
         return message
