@@ -313,13 +313,13 @@ async function run() {
                 const fullFilePath = path_1.default.join(workspacePath, fileToSync);
                 let sections = undefined;
                 if (await isTextFile(fullFilePath)) {
-                    const content = fs.readFileSync(fullFilePath, 'utf-8');
+                    const content = fs.readFileSync(fullFilePath, 'utf8');
                     sections = (0, modifiableSections_1.parseModifiableSections)(content);
                 }
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync);
                 if (sections != null && Object.keys(sections).length) {
                     core.info(`  Processing modifiable sections: ${Object.keys(sections).join(', ')}`);
-                    let content = fs.readFileSync(fullFilePath, 'utf-8');
+                    let content = fs.readFileSync(fullFilePath, 'utf8');
                     content = (0, modifiableSections_1.injectModifiableSections)(content, sections);
                     fs.writeFileSync(fullFilePath, content);
                 }
@@ -327,9 +327,8 @@ async function run() {
         });
         if (additionalPatch.length) {
             await core.group("Applying additional Git patch", async () => {
-                core.info(Buffer.from(additionalPatch).toString('base64'));
                 const patchFile = tmp.fileSync().name;
-                fs.writeFileSync(patchFile, additionalPatch, 'utf8');
+                fs.writeFileSync(patchFile, additionalPatch);
                 const cmd = ['apply', '--ignore-whitespace', '--allow-empty'];
                 config.includes?.forEach(it => cmd.push(`--include=${it}`));
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`));
