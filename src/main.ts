@@ -192,8 +192,6 @@ async function run(): Promise<void> {
 
         if (additionalPatch.length) {
             await core.group("Applying additional Git patch", async () => {
-                core.info(Buffer.from(additionalPatch).toString('base64'))
-
                 const patchFile = tmp.fileSync().name
                 fs.writeFileSync(patchFile, additionalPatch, 'utf8')
 
