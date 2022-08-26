@@ -49,7 +49,6 @@ core.setSecret(githubToken)
 const octokit = newOctokitInstance(githubToken)
 
 const syncBranchName = getSyncBranchName()
-const commitMessage = getCommitMessage()
 
 const PULL_REQUEST_LABEL = 'sync-with-template'
 const SYNCHRONIZATION_EMAIL_SUFFIX = '+sync-with-template@users.noreply.github.com'
@@ -245,6 +244,7 @@ async function run(): Promise<void> {
                 return
             }
 
+            const commitMessage = getCommitMessage(templateRepo.full_name)
             await git.commit(commitMessage, {
                 '--allow-empty': null,
             })
@@ -299,8 +299,11 @@ function getSyncBranchName(): string {
     }
 }
 
-function getCommitMessage(): string {
-    const message = core.getInput('commitMessage', {required: true})
+function getCommitMessage(templateRepoName: string): string {
+    let message = core.getInput('commitMessage', {required: true})
+
+    message = message.replaceAll(/<template-repository>/, templateRepoName)
+
     if (!conventionalCommits || message.toLowerCase().startsWith('chore(')) {
         return message
     } else {
