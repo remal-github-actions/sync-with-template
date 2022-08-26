@@ -327,7 +327,7 @@ async function run() {
         });
         if (additionalPatch.length) {
             await core.group("Applying additional Git patch", async () => {
-                core.info(additionalPatch);
+                core.info(Buffer.from(additionalPatch).toString('base64'));
                 const patchFile = tmp.fileSync().name;
                 fs.writeFileSync(patchFile, additionalPatch, 'utf8');
                 const cmd = ['apply', '--ignore-whitespace', '--allow-empty'];
