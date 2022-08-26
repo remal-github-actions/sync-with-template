@@ -193,7 +193,7 @@ async function run(): Promise<void> {
         if (additionalPatch.length) {
             await core.group("Applying additional Git patch", async () => {
                 const patchFile = tmp.fileSync().name
-                fs.writeFileSync(patchFile, additionalPatch)
+                fs.writeFileSync(patchFile, `${additionalPatch}\n`)
 
                 const cmd: string[] = ['apply', '--ignore-whitespace', '--allow-empty']
                 config.includes?.forEach(it => cmd.push(`--include=${it}`))
