@@ -175,7 +175,7 @@ async function run(): Promise<void> {
                 const fullFilePath = path.join(workspacePath, fileToSync)
                 let sections: ModifiableSections | undefined = undefined
                 if (await isTextFile(fullFilePath)) {
-                    const content = fs.readFileSync(fullFilePath, 'utf-8')
+                    const content = fs.readFileSync(fullFilePath, 'utf8')
                     sections = parseModifiableSections(content)
                 }
 
@@ -183,7 +183,7 @@ async function run(): Promise<void> {
 
                 if (sections != null && Object.keys(sections).length) {
                     core.info(`  Processing modifiable sections: ${Object.keys(sections).join(', ')}`)
-                    let content = fs.readFileSync(fullFilePath, 'utf-8')
+                    let content = fs.readFileSync(fullFilePath, 'utf8')
                     content = injectModifiableSections(content, sections)
                     fs.writeFileSync(fullFilePath, content)
                 }
@@ -193,7 +193,7 @@ async function run(): Promise<void> {
         if (additionalPatch.length) {
             await core.group("Applying additional Git patch", async () => {
                 const patchFile = tmp.fileSync().name
-                fs.writeFileSync(patchFile, additionalPatch, 'utf8')
+                fs.writeFileSync(patchFile, additionalPatch)
 
                 const cmd: string[] = ['apply', '--ignore-whitespace', '--allow-empty']
                 config.includes?.forEach(it => cmd.push(`--include=${it}`))
