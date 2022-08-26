@@ -415,7 +415,7 @@ function getSyncBranchName() {
 }
 function getCommitMessage(templateRepoName) {
     let message = core.getInput('commitMessage', { required: true });
-    message = message.replaceAll(/<template-repository>/, templateRepoName);
+    message = message.replaceAll(/<template-repository>/g, templateRepoName);
     if (!conventionalCommits || message.toLowerCase().startsWith('chore(')) {
         return message;
     }
