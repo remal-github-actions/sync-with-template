@@ -543,7 +543,6 @@ async function createPullRequest(info) {
     });
     return pullRequest;
 }
-const createOrUpdatePatchIssueDryRun = true;
 async function createOrUpdatePatchIssue(patch) {
     if (`${github_1.context.repo.owner}/${github_1.context.repo.repo}` != 'remal-gradle-plugins/template') {
         return;
@@ -556,20 +555,24 @@ async function createOrUpdatePatchIssue(patch) {
         '```',
         '',
     ].join('\n');
-    const patchIssues = await octokit.paginate(octokit.issues.listForRepo, {
+    let patchIssue = undefined;
+    const issuesResponses = octokit.paginate.iterator(octokit.issues.listForRepo, {
         owner: github_1.context.repo.owner,
         repo: github_1.context.repo.repo,
+        state: 'all',
         labels: PULL_REQUEST_LABEL,
         sort: 'updated',
         direction: 'desc',
-    })
-        .then(issues => issues.filter(issue => issue.pull_request == null))
-        .then(issues => issues.filter(issue => (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)));
-    if (createOrUpdatePatchIssueDryRun) {
-        core.info(JSON.stringify(patchIssues, null, 2));
-        return;
+    });
+    issuesResponsesLoop: for await (const issuesResponse of issuesResponses) {
+        for (const issue of issuesResponse.data) {
+            if (issue.pull_request == null
+                && (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)) {
+                patchIssue = issue;
+                break issuesResponsesLoop;
+            }
+        }
     }
-    const patchIssue = patchIssues.length ? patchIssues[0] : undefined;
     if (patchIssue != null) {
         core.info(`Updating patch issue: ${patchIssue.html_url}`);
         await octokit.issues.update({
