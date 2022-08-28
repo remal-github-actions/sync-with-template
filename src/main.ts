@@ -183,7 +183,9 @@ async function run(): Promise<void> {
                     hash.update(fileBuffer)
                 }
             }
-            return hash.digest('hex')
+            const result = hash.digest('hex')
+            core.info(result)
+            return result
         }
 
         const hashBefore = !repoBranches.hasOwnProperty(syncBranchName)
