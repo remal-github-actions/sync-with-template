@@ -561,29 +561,39 @@ async function createOrUpdatePatchIssue(patch) {
         repo: github_1.context.repo.repo,
         state: 'all',
         labels: PULL_REQUEST_LABEL,
-        sort: 'updated',
+        sort: 'created',
         direction: 'desc',
     });
-    issuesResponsesLoop: for await (const issuesResponse of issuesResponses) {
+    for await (const issuesResponse of issuesResponses) {
         for (const issue of issuesResponse.data) {
             if (issue.pull_request == null
-                && (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)) {
-                patchIssue = issue;
-                break issuesResponsesLoop;
+                && (issue.body || '').includes(ISSUE_PATCH_COMMENT)) {
+                if (patchIssue == null) {
+                    patchIssue = issue;
+                }
+                else {
+                    await octokit.issues.lock({
+                        owner: github_1.context.repo.owner,
+                        repo: github_1.context.repo.repo,
+                        issue_number: issue.number,
+                    });
+                }
             }
         }
     }
     if (patchIssue != null) {
-        core.info(`Updating patch issue: ${patchIssue.html_url}`);
-        await octokit.issues.update({
-            owner: github_1.context.repo.owner,
-            repo: github_1.context.repo.repo,
-            issue_number: patchIssue.number,
-            state: 'closed',
-            body
-        });
+        if (patch.length || patchIssue.state !== 'closed' || patchIssue.body !== body) {
+            core.info(`Updating patch issue: ${patchIssue.html_url}`);
+            await octokit.issues.update({
+                owner: github_1.context.repo.owner,
+                repo: github_1.context.repo.repo,
+                issue_number: patchIssue.number,
+                state: 'closed',
+                body
+            });
+        }
     }
-    else {
+    else if (patch.length) {
         core.info(`Creating patch issue`);
         const newIssue = await octokit.issues.create({
             owner: github_1.context.repo.owner,
