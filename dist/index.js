@@ -544,9 +544,6 @@ async function createPullRequest(info) {
     return pullRequest;
 }
 async function createOrUpdatePatchIssue(patch) {
-    if (`${github_1.context.repo.owner}/${github_1.context.repo.repo}` != 'remal-gradle-plugins/template') {
-        return;
-    }
     const body = [
         ISSUE_PATCH_COMMENT,
         '',
@@ -570,14 +567,14 @@ async function createOrUpdatePatchIssue(patch) {
                 && (issue.body || '').includes(ISSUE_PATCH_COMMENT)) {
                 if (patchIssue == null) {
                     patchIssue = issue;
+                    continue;
                 }
-                else {
-                    await octokit.issues.lock({
-                        owner: github_1.context.repo.owner,
-                        repo: github_1.context.repo.repo,
-                        issue_number: issue.number,
-                    });
-                }
+                core.info(`Locking old patch issue: ${issue.html_url}`);
+                await octokit.issues.lock({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    issue_number: issue.number,
+                });
             }
         }
     }
