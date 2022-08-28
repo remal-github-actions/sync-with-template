@@ -478,6 +478,8 @@ async function createOrUpdatePatchIssue(patch: string) {
         .then(issues => issues.filter(issue =>
             (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)
         ))
+    core.info(JSON.stringify(patchIssues, null, 2))
+    return
 
     const patchIssue = patchIssues.length ? patchIssues[0] : undefined
 
