@@ -177,8 +177,11 @@ async function run(): Promise<void> {
         function hashFilesToSync(): string {
             const hash = crypto.createHash('sha512')
             for (const fileToSync of filesToSync) {
-                const fileBuffer = fs.readFileSync(path.join(workspacePath, fileToSync))
-                hash.update(fileBuffer)
+                const fileToSyncFullPath = path.join(workspacePath, fileToSync)
+                if (fs.existsSync(fileToSyncFullPath)) {
+                    const fileBuffer = fs.readFileSync(fileToSyncFullPath)
+                    hash.update(fileBuffer)
+                }
             }
             return hash.digest('hex')
         }
