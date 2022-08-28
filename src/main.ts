@@ -454,6 +454,8 @@ async function createPullRequest(info: NewPullRequest) {
     return pullRequest
 }
 
+const createOrUpdatePatchIssueDryRun = true
+
 async function createOrUpdatePatchIssue(patch: string) {
     if (`${context.repo.owner}/${context.repo.repo}` != 'remal-gradle-plugins/template') {
         return
@@ -479,7 +481,7 @@ async function createOrUpdatePatchIssue(patch: string) {
             (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)
         ))
 
-    if (true) {
+    if (createOrUpdatePatchIssueDryRun) {
         core.info(JSON.stringify(patchIssues, null, 2))
         return
     }
