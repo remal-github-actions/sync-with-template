@@ -2,6 +2,7 @@ import * as core from '@actions/core'
 import {context} from '@actions/github'
 import {components, operations} from '@octokit/openapi-types'
 import Ajv2020 from 'ajv/dist/2020'
+import * as crypto from 'crypto'
 import * as fs from 'fs'
 import path from 'path'
 import picomatch from 'picomatch'
@@ -120,11 +121,12 @@ async function run(): Promise<void> {
             await git.fetch('template', templateRepo.default_branch)
         })
 
+        const repoBranches = await getRemoteBranches(git, 'origin')
         const originSha = await git.raw('rev-parse', `origin/${repo.default_branch}`).then(it => it.trim())
         const templateSha = await git.raw('rev-parse', `template/${repo.default_branch}`).then(it => it.trim())
 
         core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`)
-        await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`)
+        await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`)
 
         const config: Config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path.join(workspacePath, configFilePath)
@@ -147,14 +149,14 @@ async function run(): Promise<void> {
             return parsedConfig as unknown as Config
         })
 
-        await core.group("Checkouting template files", async () => {
+        const filesToSync = await core.group("Calculating files to sync", async () => {
             const includesMatcher = config.includes != null && config.includes.length
                 ? picomatch(config.includes)
                 : undefined
             const excludesMatcher = config.excludes != null && config.excludes.length
                 ? picomatch(config.excludes)
                 : undefined
-            const filesToSync = await git.raw(
+            return git.raw(
                 'ls-tree',
                 '-r',
                 '--name-only',
@@ -169,7 +171,28 @@ async function run(): Promise<void> {
                         .filter(file => includesMatcher == null || includesMatcher(file))
                         .filter(file => excludesMatcher == null || !excludesMatcher(file))
                 })
+        })
 
+
+        function hashFilesToSync(): string {
+            const hash = crypto.createHash('sha512')
+            for (const fileToSync of filesToSync) {
+                const fileBuffer = fs.readFileSync(path.join(workspacePath, fileToSync))
+                hash.update(fileBuffer)
+            }
+            return hash.digest('hex')
+        }
+
+        const hashBefore = !repoBranches.hasOwnProperty(syncBranchName)
+            ? ''
+            : await core.group("Hashing files before sync", async () => {
+                await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${syncBranchName}`)
+                const hash = hashFilesToSync()
+                await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`)
+                return hash
+            })
+
+        await core.group("Checkouting template files", async () => {
             for (const fileToSync of filesToSync) {
                 core.info(`Checkouting '${fileToSync}': ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
 
@@ -209,6 +232,14 @@ async function run(): Promise<void> {
             await createOrUpdatePatchIssue(additionalPatch)
         }
 
+        const hashAfter = await core.group("Hashing files after sync", async () => {
+            return hashFilesToSync()
+        })
+        if (hashBefore === hashAfter) {
+            core.info('No files were changed')
+            return
+        }
+
         await git.raw('add', '--all')
         const changedFiles = await git.status().then(response => response.files)
 
@@ -235,7 +266,6 @@ async function run(): Promise<void> {
                             + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`
                         )
                     }
-                    const repoBranches = await getRemoteBranches(git, 'origin')
                     if (repoBranches.hasOwnProperty(syncBranchName)) {
                         core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
                             + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`
