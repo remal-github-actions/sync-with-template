@@ -204,6 +204,9 @@ async function run(): Promise<void> {
 
                 await createOrUpdatePatchIssue(additionalPatch)
             })
+
+        } else {
+            await createOrUpdatePatchIssue(additionalPatch)
         }
 
         await git.raw('add', '--all')
@@ -474,7 +477,7 @@ async function createOrUpdatePatchIssue(patch: string) {
         owner: context.repo.owner,
         repo: context.repo.repo,
         labels: PULL_REQUEST_LABEL,
-        sort: 'created',
+        sort: 'updated',
         direction: 'desc',
     })
         .then(issues => issues.filter(issue =>
