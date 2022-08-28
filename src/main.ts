@@ -4,6 +4,7 @@ import {components, operations} from '@octokit/openapi-types'
 import Ajv2020 from 'ajv/dist/2020'
 import * as crypto from 'crypto'
 import * as fs from 'fs'
+import {PathLike} from 'fs'
 import path from 'path'
 import picomatch from 'picomatch'
 import simpleGit, {SimpleGit} from 'simple-git'
@@ -179,8 +180,11 @@ async function run(): Promise<void> {
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = path.join(workspacePath, fileToSync)
                 if (fs.existsSync(fileToSyncFullPath)) {
-                    const fileBuffer = fs.readFileSync(fileToSyncFullPath)
-                    hash.update(fileBuffer)
+                    hash.update(fs.readFileSync(fileToSyncFullPath))
+                    ;['R_OK', 'W_OK', 'X_OK'].forEach(accessConstant => {
+                        const hasAccess = hasAccessToFile(fileToSyncFullPath, fs.constants[accessConstant])
+                        hash.update(`${accessConstant}:${hasAccess}`, 'utf8')
+                    })
                 }
             }
             const result = hash.digest('hex')
@@ -370,6 +374,15 @@ async function getTemplateRepo(currentRepo: Repo): Promise<Repo | undefined> {
     }
 
     return undefined
+}
+
+function hasAccessToFile(filePath: PathLike, mode: number): boolean {
+    try {
+        fs.accessSync(filePath, mode)
+        return true
+    } catch (excepted) {
+        return false
+    }
 }
 
 async function isTextFile(filePath: fs.PathLike): Promise<boolean> {
