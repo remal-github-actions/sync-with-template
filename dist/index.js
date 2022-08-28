@@ -220,6 +220,7 @@ core.setSecret(githubToken);
 const octokit = (0, octokit_1.newOctokitInstance)(githubToken);
 const syncBranchName = getSyncBranchName();
 const PULL_REQUEST_LABEL = 'sync-with-template';
+const ISSUE_PATCH_COMMENT = `<!-- ${PULL_REQUEST_LABEL}: patch -->`;
 const SYNCHRONIZATION_EMAIL_SUFFIX = '+sync-with-template@users.noreply.github.com';
 const DEFAULT_GIT_ENV = {
     GIT_TERMINAL_PROMPT: '0',
@@ -272,8 +273,6 @@ async function run() {
         });
         const originSha = await git.raw('rev-parse', `origin/${repo.default_branch}`).then(it => it.trim());
         const templateSha = await git.raw('rev-parse', `template/${repo.default_branch}`).then(it => it.trim());
-        core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`);
-        await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`);
         const config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path_1.default.join(workspacePath, configFilePath);
             if (!fs.existsSync(configPath)) {
@@ -333,6 +332,7 @@ async function run() {
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`));
                 cmd.push(patchFile);
                 await git.raw(cmd);
+                await createOrUpdatePatchIssue(additionalPatch);
             });
         }
         await git.raw('add', '--all');
@@ -354,7 +354,7 @@ async function run() {
                             + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`);
                     }
                     const repoBranches = await getRemoteBranches(git, 'origin');
-                    if (repoBranches.includes(syncBranchName)) {
+                    if (repoBranches.hasOwnProperty(syncBranchName)) {
                         core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
                             + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`);
                         await git.raw('push', ' --delete', 'origin', syncBranchName);
@@ -453,22 +453,32 @@ async function isTextFile(filePath) {
 }
 async function getRemoteBranches(git, remoteName) {
     const branchPrefix = `refs/heads/`;
-    return git.listRemote(['--exit-code', '--refs', '--heads', '--quiet', remoteName]).then(content => {
-        return content.split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0)
-            .map(line => line.split('\t')[1])
-            .map(line => line.trim())
-            .filter(line => line.length > 0);
-    })
-        .then(branches => branches.map(branch => {
+    function removeBranchPrefix(branch) {
         if (branch.startsWith(branchPrefix)) {
             return branch.substring(branchPrefix.length);
         }
         else {
             return branch;
         }
-    }));
+    }
+    return git.listRemote(['--exit-code', '--refs', '--heads', '--quiet', remoteName])
+        .then(content => {
+        return content.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+    })
+        .then(lines => {
+        const result = {};
+        lines.forEach(line => {
+            const [hash, branch] = line.split('\t')
+                .map(it => it.trim())
+                .map(it => removeBranchPrefix(it));
+            if (hash.length && branch.length) {
+                result[branch] = hash;
+            }
+        });
+        return result;
+    });
 }
 async function getOpenedPullRequest() {
     return octokit.paginate(octokit.pulls.list, {
@@ -527,6 +537,59 @@ async function createPullRequest(info) {
         labels: [PULL_REQUEST_LABEL],
     });
     return pullRequest;
+}
+async function getPatchIssue() {
+    return octokit.paginate(octokit.issues.list, {
+        owner: github_1.context.repo.owner,
+        repo: github_1.context.repo.repo,
+        labels: PULL_REQUEST_LABEL,
+        sort: 'created',
+        direction: 'desc',
+    })
+        .then(issues => issues.filter(issue => (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)))
+        .then(issues => {
+        if (issues.length) {
+            return issues[0];
+        }
+        else {
+            return undefined;
+        }
+    });
+}
+async function createOrUpdatePatchIssue(patch) {
+    const body = [
+        ISSUE_PATCH_COMMENT,
+        '',
+        '```diff',
+        patch,
+        '```',
+        '',
+    ].join('\n');
+    const patchIssue = await getPatchIssue();
+    if (patchIssue != null) {
+        await octokit.issues.update({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            issue_number: patchIssue.number,
+            state: 'closed',
+            body
+        });
+    }
+    else {
+        const newIssue = await octokit.issues.create({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            title: 'Sync with template patch',
+            labels: [PULL_REQUEST_LABEL],
+            body,
+        }).then(it => it.data);
+        await octokit.issues.update({
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            issue_number: newIssue.number,
+            state: 'closed'
+        });
+    }
 }
 
 
