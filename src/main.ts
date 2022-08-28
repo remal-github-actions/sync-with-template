@@ -455,7 +455,7 @@ async function createPullRequest(info: NewPullRequest) {
 }
 
 async function createOrUpdatePatchIssue(patch: string) {
-    if (`${context.repo.owner}/${context.repo.repo}` != 'remal-github-actions/sync-with-template') {
+    if (`${context.repo.owner}/${context.repo.repo}` != 'remal-gradle-plugins/template') {
         return
     }
 
@@ -478,8 +478,11 @@ async function createOrUpdatePatchIssue(patch: string) {
         .then(issues => issues.filter(issue =>
             (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)
         ))
-    core.info(JSON.stringify(patchIssues, null, 2))
-    return
+
+    if (true) {
+        core.info(JSON.stringify(patchIssues, null, 2))
+        return
+    }
 
     const patchIssue = patchIssues.length ? patchIssues[0] : undefined
 
