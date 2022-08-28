@@ -556,13 +556,14 @@ async function createOrUpdatePatchIssue(patch) {
         '```',
         '',
     ].join('\n');
-    const patchIssues = await octokit.paginate(octokit.issues.list, {
+    const patchIssues = await octokit.paginate(octokit.issues.listForRepo, {
         owner: github_1.context.repo.owner,
         repo: github_1.context.repo.repo,
         labels: PULL_REQUEST_LABEL,
         sort: 'updated',
         direction: 'desc',
     })
+        .then(issues => issues.filter(issue => issue.pull_request == null))
         .then(issues => issues.filter(issue => (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)));
     if (createOrUpdatePatchIssueDryRun) {
         core.info(JSON.stringify(patchIssues, null, 2));
