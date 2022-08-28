@@ -16,6 +16,7 @@ import {injectModifiableSections, ModifiableSections, parseModifiableSections} f
 import {newOctokitInstance} from './internal/octokit'
 
 export type Repo = components['schemas']['full-repository']
+export type Issue = components['schemas']['issue']
 export type PullRequest = components['schemas']['pull-request']
 export type PullRequestSimple = components['schemas']['pull-request-simple']
 export type NewPullRequest = operations['pulls/create']['requestBody']['content']['application/json']
@@ -51,6 +52,7 @@ const octokit = newOctokitInstance(githubToken)
 const syncBranchName = getSyncBranchName()
 
 const PULL_REQUEST_LABEL = 'sync-with-template'
+const ISSUE_PATCH_COMMENT = `<!-- ${PULL_REQUEST_LABEL}: patch -->`
 const SYNCHRONIZATION_EMAIL_SUFFIX = '+sync-with-template@users.noreply.github.com'
 const DEFAULT_GIT_ENV: Record<string, string> = {
     GIT_TERMINAL_PROMPT: '0',
@@ -120,9 +122,6 @@ async function run(): Promise<void> {
 
         const originSha = await git.raw('rev-parse', `origin/${repo.default_branch}`).then(it => it.trim())
         const templateSha = await git.raw('rev-parse', `template/${repo.default_branch}`).then(it => it.trim())
-
-        core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`)
-        await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`)
 
         const config: Config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path.join(workspacePath, configFilePath)
@@ -199,6 +198,8 @@ async function run(): Promise<void> {
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`))
                 cmd.push(patchFile)
                 await git.raw(cmd)
+
+                await createOrUpdatePatchIssue(additionalPatch)
             })
         }
 
@@ -229,7 +230,7 @@ async function run(): Promise<void> {
                         )
                     }
                     const repoBranches = await getRemoteBranches(git, 'origin')
-                    if (repoBranches.includes(syncBranchName)) {
+                    if (repoBranches.hasOwnProperty(syncBranchName)) {
                         core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
                             + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`
                         )
@@ -343,23 +344,38 @@ async function isTextFile(filePath: fs.PathLike): Promise<boolean> {
     return true
 }
 
-async function getRemoteBranches(git: SimpleGit, remoteName: string): Promise<string[]> {
+type BranchName = string
+type CommitHash = string
+
+async function getRemoteBranches(git: SimpleGit, remoteName: string): Promise<Record<BranchName, CommitHash>> {
     const branchPrefix = `refs/heads/`
-    return git.listRemote(['--exit-code', '--refs', '--heads', '--quiet', remoteName]).then(content => {
-        return content.split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0)
-            .map(line => line.split('\t')[1])
-            .map(line => line.trim())
-            .filter(line => line.length > 0)
-    })
-        .then(branches => branches.map(branch => {
-            if (branch.startsWith(branchPrefix)) {
-                return branch.substring(branchPrefix.length)
-            } else {
-                return branch
-            }
-        }))
+
+    function removeBranchPrefix(branch: string): string {
+        if (branch.startsWith(branchPrefix)) {
+            return branch.substring(branchPrefix.length)
+        } else {
+            return branch
+        }
+    }
+
+    return git.listRemote(['--exit-code', '--refs', '--heads', '--quiet', remoteName])
+        .then(content => {
+            return content.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0)
+        })
+        .then(lines => {
+            const result: Record<BranchName, CommitHash> = {}
+            lines.forEach(line => {
+                const [hash, branch] = line.split('\t')
+                    .map(it => it.trim())
+                    .map(it => removeBranchPrefix(it))
+                if (hash.length && branch.length) {
+                    result[branch] = hash
+                }
+            })
+            return result
+        })
 }
 
 async function getOpenedPullRequest(): Promise<PullRequestSimple | undefined> {
@@ -433,4 +449,61 @@ async function createPullRequest(info: NewPullRequest) {
     })
 
     return pullRequest
+}
+
+async function getPatchIssue(): Promise<Issue | undefined> {
+    return octokit.paginate(octokit.issues.list, {
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        labels: PULL_REQUEST_LABEL,
+        sort: 'created',
+        direction: 'desc',
+    })
+        .then(issues => issues.filter(issue =>
+            (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)
+        ))
+        .then(issues => {
+            if (issues.length) {
+                return issues[0]
+            } else {
+                return undefined
+            }
+        })
+}
+
+async function createOrUpdatePatchIssue(patch: string) {
+    const body = [
+        ISSUE_PATCH_COMMENT,
+        '',
+        '```diff',
+        patch,
+        '```',
+        '',
+    ].join('\n')
+
+    const patchIssue = await getPatchIssue()
+    if (patchIssue != null) {
+        await octokit.issues.update({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: patchIssue.number,
+            state: 'closed',
+            body
+        })
+
+    } else {
+        const newIssue = await octokit.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: 'Sync with template patch',
+            labels: [PULL_REQUEST_LABEL],
+            body,
+        }).then(it => it.data)
+        await octokit.issues.update({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: newIssue.number,
+            state: 'closed'
+        })
+    }
 }
