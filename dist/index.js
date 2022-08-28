@@ -314,8 +314,11 @@ async function run() {
         function hashFilesToSync() {
             const hash = crypto.createHash('sha512');
             for (const fileToSync of filesToSync) {
-                const fileBuffer = fs.readFileSync(path_1.default.join(workspacePath, fileToSync));
-                hash.update(fileBuffer);
+                const fileToSyncFullPath = path_1.default.join(workspacePath, fileToSync);
+                if (fs.existsSync(fileToSyncFullPath)) {
+                    const fileBuffer = fs.readFileSync(fileToSyncFullPath);
+                    hash.update(fileBuffer);
+                }
             }
             return hash.digest('hex');
         }
