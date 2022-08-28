@@ -273,6 +273,8 @@ async function run() {
         });
         const originSha = await git.raw('rev-parse', `origin/${repo.default_branch}`).then(it => it.trim());
         const templateSha = await git.raw('rev-parse', `template/${repo.default_branch}`).then(it => it.trim());
+        core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`);
+        await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`);
         const config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path_1.default.join(workspacePath, configFilePath);
             if (!fs.existsSync(configPath)) {
@@ -567,6 +569,7 @@ async function createOrUpdatePatchIssue(patch) {
     ].join('\n');
     const patchIssue = await getPatchIssue();
     if (patchIssue != null) {
+        core.info(`Updating patch issue: ${patchIssue.html_url}`);
         await octokit.issues.update({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
@@ -576,6 +579,7 @@ async function createOrUpdatePatchIssue(patch) {
         });
     }
     else {
+        core.info(`Creating patch issue`);
         const newIssue = await octokit.issues.create({
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
@@ -589,6 +593,7 @@ async function createOrUpdatePatchIssue(patch) {
             issue_number: newIssue.number,
             state: 'closed'
         });
+        core.info(`Patch issue created: ${newIssue.html_url}`);
     }
 }
 
