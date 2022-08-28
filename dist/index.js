@@ -188,6 +188,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github_1 = __nccwpck_require__(5438);
 const _2020_1 = __importDefault(__nccwpck_require__(6121));
+const crypto = __importStar(__nccwpck_require__(6113));
 const fs = __importStar(__nccwpck_require__(7147));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const picomatch_1 = __importDefault(__nccwpck_require__(8569));
@@ -271,10 +272,11 @@ async function run() {
             await git.addRemote('template', templateRepo.svn_url);
             await git.fetch('template', templateRepo.default_branch);
         });
+        const repoBranches = await getRemoteBranches(git, 'origin');
         const originSha = await git.raw('rev-parse', `origin/${repo.default_branch}`).then(it => it.trim());
         const templateSha = await git.raw('rev-parse', `template/${repo.default_branch}`).then(it => it.trim());
         core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`);
-        await git.raw('checkout', '-f', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`);
+        await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`);
         const config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path_1.default.join(workspacePath, configFilePath);
             if (!fs.existsSync(configPath)) {
@@ -292,14 +294,14 @@ async function run() {
             }
             return parsedConfig;
         });
-        await core.group("Checkouting template files", async () => {
+        const filesToSync = await core.group("Calculating files to sync", async () => {
             const includesMatcher = config.includes != null && config.includes.length
                 ? (0, picomatch_1.default)(config.includes)
                 : undefined;
             const excludesMatcher = config.excludes != null && config.excludes.length
                 ? (0, picomatch_1.default)(config.excludes)
                 : undefined;
-            const filesToSync = await git.raw('ls-tree', '-r', '--name-only', `remotes/template/${templateRepo.default_branch}`)
+            return git.raw('ls-tree', '-r', '--name-only', `remotes/template/${templateRepo.default_branch}`)
                 .then(content => content.split('\n')
                 .map(line => line.trim())
                 .filter(line => line.length > 0))
@@ -308,6 +310,25 @@ async function run() {
                     .filter(file => includesMatcher == null || includesMatcher(file))
                     .filter(file => excludesMatcher == null || !excludesMatcher(file));
             });
+        });
+        function hashFilesToSync() {
+            const hash = crypto.createHash('sha512');
+            for (const fileToSync of filesToSync) {
+                const fileBuffer = fs.readFileSync(path_1.default.join(workspacePath, fileToSync));
+                hash.update(fileBuffer);
+            }
+            return hash.digest('hex');
+        }
+        const hashBefore = !repoBranches.hasOwnProperty(syncBranchName)
+            ? ''
+            : await core.group("Hashing files before sync", async () => {
+                await git.fetch('origin', syncBranchName);
+                await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${syncBranchName}`);
+                const hash = hashFilesToSync();
+                await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`);
+                return hash;
+            });
+        await core.group("Checkouting template files", async () => {
             for (const fileToSync of filesToSync) {
                 core.info(`Checkouting '${fileToSync}': ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`);
                 const fullFilePath = path_1.default.join(workspacePath, fileToSync);
@@ -340,6 +361,13 @@ async function run() {
         else {
             await createOrUpdatePatchIssue(additionalPatch);
         }
+        const hashAfter = await core.group("Hashing files after sync", async () => {
+            return hashFilesToSync();
+        });
+        if (hashBefore === hashAfter) {
+            core.info('No files were changed');
+            return;
+        }
         await git.raw('add', '--all');
         const changedFiles = await git.status().then(response => response.files);
         await core.group("Changes", async () => {
@@ -358,7 +386,6 @@ async function run() {
                         await closePullRequest(openedPr, 'autoclosed', `Autoclosing the PR, as no files will be changed after merging the changes`
                             + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`);
                     }
-                    const repoBranches = await getRemoteBranches(git, 'origin');
                     if (repoBranches.hasOwnProperty(syncBranchName)) {
                         core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
                             + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`);
