@@ -479,13 +479,13 @@ async function createOrUpdatePatchIssue(patch: string) {
         repo: context.repo.repo,
         state: 'all',
         labels: PULL_REQUEST_LABEL,
-        sort: 'updated',
+        sort: 'created',
         direction: 'desc',
     })
     issuesResponsesLoop: for await (const issuesResponse of issuesResponses) {
         for (const issue of issuesResponse.data) {
             if (issue.pull_request == null
-                && (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)
+                && (issue.body || '').includes(ISSUE_PATCH_COMMENT)
             ) {
                 patchIssue = issue
                 break issuesResponsesLoop
@@ -494,16 +494,18 @@ async function createOrUpdatePatchIssue(patch: string) {
     }
 
     if (patchIssue != null) {
-        core.info(`Updating patch issue: ${patchIssue.html_url}`)
-        await octokit.issues.update({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number: patchIssue.number,
-            state: 'closed',
-            body
-        })
+        if (patch.length || patchIssue.state !== 'closed' || patchIssue.body !== body) {
+            core.info(`Updating patch issue: ${patchIssue.html_url}`)
+            await octokit.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: patchIssue.number,
+                state: 'closed',
+                body
+            })
+        }
 
-    } else {
+    } else if (patch.length) {
         core.info(`Creating patch issue`)
         const newIssue = await octokit.issues.create({
             owner: context.repo.owner,
