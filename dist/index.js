@@ -316,8 +316,11 @@ async function run() {
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = path_1.default.join(workspacePath, fileToSync);
                 if (fs.existsSync(fileToSyncFullPath)) {
-                    const fileBuffer = fs.readFileSync(fileToSyncFullPath);
-                    hash.update(fileBuffer);
+                    hash.update(fs.readFileSync(fileToSyncFullPath));
+                    ['R_OK', 'W_OK', 'X_OK'].forEach(accessConstant => {
+                        const hasAccess = hasAccessToFile(fileToSyncFullPath, fs.constants[accessConstant]);
+                        hash.update(`${accessConstant}:${hasAccess}`, 'utf8');
+                    });
                 }
             }
             const result = hash.digest('hex');
@@ -475,6 +478,15 @@ async function getTemplateRepo(currentRepo) {
         return octokit.repos.get({ owner, repo }).then(it => it.data);
     }
     return undefined;
+}
+function hasAccessToFile(filePath, mode) {
+    try {
+        fs.accessSync(filePath, mode);
+        return true;
+    }
+    catch (excepted) {
+        return false;
+    }
 }
 async function isTextFile(filePath) {
     if (!fs.existsSync(filePath)) {
