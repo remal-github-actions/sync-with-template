@@ -480,6 +480,7 @@ async function createOrUpdatePatchIssue(patch: string) {
         sort: 'updated',
         direction: 'desc',
     })
+        .then(issues => issues.filter(issue => issue.pull_request == null))
         .then(issues => issues.filter(issue =>
             (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)
         ))
