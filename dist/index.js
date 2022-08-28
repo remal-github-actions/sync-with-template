@@ -540,25 +540,10 @@ async function createPullRequest(info) {
     });
     return pullRequest;
 }
-async function getPatchIssue() {
-    return octokit.paginate(octokit.issues.list, {
-        owner: github_1.context.repo.owner,
-        repo: github_1.context.repo.repo,
-        labels: PULL_REQUEST_LABEL,
-        sort: 'created',
-        direction: 'desc',
-    })
-        .then(issues => issues.filter(issue => (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)))
-        .then(issues => {
-        if (issues.length) {
-            return issues[0];
-        }
-        else {
-            return undefined;
-        }
-    });
-}
 async function createOrUpdatePatchIssue(patch) {
+    if (`${github_1.context.repo.owner}/${github_1.context.repo.repo}` != 'remal-github-actions/sync-with-template') {
+        return;
+    }
     const body = [
         ISSUE_PATCH_COMMENT,
         '',
@@ -567,7 +552,15 @@ async function createOrUpdatePatchIssue(patch) {
         '```',
         '',
     ].join('\n');
-    const patchIssue = await getPatchIssue();
+    const patchIssues = await octokit.paginate(octokit.issues.list, {
+        owner: github_1.context.repo.owner,
+        repo: github_1.context.repo.repo,
+        labels: PULL_REQUEST_LABEL,
+        sort: 'created',
+        direction: 'desc',
+    })
+        .then(issues => issues.filter(issue => (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)));
+    const patchIssue = patchIssues.length ? patchIssues[0] : undefined;
     if (patchIssue != null) {
         core.info(`Updating patch issue: ${patchIssue.html_url}`);
         await octokit.issues.update({
