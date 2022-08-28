@@ -482,13 +482,20 @@ async function createOrUpdatePatchIssue(patch: string) {
         sort: 'created',
         direction: 'desc',
     })
-    issuesResponsesLoop: for await (const issuesResponse of issuesResponses) {
+    for await (const issuesResponse of issuesResponses) {
         for (const issue of issuesResponse.data) {
             if (issue.pull_request == null
                 && (issue.body || '').includes(ISSUE_PATCH_COMMENT)
             ) {
-                patchIssue = issue
-                break issuesResponsesLoop
+                if (patchIssue == null) {
+                    patchIssue = issue
+                } else {
+                    await octokit.issues.lock({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: issue.number,
+                    })
+                }
             }
         }
     }
