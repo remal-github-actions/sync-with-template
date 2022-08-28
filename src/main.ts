@@ -186,6 +186,7 @@ async function run(): Promise<void> {
         const hashBefore = !repoBranches.hasOwnProperty(syncBranchName)
             ? ''
             : await core.group("Hashing files before sync", async () => {
+                await git.fetch('origin', syncBranchName)
                 await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${syncBranchName}`)
                 const hash = hashFilesToSync()
                 await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`)
