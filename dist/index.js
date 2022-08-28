@@ -540,8 +540,9 @@ async function createPullRequest(info) {
     });
     return pullRequest;
 }
+const createOrUpdatePatchIssueDryRun = true;
 async function createOrUpdatePatchIssue(patch) {
-    if (`${github_1.context.repo.owner}/${github_1.context.repo.repo}` != 'remal-github-actions/sync-with-template') {
+    if (`${github_1.context.repo.owner}/${github_1.context.repo.repo}` != 'remal-gradle-plugins/template') {
         return;
     }
     const body = [
@@ -560,6 +561,10 @@ async function createOrUpdatePatchIssue(patch) {
         direction: 'desc',
     })
         .then(issues => issues.filter(issue => (issue.body_text || '').includes(ISSUE_PATCH_COMMENT)));
+    if (createOrUpdatePatchIssueDryRun) {
+        core.info(JSON.stringify(patchIssues, null, 2));
+        return;
+    }
     const patchIssue = patchIssues.length ? patchIssues[0] : undefined;
     if (patchIssue != null) {
         core.info(`Updating patch issue: ${patchIssue.html_url}`);
