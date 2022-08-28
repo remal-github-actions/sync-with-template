@@ -458,10 +458,6 @@ async function createPullRequest(info: NewPullRequest) {
 }
 
 async function createOrUpdatePatchIssue(patch: string) {
-    if (`${context.repo.owner}/${context.repo.repo}` != 'remal-gradle-plugins/template') {
-        return
-    }
-
     const body = [
         ISSUE_PATCH_COMMENT,
         '',
@@ -489,13 +485,15 @@ async function createOrUpdatePatchIssue(patch: string) {
             ) {
                 if (patchIssue == null) {
                     patchIssue = issue
-                } else {
-                    await octokit.issues.lock({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        issue_number: issue.number,
-                    })
+                    continue
                 }
+
+                core.info(`Locking old patch issue: ${issue.html_url}`)
+                await octokit.issues.lock({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                })
             }
         }
     }
