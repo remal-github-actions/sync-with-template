@@ -473,7 +473,7 @@ async function createOrUpdatePatchIssue(patch: string) {
         '',
     ].join('\n')
 
-    const patchIssues = await octokit.paginate(octokit.issues.list, {
+    const patchIssues = await octokit.paginate(octokit.issues.listForRepo, {
         owner: context.repo.owner,
         repo: context.repo.repo,
         labels: PULL_REQUEST_LABEL,
