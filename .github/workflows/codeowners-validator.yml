@@ -13,6 +13,9 @@ on:
   - cron: '37 4 * * *'
   workflow_dispatch: { }
 
+permissions:
+  contents: read
+
 jobs:
   codeowners-validation:
     runs-on: ubuntu-latest
