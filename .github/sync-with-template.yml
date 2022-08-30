@@ -6,6 +6,8 @@ includes:
 - '.gitignore'
 - '.editorconfig'
 - 'LICENSE'
+- 'checkstyle.xml'
+- 'lombok.config'
 - '.eslint*'
 - '.prettier*'
 - '.yarn*'
