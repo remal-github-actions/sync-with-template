@@ -358,7 +358,7 @@ async function run() {
             await core.group("Applying additional Git patch", async () => {
                 const patchFile = tmp.fileSync().name;
                 fs.writeFileSync(patchFile, `${additionalPatch}\n`);
-                const cmd = ['apply', '--ignore-whitespace', '--allow-empty'];
+                const cmd = ['apply', '--verbose', '--whitespace=fix', '--allow-empty'];
                 config.includes?.forEach(it => cmd.push(`--include=${it}`));
                 config.excludes?.forEach(it => cmd.push(`--exclude=${it}`));
                 cmd.push(patchFile);
