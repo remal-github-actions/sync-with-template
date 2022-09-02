@@ -5,4 +5,7 @@
   "git-submodules": {
     enabled: false, // This is in beta for now, so let's use Dependabot to update Git submodules
   },
+  
+  // $$$sync-with-template-modifiable: local
+  // $$$sync-with-template-modifiable-end$$$
 }
