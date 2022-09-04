@@ -22455,6 +22455,7 @@ var init_exit_codes = __esm({
     ExitCodes = /* @__PURE__ */ ((ExitCodes2) => {
       ExitCodes2[ExitCodes2["SUCCESS"] = 0] = "SUCCESS";
       ExitCodes2[ExitCodes2["ERROR"] = 1] = "ERROR";
+      ExitCodes2[ExitCodes2["NOT_FOUND"] = -2] = "NOT_FOUND";
       ExitCodes2[ExitCodes2["UNCLEAN"] = 128] = "UNCLEAN";
       return ExitCodes2;
     })(ExitCodes || {});
@@ -23237,6 +23238,37 @@ var init_api = __esm({
   }
 });
 
+// src/lib/plugins/abort-plugin.ts
+function abortPlugin(signal) {
+  if (!signal) {
+    return;
+  }
+  const onSpawnAfter = {
+    type: "spawn.after",
+    action(_data, context) {
+      function kill() {
+        context.kill(new GitPluginError(void 0, "abort", "Abort signal received"));
+      }
+      signal.addEventListener("abort", kill);
+      context.spawned.on("close", () => signal.removeEventListener("abort", kill));
+    }
+  };
+  const onSpawnBefore = {
+    type: "spawn.before",
+    action(_data, context) {
+      if (signal.aborted) {
+        context.kill(new GitPluginError(void 0, "abort", "Abort already signaled"));
+      }
+    }
+  };
+  return [onSpawnBefore, onSpawnAfter];
+}
+var init_abort_plugin = __esm({
+  "src/lib/plugins/abort-plugin.ts"() {
+    init_git_plugin_error();
+  }
+});
+
 // src/lib/plugins/command-config-prefixing-plugin.ts
 function commandConfigPrefixingPlugin(configuration) {
   const prefix = prefixedArray(configuration, "-c");
@@ -23509,6 +23541,7 @@ var init_timout_plugin = __esm({
 // src/lib/plugins/index.ts
 var init_plugins = __esm({
   "src/lib/plugins/index.ts"() {
+    init_abort_plugin();
     init_command_config_prefixing_plugin();
     init_completion_detection_plugin();
     init_error_detection_plugin();
@@ -23779,9 +23812,22 @@ var init_git_executor_chain = __esm({
           return new Promise((done) => {
             const stdOut = [];
             const stdErr = [];
-            let rejection;
             logger.info(`%s %o`, command, args);
             logger("%O", spawnOptions);
+            let rejection = this._beforeSpawn(task, args);
+            if (rejection) {
+              return done({
+                stdOut,
+                stdErr,
+                exitCode: 9901,
+                rejection
+              });
+            }
+            this._plugins.exec("spawn.before", void 0, __spreadProps(__spreadValues({}, pluginContext(task, args)), {
+              kill(reason) {
+                rejection = reason || rejection;
+              }
+            }));
             const spawned = (0, import_child_process.spawn)(command, args, spawnOptions);
             spawned.stdout.on("data", onDataReceived(stdOut, "stdOut", logger, outputLogger.step("stdOut")));
             spawned.stderr.on("data", onDataReceived(stdErr, "stdErr", logger, outputLogger.step("stdErr")));
@@ -23810,6 +23856,15 @@ var init_git_executor_chain = __esm({
             }));
           });
         });
+      }
+      _beforeSpawn(task, args) {
+        let rejection;
+        this._plugins.exec("spawn.before", void 0, __spreadProps(__spreadValues({}, pluginContext(task, args)), {
+          kill(reason) {
+            rejection = reason || rejection;
+          }
+        }));
+        return rejection;
       }
     };
   }
@@ -24918,6 +24973,59 @@ var init_status = __esm({
   }
 });
 
+// src/lib/tasks/version.ts
+function versionResponse(major = 0, minor = 0, patch = 0, agent = "", installed = true) {
+  return Object.defineProperty({
+    major,
+    minor,
+    patch,
+    agent,
+    installed
+  }, "toString", {
+    value() {
+      return `${major}.${minor}.${patch}`;
+    },
+    configurable: false,
+    enumerable: false
+  });
+}
+function notInstalledResponse() {
+  return versionResponse(0, 0, 0, "", false);
+}
+function version_default() {
+  return {
+    version() {
+      return this._runTask({
+        commands: ["--version"],
+        format: "utf-8",
+        parser(stdOut) {
+          if (stdOut === NOT_INSTALLED) {
+            return notInstalledResponse();
+          }
+          const version = /version (\d+)\.(\d+)\.(\d+)(?:\s*\((.+)\))?/.exec(stdOut);
+          if (!version) {
+            return versionResponse(0, 0, 0, stdOut);
+          }
+          return versionResponse(asNumber(version[1]), asNumber(version[2]), asNumber(version[3]), version[4] || "");
+        },
+        onError(result, error, done, fail) {
+          if (result.exitCode === -2 /* NOT_FOUND */) {
+            return done(Buffer.from(NOT_INSTALLED));
+          }
+          fail(error);
+        }
+      });
+    }
+  };
+}
+var NOT_INSTALLED;
+var init_version = __esm({
+  "src/lib/tasks/version.ts"() {
+    init_utils();
+    NOT_INSTALLED = "installed=false";
+  }
+});
+
 // src/lib/simple-git-api.ts
 var simple_git_api_exports = {};
 __export(simple_git_api_exports, {
@@ -24938,6 +25046,7 @@ var init_simple_git_api = __esm({
     init_push();
     init_status();
     init_task();
+    init_version();
     init_utils();
     SimpleGitApi = class {
       constructor(_executor) {
@@ -25001,7 +25110,7 @@ var init_simple_git_api = __esm({
         return this._runTask(statusTask(getTrailingOptions(arguments)), trailingFunctionArgument(arguments));
       }
     };
-    Object.assign(SimpleGitApi.prototype, commit_default(), config_default(), grep_default(), log_default());
+    Object.assign(SimpleGitApi.prototype, commit_default(), config_default(), grep_default(), log_default(), version_default());
   }
 });
 
@@ -26005,6 +26114,7 @@ function gitInstanceFactory(baseDir, options) {
     plugins.add(commandConfigPrefixingPlugin(config.config));
   }
   plugins.add(completionDetectionPlugin(config.completion));
+  config.abort && plugins.add(abortPlugin(config.abort));
   config.progress && plugins.add(progressMonitorPlugin(config.progress));
   config.timeout && plugins.add(timeoutPlugin(config.timeout));
   config.spawnOptions && plugins.add(spawnOptionsPlugin(config.spawnOptions));
