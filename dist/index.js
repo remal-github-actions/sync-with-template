@@ -204,7 +204,7 @@ const octokit_1 = __nccwpck_require__(2931);
 (__nccwpck_require__(8237).log) = function log(...args) {
     return process.stdout.write(`${util.format(...args)}\n`);
 };
-if (process.env.RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
+if (core.isDebug()) {
     (__nccwpck_require__(8237).enable)('simple-git,simple-git:*');
     process.env.DEBUG = [
         process.env.DEBUG || '',
@@ -434,6 +434,7 @@ async function run() {
     }
     catch (error) {
         core.setFailed(error instanceof Error ? error : error.toString());
+        throw error;
     }
 }
 run();
