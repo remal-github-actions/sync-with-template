@@ -47,7 +47,9 @@ export function newOctokitInstance(token: string): Octokit {
     }
 
     const logOptions: { log?: OctokitCore['log'] } = {}
-    if (process.env.RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
+    if (process.env.RUNNER_DEBUG?.toLowerCase() === 'true'
+        || process.env.ACTIONS_STEP_DEBUG?.toLowerCase() === 'true'
+    ) {
         logOptions.log = require('console-log-level')({level: 'trace'})
     }
 
