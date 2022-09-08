@@ -29,7 +29,7 @@ require('debug').log = function log(...args) {
     return process.stdout.write(`${util.format(...args)}\n`)
 }
 
-if (process.env.RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
+if (core.isDebug()) {
     require('debug').enable('simple-git,simple-git:*')
     process.env.DEBUG = [
         process.env.DEBUG || '',
@@ -321,6 +321,7 @@ async function run(): Promise<void> {
 
     } catch (error) {
         core.setFailed(error instanceof Error ? error : (error as object).toString())
+        throw error
     }
 }
 
