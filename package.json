@@ -27,6 +27,7 @@
     "@octokit/plugin-throttling": "4.3.0",
     "ajv": "8.11.0",
     "debug": "4.3.4",
+    "console-log-level": "1.4.1",
     "picomatch": "2.3.1",
     "rimraf": "3.0.2",
     "simple-git": "3.14.0",
