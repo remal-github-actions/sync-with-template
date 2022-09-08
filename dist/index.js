@@ -136,7 +136,8 @@ function newOctokitInstance(token) {
         }
     };
     const logOptions = {};
-    if (process.env.RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
+    if (process.env.RUNNER_DEBUG?.toLowerCase() === 'true'
+        || process.env.ACTIONS_STEP_DEBUG?.toLowerCase() === 'true') {
         logOptions.log = __nccwpck_require__(385)({ level: 'trace' });
     }
     const allOptions = {
