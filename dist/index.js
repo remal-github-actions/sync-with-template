@@ -136,8 +136,9 @@ function newOctokitInstance(token) {
         }
     };
     const logOptions = {};
+    const traceLogging = __nccwpck_require__(385)({ level: 'trace' });
     if (core.isDebug()) {
-        logOptions.log = __nccwpck_require__(385)({ level: 'trace' });
+        logOptions.log = traceLogging;
     }
     const allOptions = {
         ...baseOptions,
