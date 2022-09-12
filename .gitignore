@@ -35,7 +35,6 @@ node_modules/
 /layout.json
 /.idea/*
 !/.idea/.editorconfig
-!/.idea/misc.xml
 !/.idea/groovyc.xml
 !/.idea/jsonSchemas.xml
 !/.idea/externalDependencies.xml
@@ -52,7 +51,7 @@ node_modules/
 !/.idea/copyright/*
 !/.idea/dictionaries/
 /.idea/dictionaries/*
-!/.idea/dictionaries/.placeholder
+!/.idea/dictionaries/.gitkeep
 *.iml
 *.iws
 *.*___jb_tmp___
