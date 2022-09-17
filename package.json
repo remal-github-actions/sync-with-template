@@ -30,7 +30,7 @@
     "console-log-level": "1.4.1",
     "picomatch": "2.3.1",
     "rimraf": "3.0.2",
-    "simple-git": "3.14.0",
+    "simple-git": "3.14.1",
     "tmp": "0.2.1",
     "yaml": "2.1.1"
   },
