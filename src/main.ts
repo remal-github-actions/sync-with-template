@@ -280,7 +280,7 @@ async function run(): Promise<void> {
                         core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
                             + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`
                         )
-                        await git.raw('push', ' --delete', 'origin', syncBranchName)
+                        await git.raw('push', '--delete', 'origin', syncBranchName)
                     }
                 }
                 return
