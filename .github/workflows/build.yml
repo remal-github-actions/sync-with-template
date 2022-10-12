@@ -41,7 +41,7 @@ jobs:
         fi
         VERSION=${USING:4}
         echo "Action's Node.js version: $VERSION"
-        echo "::set-output name=result::$VERSION"
+        echo "result=$VERSION" >> $GITHUB_OUTPUT
 
     - name: Setup Node.js
       uses: actions/setup-node@v3
