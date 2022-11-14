@@ -5503,7 +5503,7 @@ exports.request = request;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = void 0;
+exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = void 0;
 const core_1 = __nccwpck_require__(2685);
 const draft2020_1 = __nccwpck_require__(6098);
 const discriminator_1 = __nccwpck_require__(4025);
@@ -5549,6 +5549,10 @@ Object.defineProperty(exports, "stringify", ({ enumerable: true, get: function (
 Object.defineProperty(exports, "nil", ({ enumerable: true, get: function () { return codegen_1.nil; } }));
 Object.defineProperty(exports, "Name", ({ enumerable: true, get: function () { return codegen_1.Name; } }));
 Object.defineProperty(exports, "CodeGen", ({ enumerable: true, get: function () { return codegen_1.CodeGen; } }));
+var validation_error_1 = __nccwpck_require__(7616);
+Object.defineProperty(exports, "ValidationError", ({ enumerable: true, get: function () { return validation_error_1.default; } }));
+var ref_error_1 = __nccwpck_require__(8190);
+Object.defineProperty(exports, "MissingRefError", ({ enumerable: true, get: function () { return ref_error_1.default; } }));
 //# sourceMappingURL=2020.js.map
 
 /***/ }),
