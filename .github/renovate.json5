@@ -6,6 +6,9 @@
     enabled: false, // This is in beta for now, so let's use Dependabot to update Git submodules
   },
   
+  "assigneesFromCodeOwners": false,
+  "reviewersFromCodeOwners": false,
+  
   // $$$sync-with-template-modifiable: local
   // $$$sync-with-template-modifiable-end$$$
 }
