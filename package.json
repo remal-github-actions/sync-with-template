@@ -2,14 +2,15 @@
   "$schema": "https://json.schemastore.org/package",
   "name": "sync-with-template",
   "description": "Synchronize repository with template repository",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "engines": {
     "node": ">=16"
   },
   "main": "dist/main.js",
   "scripts": {
     "generate-config": "json2ts config.schema.json > src/internal/config.ts",
-    "generate": "npm run generate-config",
+    "generate-local-transformations": "json2ts local-transformations.schema.json > src/internal/local-transformations.ts",
+    "generate": "npm run generate-config && npm run generate-local-transformations",
     "lint": "eslint --fix",
     "test": "jest --passWithNoTests",
     "tsconfig-generate-app": "node tsconfig-generate-app",
@@ -26,12 +27,13 @@
     "@octokit/plugin-retry": "4.0.3",
     "@octokit/plugin-throttling": "4.3.2",
     "ajv": "8.11.2",
-    "debug": "4.3.4",
     "console-log-level": "1.4.1",
+    "debug": "4.3.4",
     "picomatch": "2.3.1",
     "rimraf": "3.0.2",
     "simple-git": "3.15.1",
     "tmp": "0.2.1",
+    "vm2": "3.9.13",
     "yaml": "2.2.0"
   },
   "devDependencies": {

@@ -1,21 +1,24 @@
 import * as core from '@actions/core'
-import {context} from '@actions/github'
-import {components, operations} from '@octokit/openapi-types'
+import { context } from '@actions/github'
+import { components, operations } from '@octokit/openapi-types'
 import Ajv2020 from 'ajv/dist/2020'
 import * as crypto from 'crypto'
 import * as fs from 'fs'
-import {PathLike} from 'fs'
+import { PathLike } from 'fs'
 import path from 'path'
 import picomatch from 'picomatch'
-import simpleGit, {SimpleGit} from 'simple-git'
+import simpleGit, { SimpleGit } from 'simple-git'
 import * as tmp from 'tmp'
-import {URL} from 'url'
+import { URL } from 'url'
 import * as util from 'util'
+import { VM, VMScript } from 'vm2'
 import YAML from 'yaml'
 import configSchema from '../config.schema.json'
-import {Config} from './internal/config'
-import {injectModifiableSections, ModifiableSections, parseModifiableSections} from './internal/modifiableSections'
-import {newOctokitInstance} from './internal/octokit'
+import transformationsSchema from '../local-transformations.schema.json'
+import { Config } from './internal/config'
+import { LocalTransformations } from './internal/local-transformations'
+import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections'
+import { newOctokitInstance } from './internal/octokit'
 
 export type Repo = components['schemas']['full-repository']
 export type Issue = components['schemas']['issue']
@@ -40,13 +43,17 @@ if (core.isDebug()) {
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-const configFilePath = core.getInput('configFile', {required: true})
-const additionalPatch = core.getInput('additionalPatch', {required: false})
-const conventionalCommits = core.getInput('conventionalCommits', {required: false})?.toLowerCase() === 'true'
-const dryRun = core.getInput('dryRun', {required: true}).toLowerCase() === 'true'
-const templateRepositoryFullName = core.getInput('templateRepository', {required: false})
+const configFilePath = core.getInput('configFile', { required: true })
+const transformationsFilePath = core.getInput('transformationsFile', { required: true })
+const additionalPatch = core.getInput('additionalPatch', { required: false })
+if (additionalPatch != null && additionalPatch.length) {
+    throw new Error('additionalPatch is no longer supported')
+}
+const conventionalCommits = core.getInput('conventionalCommits', { required: false })?.toLowerCase() === 'true'
+const dryRun = core.getInput('dryRun', { required: true }).toLowerCase() === 'true'
+const templateRepositoryFullName = core.getInput('templateRepository', { required: false })
 
-const githubToken = core.getInput('githubToken', {required: true})
+const githubToken = core.getInput('githubToken', { required: true })
 core.setSecret(githubToken)
 
 const octokit = newOctokitInstance(githubToken)
@@ -54,7 +61,6 @@ const octokit = newOctokitInstance(githubToken)
 const syncBranchName = getSyncBranchName()
 
 const PULL_REQUEST_LABEL = 'sync-with-template'
-const ISSUE_PATCH_COMMENT = `<!-- ${PULL_REQUEST_LABEL}: patch -->`
 const SYNCHRONIZATION_EMAIL_SUFFIX = '+sync-with-template@users.noreply.github.com'
 const DEFAULT_GIT_ENV: Record<string, string> = {
     GIT_TERMINAL_PROMPT: '0',
@@ -65,12 +71,12 @@ const DEFAULT_GIT_ENV: Record<string, string> = {
 
 async function run(): Promise<void> {
     try {
-        const workspacePath = tmp.dirSync({unsafeCleanup: true}).name
+        const workspacePath = tmp.dirSync({ unsafeCleanup: true }).name
         debug(`Workspace path: ${workspacePath}`)
 
         const repo = await octokit.repos.get({
-            owner: context.repo.owner, repo:
-            context.repo.repo
+            owner: context.repo.owner,
+            repo: context.repo.repo,
         }).then(it => it.data)
         core.info(`Using ${repo.full_name} as the current repository`)
 
@@ -79,8 +85,8 @@ async function run(): Promise<void> {
 
         const templateRepo = await getTemplateRepo(repo)
         if (templateRepo == null) {
-            core.warning("Template repository name can't be retrieved: the current repository isn't created from a"
-                + " template and 'templateRepository' input isn't set")
+            core.warning('Template repository name can\'t be retrieved: the current repository isn\'t created from a'
+                + ' template and \'templateRepository\' input isn\'t set')
             return
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`)
@@ -89,7 +95,7 @@ async function run(): Promise<void> {
         const git = simpleGit(workspacePath)
             .env(DEFAULT_GIT_ENV)
 
-        await core.group("Initializing the repository", async () => {
+        await core.group('Initializing the repository', async () => {
             await git.init()
             await git.addConfig('gc.auto', '0')
             await git.addConfig('user.useConfigOnly', 'true')
@@ -150,7 +156,38 @@ async function run(): Promise<void> {
             return parsedConfig as unknown as Config
         })
 
-        const filesToSync = await core.group("Calculating files to sync", async () => {
+        config.excludes = config.excludes || []
+        config.excludes.push(transformationsFilePath)
+
+
+        const transformations: LocalTransformations = await core.group(
+            `Parsing local transformations: ${transformationsFilePath}`,
+            async () => {
+                const transformationsPath = path.join(workspacePath, transformationsFilePath)
+                if (!fs.existsSync(transformationsPath)) {
+                    core.info(`The repository doesn't have local transformations ${transformationsFilePath}`)
+                    return []
+                }
+
+                const transformationsContent = fs.readFileSync(transformationsPath, 'utf8')
+                const parsedTransformations = YAML.parse(transformationsContent)
+                delete parsedTransformations.$schema
+
+                const ajv = new Ajv2020()
+                const validate = ajv.compile(transformationsSchema)
+                const valid = validate(parsedTransformations)
+                if (!valid) {
+                    throw new Error(
+                        `Transformations validation error: ${JSON.stringify(validate.errors, null, 2)}`
+                    )
+                }
+
+                return parsedTransformations as unknown as LocalTransformations
+            }
+        )
+
+
+        const filesToSync = await core.group('Calculating files to sync', async () => {
             const includesMatcher = config.includes != null && config.includes.length
                 ? picomatch(config.includes)
                 : undefined
@@ -171,6 +208,7 @@ async function run(): Promise<void> {
                     return allFiles
                         .filter(file => includesMatcher == null || includesMatcher(file))
                         .filter(file => excludesMatcher == null || !excludesMatcher(file))
+                        .sort()
                 })
         })
 
@@ -180,6 +218,7 @@ async function run(): Promise<void> {
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = path.join(workspacePath, fileToSync)
                 if (fs.existsSync(fileToSyncFullPath)) {
+                    hash.update(fileToSync, 'utf8')
                     hash.update(fs.readFileSync(fileToSyncFullPath))
                     ;['R_OK', 'W_OK', 'X_OK'].forEach(accessConstant => {
                         const hasAccess = hasAccessToFile(fileToSyncFullPath, fs.constants[accessConstant])
@@ -194,7 +233,7 @@ async function run(): Promise<void> {
 
         const hashBefore = !repoBranches.hasOwnProperty(syncBranchName)
             ? ''
-            : await core.group("Hashing files before sync", async () => {
+            : await core.group('Hashing files before sync', async () => {
                 await git.fetch('origin', syncBranchName)
                 await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${syncBranchName}`)
                 const hash = hashFilesToSync()
@@ -202,47 +241,97 @@ async function run(): Promise<void> {
                 return hash
             })
 
-        await core.group("Checkouting template files", async () => {
-            for (const fileToSync of filesToSync) {
-                core.info(`Checkouting '${fileToSync}': ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
 
-                const fullFilePath = path.join(workspacePath, fileToSync)
-                let sections: ModifiableSections | undefined = undefined
-                if (await isTextFile(fullFilePath)) {
-                    const content = fs.readFileSync(fullFilePath, 'utf8')
-                    sections = parseModifiableSections(content)
-                }
+        await core.group('Checkouting template files', async () => {
+            for (const fileToSync of filesToSync) {
+                core.info(`  Checkouting '${fileToSync}': ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
+
+                const modifiableSections = await parseModifiableSectionsFor(fileToSync)
 
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
 
-                if (sections != null && Object.keys(sections).length) {
-                    core.info(`  Processing modifiable sections: ${Object.keys(sections).join(', ')}`)
-                    let content = fs.readFileSync(fullFilePath, 'utf8')
-                    content = injectModifiableSections(content, sections)
-                    fs.writeFileSync(fullFilePath, content)
+                applyLocalTransformations(fileToSync)
+                applyModifiableSections(fileToSync, modifiableSections)
+            }
+
+            async function parseModifiableSectionsFor(fileToSync: string): Promise<ModifiableSections | undefined> {
+                const fullFilePath = path.join(workspacePath, fileToSync)
+                const isText = await isTextFile(fullFilePath)
+                if (!isText) return undefined
+
+                const content = fs.readFileSync(fullFilePath, 'utf8')
+                const modifiableSections = parseModifiableSections(content)
+                if (Object.keys(modifiableSections).length) {
+                    core.info(`  Found modifiable sections: ${Object.keys(modifiableSections).join(', ')}`)
+                }
+                return modifiableSections
+            }
+
+            function applyLocalTransformations(fileToSync: string) {
+                for (const transformation of transformations) {
+                    const includesMatcher = transformation.includes != null && transformation.includes.length
+                        ? picomatch(transformation.includes)
+                        : undefined
+                    if (includesMatcher != null && !includesMatcher(fileToSync)) continue
+                    const excludesMatcher = transformation.excludes != null && transformation.excludes.length
+                        ? picomatch(transformation.excludes)
+                        : undefined
+                    if (excludesMatcher != null && excludesMatcher(fileToSync)) continue
+
+                    if (transformation.replaceWith != null) {
+                        const replaceWithPath = path.join(workspacePath, transformation.replaceWith)
+                        core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
+                            + `: replacing with ${transformation.replaceWith}`
+                        )
+                        if (!fs.existsSync(replaceWithPath)) {
+                            throw new Error(`File doesn't exist: ${transformation.replaceWith}`)
+                        }
+                        const fileToSyncPath = path.join(workspacePath, fileToSync)
+                        fs.copyFileSync(replaceWithPath, fileToSyncPath)
+
+                    } else if (transformation.script != null) {
+                        core.info(`  Compiling '${transformation.name}' local transformation script`)
+                        const script: VMScript = new VMScript(transformation.script).compile()
+
+                        core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`)
+                        const fileToSyncPath = path.join(workspacePath, fileToSync)
+                        if (transformation.format === 'text') {
+                            const content = fs.readFileSync(fileToSyncPath, 'utf8')
+                            const vm = new VM({
+                                sandbox: {
+                                    content,
+                                },
+                                allowAsync: false,
+                                eval: false,
+                                wasm: false,
+                            })
+                            const transformedContent = vm.run(script)
+                            if (transformedContent !== content) {
+                                fs.writeFileSync(fileToSyncPath, transformedContent, 'utf8')
+                            }
+
+                        } else {
+                            throw new Error(`Unsupported transformation file format: ${transformation.format}`)
+                        }
+                    }
+                }
+            }
+
+            function applyModifiableSections(fileToSync: string, modifiableSections: ModifiableSections | undefined) {
+                if (modifiableSections == null || !Object.keys(modifiableSections).length) return
+
+                core.info(`  Processing modifiable sections: ${Object.keys(modifiableSections).join(', ')}`)
+                const fullFilePath = path.join(workspacePath, fileToSync)
+                const content = fs.readFileSync(fullFilePath, 'utf8')
+                const transformedContent = injectModifiableSections(content, modifiableSections)
+                if (transformedContent !== content) {
+                    fs.writeFileSync(fullFilePath, transformedContent, 'utf8')
                 }
             }
         })
 
-        if (additionalPatch.length) {
-            await core.group("Applying additional Git patch", async () => {
-                const patchFile = tmp.fileSync().name
-                fs.writeFileSync(patchFile, `${additionalPatch}\n`)
 
-                const cmd: string[] = ['apply', '--verbose', '--whitespace=fix', '--allow-empty']
-                config.includes?.forEach(it => cmd.push(`--include=${it}`))
-                config.excludes?.forEach(it => cmd.push(`--exclude=${it}`))
-                cmd.push(patchFile)
-                await git.raw(cmd)
-
-                await createOrUpdatePatchIssue(additionalPatch)
-            })
-
-        } else {
-            await createOrUpdatePatchIssue(additionalPatch)
-        }
-
-        const hashAfter = await core.group("Hashing files after sync", async () => {
+        const hashAfter = await core.group('Hashing files after sync', async () => {
             return hashFilesToSync()
         })
         if (hashBefore === hashAfter) {
@@ -253,7 +342,7 @@ async function run(): Promise<void> {
         await git.raw('add', '--all')
         const changedFiles = await git.status().then(response => response.files)
 
-        await core.group("Changes", async () => {
+        await core.group('Changes', async () => {
             if (changedFiles.length === 0) {
                 core.info('No files were changed')
                 return
@@ -262,7 +351,7 @@ async function run(): Promise<void> {
             await git.raw('diff', '--cached').then(content => core.info(content))
         })
 
-        await core.group("Committing and creating PR", async () => {
+        await core.group('Committing and creating PR', async () => {
             const openedPr = await getOpenedPullRequest()
 
             if (changedFiles.length === 0) {
@@ -287,7 +376,7 @@ async function run(): Promise<void> {
             }
 
             if (dryRun) {
-                core.warning("Skipping Git push and PR creation, as dry run is enabled")
+                core.warning('Skipping Git push and PR creation, as dry run is enabled')
                 return
             }
 
@@ -308,8 +397,8 @@ async function run(): Promise<void> {
                     head: syncBranchName,
                     base: defaultBranchName,
                     title: pullRequestTitle,
-                    body: "Template repository changes."
-                        + "\n\nIf you close this PR, it will be recreated automatically.",
+                    body: 'Template repository changes.'
+                        + '\n\nIf you close this PR, it will be recreated automatically.',
                     maintainer_can_modify: true,
                 })
 
@@ -339,7 +428,7 @@ function debug(message: string) {
 }
 
 function getSyncBranchName(): string {
-    const name = core.getInput('syncBranchName', {required: true})
+    const name = core.getInput('syncBranchName', { required: true })
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
         return name
     } else {
@@ -348,7 +437,7 @@ function getSyncBranchName(): string {
 }
 
 function getCommitMessage(templateRepoName: string): string {
-    let message = core.getInput('commitMessage', {required: true})
+    let message = core.getInput('commitMessage', { required: true })
 
     message = message.replaceAll(/<template-repository>/g, templateRepoName)
 
@@ -371,7 +460,7 @@ async function getTemplateRepo(currentRepo: Repo): Promise<Repo | undefined> {
 
     } else {
         const [owner, repo] = templateRepoName.split('/')
-        return octokit.repos.get({owner, repo}).then(it => it.data)
+        return octokit.repos.get({ owner, repo }).then(it => it.data)
     }
 
     return undefined
@@ -505,76 +594,4 @@ async function createPullRequest(info: NewPullRequest) {
     })
 
     return pullRequest
-}
-
-async function createOrUpdatePatchIssue(patch: string) {
-    const body = [
-        ISSUE_PATCH_COMMENT,
-        '',
-        '```diff',
-        patch,
-        '```',
-        '',
-    ].join('\n')
-
-
-    let patchIssue: Issue | undefined = undefined
-
-    const issuesResponses = octokit.paginate.iterator(octokit.issues.listForRepo, {
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        state: 'all',
-        labels: PULL_REQUEST_LABEL,
-        sort: 'created',
-        direction: 'desc',
-    })
-    for await (const issuesResponse of issuesResponses) {
-        for (const issue of issuesResponse.data) {
-            if (issue.pull_request == null
-                && (issue.body || '').includes(ISSUE_PATCH_COMMENT)
-            ) {
-                if (patchIssue == null) {
-                    patchIssue = issue
-                    continue
-                }
-
-                core.info(`Locking old patch issue: ${issue.html_url}`)
-                await octokit.issues.lock({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: issue.number,
-                })
-            }
-        }
-    }
-
-    if (patchIssue != null) {
-        if (patch.length || patchIssue.state !== 'closed' || patchIssue.body !== body) {
-            core.info(`Updating patch issue: ${patchIssue.html_url}`)
-            await octokit.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: patchIssue.number,
-                state: 'closed',
-                body
-            })
-        }
-
-    } else if (patch.length) {
-        core.info(`Creating patch issue`)
-        const newIssue = await octokit.issues.create({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            title: 'Sync with template patch',
-            labels: [PULL_REQUEST_LABEL],
-            body,
-        }).then(it => it.data)
-        await octokit.issues.update({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number: newIssue.number,
-            state: 'closed'
-        })
-        core.info(`Patch issue created: ${newIssue.html_url}`)
-    }
 }
