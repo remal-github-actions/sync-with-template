@@ -403,6 +403,7 @@ async function run() {
                     if (excludesMatcher != null && excludesMatcher(fileToSync))
                         continue;
                     core.info(`transformation: included`);
+                    let isTransformed = false;
                     if (transformation.replaceWith != null) {
                         const replaceWithPath = path_1.default.join(workspacePath, transformation.replaceWith);
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
@@ -412,8 +413,9 @@ async function run() {
                         }
                         const fileToSyncPath = path_1.default.join(workspacePath, fileToSync);
                         fs.copyFileSync(replaceWithPath, fileToSyncPath);
+                        isTransformed = true;
                     }
-                    else if (transformation.script != null) {
+                    if (transformation.script != null) {
                         core.info(`  Compiling '${transformation.name}' local transformation script`);
                         const script = new vm2_1.VMScript(transformation.script).compile();
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`);
@@ -436,6 +438,10 @@ async function run() {
                         else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`);
                         }
+                        isTransformed = true;
+                    }
+                    if (!isTransformed) {
+                        core.warning(`No transformation operations are defined for ${transformation.name}`);
                     }
                 }
             }
@@ -50614,7 +50620,7 @@ module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/s
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"array","items":{"$ref":"#/definitions/files-transformation"},"definitions":{"files-transformation":{"type":"object","required":["name","includes","format"],"oneOf":[{"required":["replaceWith"],"additionalProperties":false},{"required":["script"],"additionalProperties":false}],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w.-]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text"]},"replaceWith":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"script":{"description":"JavaScript code transforming files","type":"string"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
+module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"array","items":{"$ref":"#/definitions/files-transformation"},"definitions":{"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w.-]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text"]},"replaceWith":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"script":{"description":"JavaScript code transforming files","type":"string"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
 
 /***/ }),
 
