@@ -5,7 +5,13 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export type FilesTransformation = {
+export type Glob = string;
+/**
+ * Local transformations for sync-with-template GitHub action
+ */
+export type LocalTransformations = FilesTransformation[];
+
+export interface FilesTransformation {
   /**
    * Transformation name
    */
@@ -32,10 +38,4 @@ export type FilesTransformation = {
    * JavaScript code transforming files
    */
   script?: string;
-} & FilesTransformation1;
-export type Glob = string;
-export type FilesTransformation1 = {} | {};
-/**
- * Local transformations for sync-with-template GitHub action
- */
-export type LocalTransformations = FilesTransformation[];
+}

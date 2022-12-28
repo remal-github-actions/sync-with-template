@@ -286,6 +286,7 @@ async function run(): Promise<void> {
                     if (excludesMatcher != null && excludesMatcher(fileToSync)) continue
                     core.info(`transformation: included`)
 
+                    let isTransformed = false
                     if (transformation.replaceWith != null) {
                         const replaceWithPath = path.join(workspacePath, transformation.replaceWith)
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
@@ -296,8 +297,10 @@ async function run(): Promise<void> {
                         }
                         const fileToSyncPath = path.join(workspacePath, fileToSync)
                         fs.copyFileSync(replaceWithPath, fileToSyncPath)
+                        isTransformed = true
+                    }
 
-                    } else if (transformation.script != null) {
+                    if (transformation.script != null) {
                         core.info(`  Compiling '${transformation.name}' local transformation script`)
                         const script: VMScript = new VMScript(transformation.script).compile()
 
@@ -321,6 +324,11 @@ async function run(): Promise<void> {
                         } else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`)
                         }
+                        isTransformed = true
+                    }
+
+                    if (!isTransformed) {
+                        core.warning(`No transformation operations are defined for ${transformation.name}`)
                     }
                 }
             }

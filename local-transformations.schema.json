@@ -14,20 +14,6 @@
         "includes",
         "format"
       ],
-      "oneOf": [
-        {
-          "required": [
-            "replaceWith"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "required": [
-            "script"
-          ],
-          "additionalProperties": false
-        }
-      ],
       "properties": {
         "name": {
           "description": "Transformation name",
