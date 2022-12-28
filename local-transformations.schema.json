@@ -33,7 +33,7 @@
           "description": "Transformation name",
           "type": "string",
           "minLength": 1,
-          "pattern": "^[\\w-]+$"
+          "pattern": "^[\\w.-]+$"
         },
         "includes": {
           "description": "Glob patterns for included files",
