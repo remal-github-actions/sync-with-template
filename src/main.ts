@@ -232,7 +232,7 @@ async function run(): Promise<void> {
         }
 
         const hashBefore = !repoBranches.hasOwnProperty(syncBranchName)
-            ? ''
+            ? undefined
             : await core.group('Hashing files before sync', async () => {
                 await git.fetch('origin', syncBranchName)
                 await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${syncBranchName}`)
@@ -337,13 +337,16 @@ async function run(): Promise<void> {
         })
 
 
-        const hashAfter = await core.group('Hashing files after sync', async () => {
-            return hashFilesToSync()
-        })
-        if (hashBefore === hashAfter) {
-            core.info('No files were changed')
-            return
+        if (hashBefore != null) {
+            const hashAfter = await core.group('Hashing files after sync', async () => {
+                return hashFilesToSync()
+            })
+            if (hashBefore === hashAfter) {
+                core.info('No files were changed')
+                return
+            }
         }
+
 
         await git.raw('add', '--all')
         const changedFiles = await git.status().then(response => response.files)
