@@ -44,7 +44,7 @@ if (core.isDebug()) {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 const configFilePath = core.getInput('configFile', { required: true })
-const transformationsFilePath = core.getInput('transformationsFile', { required: true })
+const transformationsFilePath = core.getInput('localTransformationsFile', { required: true })
 const additionalPatch = core.getInput('additionalPatch', { required: false })
 if (additionalPatch != null && additionalPatch.length) {
     throw new Error('additionalPatch is no longer supported')
