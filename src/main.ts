@@ -11,7 +11,7 @@ import simpleGit, { SimpleGit } from 'simple-git'
 import * as tmp from 'tmp'
 import { URL } from 'url'
 import * as util from 'util'
-import { VM, VMScript } from 'vm2'
+import { VM } from 'vm2'
 import YAML from 'yaml'
 import configSchema from '../config.schema.json'
 import transformationsSchema from '../local-transformations.schema.json'
@@ -253,11 +253,6 @@ async function run(): Promise<void> {
 
                 applyLocalTransformations(fileToSync)
                 applyModifiableSections(fileToSync, modifiableSections)
-
-                const fullFilePath = path.join(workspacePath, fileToSync)
-                if (await isTextFile(fullFilePath)) {
-                    core.info(`content:\n${fs.readFileSync(fullFilePath, 'utf8')}`)
-                }
             }
 
             async function parseModifiableSectionsFor(fileToSync: string): Promise<ModifiableSections | undefined> {
@@ -275,7 +270,6 @@ async function run(): Promise<void> {
 
             function applyLocalTransformations(fileToSync: string) {
                 for (const transformation of transformations) {
-                    core.info(`transformation=${transformation.name}`)
                     const includesMatcher = transformation.includes != null && transformation.includes.length
                         ? picomatch(transformation.includes)
                         : undefined
@@ -284,7 +278,6 @@ async function run(): Promise<void> {
                         ? picomatch(transformation.excludes)
                         : undefined
                     if (excludesMatcher != null && excludesMatcher(fileToSync)) continue
-                    core.info(`transformation: included`)
 
                     let isTransformed = false
                     if (transformation.replaceWith != null) {
@@ -301,9 +294,6 @@ async function run(): Promise<void> {
                     }
 
                     if (transformation.script != null) {
-                        core.info(`  Compiling '${transformation.name}' local transformation script`)
-                        const script: VMScript = new VMScript(transformation.script).compile()
-
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`)
                         const fileToSyncPath = path.join(workspacePath, fileToSync)
                         if (transformation.format === 'text') {
@@ -316,7 +306,7 @@ async function run(): Promise<void> {
                                 eval: false,
                                 wasm: false,
                             })
-                            const transformedContent = vm.run(script)
+                            const transformedContent = vm.run(transformation.script)
                             if (transformedContent !== content) {
                                 fs.writeFileSync(fileToSyncPath, transformedContent, 'utf8')
                             }
