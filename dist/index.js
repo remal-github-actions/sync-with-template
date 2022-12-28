@@ -391,6 +391,7 @@ async function run() {
             }
             function applyLocalTransformations(fileToSync) {
                 for (const transformation of transformations) {
+                    core.info(`transformation=${transformation.name}`);
                     const includesMatcher = transformation.includes != null && transformation.includes.length
                         ? (0, picomatch_1.default)(transformation.includes)
                         : undefined;
@@ -401,6 +402,7 @@ async function run() {
                         : undefined;
                     if (excludesMatcher != null && excludesMatcher(fileToSync))
                         continue;
+                    core.info(`transformation: included`);
                     if (transformation.replaceWith != null) {
                         const replaceWithPath = path_1.default.join(workspacePath, transformation.replaceWith);
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
