@@ -275,6 +275,7 @@ async function run(): Promise<void> {
 
             function applyLocalTransformations(fileToSync: string) {
                 for (const transformation of transformations) {
+                    core.info(`transformation=${transformation.name}`)
                     const includesMatcher = transformation.includes != null && transformation.includes.length
                         ? picomatch(transformation.includes)
                         : undefined
@@ -283,6 +284,7 @@ async function run(): Promise<void> {
                         ? picomatch(transformation.excludes)
                         : undefined
                     if (excludesMatcher != null && excludesMatcher(fileToSync)) continue
+                    core.info(`transformation: included`)
 
                     if (transformation.replaceWith != null) {
                         const replaceWithPath = path.join(workspacePath, transformation.replaceWith)
