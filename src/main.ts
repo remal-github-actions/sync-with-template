@@ -244,14 +244,20 @@ async function run(): Promise<void> {
 
         await core.group('Checkouting template files', async () => {
             for (const fileToSync of filesToSync) {
-                core.info(`  Checkouting '${fileToSync}': ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
+                core.info(`Synchronizing '${fileToSync}'`)
 
                 const modifiableSections = await parseModifiableSectionsFor(fileToSync)
 
+                core.info(`  Checkouting ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
 
                 applyLocalTransformations(fileToSync)
                 applyModifiableSections(fileToSync, modifiableSections)
+
+                const fullFilePath = path.join(workspacePath, fileToSync)
+                if (await isTextFile(fullFilePath)) {
+                    core.info(`content:\n${fs.readFileSync(fullFilePath, 'utf8')}`)
+                }
             }
 
             async function parseModifiableSectionsFor(fileToSync: string): Promise<ModifiableSections | undefined> {
