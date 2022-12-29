@@ -372,10 +372,6 @@ async function run() {
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync);
                 applyLocalTransformations(fileToSync);
                 applyModifiableSections(fileToSync, modifiableSections);
-                const fullFilePath = path_1.default.join(workspacePath, fileToSync);
-                if (await isTextFile(fullFilePath)) {
-                    core.info(`content:\n${fs.readFileSync(fullFilePath, 'utf8')}`);
-                }
             }
             async function parseModifiableSectionsFor(fileToSync) {
                 const fullFilePath = path_1.default.join(workspacePath, fileToSync);
@@ -391,7 +387,6 @@ async function run() {
             }
             function applyLocalTransformations(fileToSync) {
                 for (const transformation of transformations) {
-                    core.info(`transformation=${transformation.name}`);
                     const includesMatcher = transformation.includes != null && transformation.includes.length
                         ? (0, picomatch_1.default)(transformation.includes)
                         : undefined;
@@ -402,7 +397,6 @@ async function run() {
                         : undefined;
                     if (excludesMatcher != null && excludesMatcher(fileToSync))
                         continue;
-                    core.info(`transformation: included`);
                     let isTransformed = false;
                     if (transformation.replaceWith != null) {
                         const replaceWithPath = path_1.default.join(workspacePath, transformation.replaceWith);
@@ -416,8 +410,6 @@ async function run() {
                         isTransformed = true;
                     }
                     if (transformation.script != null) {
-                        core.info(`  Compiling '${transformation.name}' local transformation script`);
-                        const script = new vm2_1.VMScript(transformation.script).compile();
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`);
                         const fileToSyncPath = path_1.default.join(workspacePath, fileToSync);
                         if (transformation.format === 'text') {
@@ -430,7 +422,7 @@ async function run() {
                                 eval: false,
                                 wasm: false,
                             });
-                            const transformedContent = vm.run(script);
+                            const transformedContent = vm.run(transformation.script);
                             if (transformedContent !== content) {
                                 fs.writeFileSync(fileToSyncPath, transformedContent, 'utf8');
                             }
