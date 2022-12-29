@@ -422,7 +422,7 @@ async function run() {
                                 eval: false,
                                 wasm: false,
                             });
-                            const script = `module.export = (function(){ ${transformation.script} })()`;
+                            const script = `(function(){ ${transformation.script} })()`;
                             const transformedContent = vm.run(script);
                             if (transformedContent !== content) {
                                 fs.writeFileSync(fileToSyncPath, transformedContent, 'utf8');
