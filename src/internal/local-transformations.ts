@@ -33,7 +33,11 @@ export interface FilesTransformation {
   /**
    * File to replace the matched file with
    */
-  replaceWith?: string;
+  replaceWithFile?: string;
+  /**
+   * File to replace the matched file with
+   */
+  replaceWithText?: string;
   /**
    * JavaScript code transforming files
    */

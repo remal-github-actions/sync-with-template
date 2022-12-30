@@ -280,16 +280,25 @@ async function run(): Promise<void> {
                     if (excludesMatcher != null && excludesMatcher(fileToSync)) continue
 
                     let isTransformed = false
-                    if (transformation.replaceWith != null) {
-                        const replaceWithPath = path.join(workspacePath, transformation.replaceWith)
+                    if (transformation.replaceWithFile != null) {
+                        const replaceWithPath = path.join(workspacePath, transformation.replaceWithFile)
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
-                            + `: replacing with ${transformation.replaceWith}`
+                            + `: replacing with ${transformation.replaceWithFile}`
                         )
                         if (!fs.existsSync(replaceWithPath)) {
-                            throw new Error(`File doesn't exist: ${transformation.replaceWith}`)
+                            throw new Error(`File doesn't exist: ${transformation.replaceWithFile}`)
                         }
                         const fileToSyncPath = path.join(workspacePath, fileToSync)
                         fs.copyFileSync(replaceWithPath, fileToSyncPath)
+                        isTransformed = true
+                    }
+
+                    if (transformation.replaceWithText != null) {
+                        core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
+                            + `: replacing with text`
+                        )
+                        const fileToSyncPath = path.join(workspacePath, fileToSync)
+                        fs.writeFileSync(fileToSyncPath, transformation.replaceWithText, 'utf8')
                         isTransformed = true
                     }
 
