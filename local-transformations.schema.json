@@ -51,9 +51,7 @@
         },
         "replaceWithText": {
           "description": "File to replace the matched file with",
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[^*<>:;,?\"|/]+(/[^*<>:;,?\"|/]+)*$"
+          "type": "string"
         },
         "script": {
           "description": "JavaScript code transforming files",
