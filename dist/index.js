@@ -416,7 +416,7 @@ async function run() {
                     if (transformation.replaceWithFile != null) {
                         const replaceWithPath = path_1.default.join(workspacePath, transformation.replaceWithFile);
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
-                            + `: replacing with ${transformation.replaceWithFile}`);
+                            + `: replacing with the content of ${transformation.replaceWithFile}`);
                         if (!fs.existsSync(replaceWithPath)) {
                             throw new Error(`File doesn't exist: ${transformation.replaceWithFile}`);
                         }
@@ -452,6 +452,15 @@ async function run() {
                         }
                         else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`);
+                        }
+                        isTransformed = true;
+                    }
+                    if (transformation.delete === true) {
+                        core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
+                            + `: deleting the file`);
+                        const fileToSyncPath = path_1.default.join(workspacePath, fileToSync);
+                        if (fs.existsSync(fileToSyncPath)) {
+                            fs.unlinkSync(fileToSyncPath);
                         }
                         isTransformed = true;
                     }
@@ -50640,7 +50649,7 @@ module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/s
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"array","items":{"$ref":"#/definitions/files-transformation"},"definitions":{"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w.-/]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text"]},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
+module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"array","items":{"$ref":"#/definitions/files-transformation"},"definitions":{"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w.-/]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text"]},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"},"delete":{"description":"Set to true to delete files","type":"boolean"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
 
 /***/ }),
 
