@@ -299,7 +299,7 @@ async function run() {
         });
         config.excludes = config.excludes || [];
         config.excludes.push(transformationsFilePath);
-        const transformations = await core.group(`Parsing local transformations: ${transformationsFilePath}`, async () => {
+        const allTransformations = await core.group(`Parsing local transformations: ${transformationsFilePath}`, async () => {
             const transformationsPath = path_1.default.join(workspacePath, transformationsFilePath);
             if (!fs.existsSync(transformationsPath)) {
                 core.info(`The repository doesn't have local transformations ${transformationsFilePath}`);
@@ -316,6 +316,21 @@ async function run() {
             }
             return parsedTransformations;
         });
+        const ignoringTransformations = allTransformations.filter(it => it.ignore === true);
+        const transformations = allTransformations.filter(it => it.ignore !== true);
+        function isTransforming(transformation, fileToSync) {
+            const includesMatcher = transformation.includes != null && transformation.includes.length
+                ? (0, picomatch_1.default)(transformation.includes)
+                : undefined;
+            if (includesMatcher != null && !includesMatcher(fileToSync))
+                return false;
+            const excludesMatcher = transformation.excludes != null && transformation.excludes.length
+                ? (0, picomatch_1.default)(transformation.excludes)
+                : undefined;
+            if (excludesMatcher != null && excludesMatcher(fileToSync))
+                return false;
+            return true;
+        }
         const filesToSync = await core.group('Calculating files to sync', async () => {
             const includesMatcher = config.includes != null && config.includes.length
                 ? (0, picomatch_1.default)(config.includes)
@@ -363,11 +378,23 @@ async function run() {
         await core.group('Checkouting template files', async () => {
             for (const fileToSync of filesToSync) {
                 core.info(`Synchronizing '${fileToSync}'`);
+                if (isIgnoredByTransformations(fileToSync)) {
+                    continue;
+                }
                 const modifiableSections = await parseModifiableSectionsFor(fileToSync);
                 core.info(`  Checkouting ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`);
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync);
                 applyLocalTransformations(fileToSync);
                 applyModifiableSections(fileToSync, modifiableSections);
+            }
+            function isIgnoredByTransformations(fileToSync) {
+                for (const transformation of ignoringTransformations) {
+                    if (!isTransforming(transformation, fileToSync))
+                        continue;
+                    core.info(`  Ignored by '${transformation.name}' local transformation`);
+                    return true;
+                }
+                return false;
             }
             async function parseModifiableSectionsFor(fileToSync) {
                 const fullFilePath = path_1.default.join(workspacePath, fileToSync);
@@ -383,15 +410,7 @@ async function run() {
             }
             function applyLocalTransformations(fileToSync) {
                 for (const transformation of transformations) {
-                    const includesMatcher = transformation.includes != null && transformation.includes.length
-                        ? (0, picomatch_1.default)(transformation.includes)
-                        : undefined;
-                    if (includesMatcher != null && !includesMatcher(fileToSync))
-                        continue;
-                    const excludesMatcher = transformation.excludes != null && transformation.excludes.length
-                        ? (0, picomatch_1.default)(transformation.excludes)
-                        : undefined;
-                    if (excludesMatcher != null && excludesMatcher(fileToSync))
+                    if (!isTransforming(transformation, fileToSync))
                         continue;
                     let isTransformed = false;
                     if (transformation.replaceWithFile != null) {
@@ -50621,7 +50640,7 @@ module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/s
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"array","items":{"$ref":"#/definitions/files-transformation"},"definitions":{"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w.-/]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text"]},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
+module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"array","items":{"$ref":"#/definitions/files-transformation"},"definitions":{"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w.-/]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text"]},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
 
 /***/ }),
 
