@@ -43,6 +43,10 @@
             "text"
           ]
         },
+        "ignore": {
+          "description": "Set to true to exclude files from the synchronization",
+          "type": "boolean"
+        },
         "replaceWithFile": {
           "description": "File to replace the matched file with",
           "type": "string",

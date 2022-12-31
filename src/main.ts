@@ -16,7 +16,7 @@ import YAML from 'yaml'
 import configSchema from '../config.schema.json'
 import transformationsSchema from '../local-transformations.schema.json'
 import { Config } from './internal/config'
-import { LocalTransformations } from './internal/local-transformations'
+import { FilesTransformation, LocalTransformations } from './internal/local-transformations'
 import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections'
 import { newOctokitInstance } from './internal/octokit'
 
@@ -156,7 +156,7 @@ async function run(): Promise<void> {
         config.excludes.push(transformationsFilePath)
 
 
-        const transformations: LocalTransformations = await core.group(
+        const allTransformations: LocalTransformations = await core.group(
             `Parsing local transformations: ${transformationsFilePath}`,
             async () => {
                 const transformationsPath = path.join(workspacePath, transformationsFilePath)
@@ -181,6 +181,22 @@ async function run(): Promise<void> {
                 return parsedTransformations as unknown as LocalTransformations
             }
         )
+
+        const ignoringTransformations = allTransformations.filter(it => it.ignore === true)
+        const transformations = allTransformations.filter(it => it.ignore !== true)
+
+        function isTransforming(transformation: FilesTransformation, fileToSync: string): boolean {
+            const includesMatcher = transformation.includes != null && transformation.includes.length
+                ? picomatch(transformation.includes)
+                : undefined
+            if (includesMatcher != null && !includesMatcher(fileToSync)) return false
+            const excludesMatcher = transformation.excludes != null && transformation.excludes.length
+                ? picomatch(transformation.excludes)
+                : undefined
+            if (excludesMatcher != null && excludesMatcher(fileToSync)) return false
+
+            return true
+        }
 
 
         const filesToSync = await core.group('Calculating files to sync', async () => {
@@ -242,6 +258,10 @@ async function run(): Promise<void> {
             for (const fileToSync of filesToSync) {
                 core.info(`Synchronizing '${fileToSync}'`)
 
+                if (isIgnoredByTransformations(fileToSync)) {
+                    continue
+                }
+
                 const modifiableSections = await parseModifiableSectionsFor(fileToSync)
 
                 core.info(`  Checkouting ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
@@ -249,6 +269,17 @@ async function run(): Promise<void> {
 
                 applyLocalTransformations(fileToSync)
                 applyModifiableSections(fileToSync, modifiableSections)
+            }
+
+            function isIgnoredByTransformations(fileToSync: string): boolean {
+                for (const transformation of ignoringTransformations) {
+                    if (!isTransforming(transformation, fileToSync)) continue
+
+                    core.info(`  Ignored by '${transformation.name}' local transformation`)
+                    return true
+                }
+
+                return false
             }
 
             async function parseModifiableSectionsFor(fileToSync: string): Promise<ModifiableSections | undefined> {
@@ -266,14 +297,7 @@ async function run(): Promise<void> {
 
             function applyLocalTransformations(fileToSync: string) {
                 for (const transformation of transformations) {
-                    const includesMatcher = transformation.includes != null && transformation.includes.length
-                        ? picomatch(transformation.includes)
-                        : undefined
-                    if (includesMatcher != null && !includesMatcher(fileToSync)) continue
-                    const excludesMatcher = transformation.excludes != null && transformation.excludes.length
-                        ? picomatch(transformation.excludes)
-                        : undefined
-                    if (excludesMatcher != null && excludesMatcher(fileToSync)) continue
+                    if (!isTransforming(transformation, fileToSync)) continue
 
                     let isTransformed = false
                     if (transformation.replaceWithFile != null) {

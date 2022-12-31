@@ -31,6 +31,10 @@ export interface FilesTransformation {
    */
   format: "text";
   /**
+   * Set to true to exclude files from the synchronization
+   */
+  ignore?: boolean;
+  /**
    * File to replace the matched file with
    */
   replaceWithFile?: string;
