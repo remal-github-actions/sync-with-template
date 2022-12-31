@@ -19,7 +19,7 @@
           "description": "Transformation name",
           "type": "string",
           "minLength": 1,
-          "pattern": "^[\\w.-/]+$"
+          "pattern": "^[a-zA-Z0-9_.-/]+$"
         },
         "includes": {
           "description": "Glob patterns for included files",
