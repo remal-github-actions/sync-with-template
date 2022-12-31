@@ -46,4 +46,8 @@ export interface FilesTransformation {
    * JavaScript code transforming files
    */
   script?: string;
+  /**
+   * Set to true to delete files
+   */
+  delete?: boolean;
 }

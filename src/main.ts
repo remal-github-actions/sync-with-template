@@ -303,7 +303,7 @@ async function run(): Promise<void> {
                     if (transformation.replaceWithFile != null) {
                         const replaceWithPath = path.join(workspacePath, transformation.replaceWithFile)
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
-                            + `: replacing with ${transformation.replaceWithFile}`
+                            + `: replacing with the content of ${transformation.replaceWithFile}`
                         )
                         if (!fs.existsSync(replaceWithPath)) {
                             throw new Error(`File doesn't exist: ${transformation.replaceWithFile}`)
@@ -344,6 +344,15 @@ async function run(): Promise<void> {
                         } else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`)
                         }
+                        isTransformed = true
+                    }
+
+                    if (transformation.delete === true) {
+                        core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
+                            + `: deleting the file`
+                        )
+                        const fileToSyncPath = path.join(workspacePath, fileToSync)
+                        fs.unlinkSync(fileToSyncPath)
                         isTransformed = true
                     }
 

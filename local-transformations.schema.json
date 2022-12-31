@@ -60,6 +60,10 @@
         "script": {
           "description": "JavaScript code transforming files",
           "type": "string"
+        },
+        "delete": {
+          "description": "Set to true to delete files",
+          "type": "boolean"
         }
       },
       "additionalProperties": false
