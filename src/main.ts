@@ -352,7 +352,9 @@ async function run(): Promise<void> {
                             + `: deleting the file`
                         )
                         const fileToSyncPath = path.join(workspacePath, fileToSync)
-                        fs.unlinkSync(fileToSyncPath)
+                        if (fs.existsSync(fileToSyncPath)) {
+                            fs.unlinkSync(fileToSyncPath)
+                        }
                         isTransformed = true
                     }
 
