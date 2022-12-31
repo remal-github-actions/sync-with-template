@@ -1,7 +1,3 @@
-# Remal GitHub actions:
-dist/** -diff linguist-generated=true
-
-
 # Common:
 * text=auto eol=lf
 
@@ -51,3 +47,6 @@ dist/** -diff linguist-generated=true
 
 # IntelliJ IDEA:
 /.idea/* text eol=auto
+
+# Remal GitHub actions:
+/dist/** -diff linguist-generated=true
