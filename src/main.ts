@@ -45,10 +45,6 @@ if (core.isDebug()) {
 
 const configFilePath = core.getInput('configFile', { required: true })
 const transformationsFilePath = core.getInput('localTransformationsFile', { required: true })
-const additionalPatch = core.getInput('additionalPatch', { required: false })
-if (additionalPatch != null && additionalPatch.length) {
-    throw new Error('additionalPatch is no longer supported')
-}
 const conventionalCommits = core.getInput('conventionalCommits', { required: false })?.toLowerCase() === 'true'
 const dryRun = core.getInput('dryRun', { required: true }).toLowerCase() === 'true'
 const templateRepositoryFullName = core.getInput('templateRepository', { required: false })

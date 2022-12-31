@@ -2,9 +2,6 @@ name: Synchronize with template repository
 description: Synchronize repository with template repository
 
 inputs:
-  additionalPatch:
-    required: false
-    description: Additional Git patch
   configFile:
     required: true
     default: '.github/sync-with-template.yml'
