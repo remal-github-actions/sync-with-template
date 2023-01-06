@@ -243,12 +243,14 @@ async function run(): Promise<void> {
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = path.join(workspacePath, fileToSync)
                 if (fs.existsSync(fileToSyncFullPath)) {
+                    core.info(fileToSync)
                     hash.update(fileToSync, 'utf8')
                     hash.update(fs.readFileSync(fileToSyncFullPath))
                     ;['R_OK', 'W_OK', 'X_OK'].forEach(accessConstant => {
                         const hasAccess = hasAccessToFile(fileToSyncFullPath, fs.constants[accessConstant])
                         hash.update(`${accessConstant}:${hasAccess}`, 'utf8')
                     })
+                    hash.update('\n', 'utf8')
                 }
             }
             const result = hash.digest('hex')
