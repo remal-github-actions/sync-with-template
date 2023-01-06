@@ -67,7 +67,7 @@ const DEFAULT_GIT_ENV: Record<string, string> = {
 async function run(): Promise<void> {
     try {
         const workspacePath = tmp.dirSync({unsafeCleanup: true}).name
-        debug(`Workspace path: ${workspacePath}`)
+        core.debug(`Workspace path: ${workspacePath}`)
 
         const repo = await octokit.repos.get({
             owner: context.repo.owner,
@@ -100,35 +100,39 @@ async function run(): Promise<void> {
 
             const basicCredentials = Buffer.from(`x-access-token:${githubToken}`, 'utf8').toString('base64')
             core.setSecret(basicCredentials)
-            for (const origin of [new URL(repo.svn_url).origin, new URL(templateRepo.svn_url).origin]) {
+            const origins = [new URL(repo.svn_url).origin, new URL(templateRepo.svn_url).origin]
+                .filter((v, i, a) => a.indexOf(v) === i)
+            for (const origin of origins) {
                 await git.addConfig(`http.${origin}/.extraheader`, `Authorization: basic ${basicCredentials}`)
             }
 
             const userName = repo.owner != null
                 ? repo.owner.login
                 : context.repo.owner
+            core.info(`Git user name: ${userName}`)
             await git.addConfig('user.name', userName)
 
             const userEmail = repo.owner != null
                 ? `${repo.owner.id}+${repo.owner.login}${SYNCHRONIZATION_EMAIL_SUFFIX}`
                 : `${context.repo.owner}${SYNCHRONIZATION_EMAIL_SUFFIX}`
+            core.info(`Git user email: ${userEmail}`)
             await git.addConfig('user.email', userEmail)
 
-            debug(`Adding 'origin' remote: ${repo.svn_url}`)
+            core.info(`Adding 'origin' remote: ${repo.svn_url}`)
             await git.addRemote('origin', repo.svn_url)
             await git.fetch('origin', repo.default_branch)
 
-            debug(`Adding 'template' remote: ${templateRepo.svn_url}`)
+            core.info(`Adding 'template' remote: ${templateRepo.svn_url}`)
             await git.addRemote('template', templateRepo.svn_url)
             await git.fetch('template', templateRepo.default_branch)
         })
 
         const repoBranches = await getRemoteBranches(git, 'origin')
         const originSha = await git.raw('rev-parse', `origin/${repo.default_branch}`).then(it => it.trim())
-        const templateSha = await git.raw('rev-parse', `template/${repo.default_branch}`).then(it => it.trim())
+        const templateSha = await git.raw('rev-parse', `template/${templateRepo.default_branch}`).then(it => it.trim())
 
         core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`)
-        await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`)
+        await git.raw('checkout', '--force', '-B', syncBranchName, `origin/${repo.default_branch}`)
 
         const config: Config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path.join(workspacePath, configFilePath)
@@ -190,12 +194,11 @@ async function run(): Promise<void> {
             }
         }
 
-        const ignoringTransformations = localTransformations != null && localTransformations.transformations != null
-            ? localTransformations.transformations.filter(it => it.ignore === true)
+        const allTransformations = localTransformations != null && localTransformations.transformations != null
+            ? localTransformations.transformations
             : []
-        const transformations = localTransformations != null && localTransformations.transformations != null
-            ? localTransformations.transformations.filter(it => it.ignore !== true)
-            : []
+        const ignoringTransformations = allTransformations.filter(it => it.ignore === true)
+        const transformations = allTransformations.filter(it => it.ignore !== true)
 
         function isTransforming(transformation: FilesTransformation, fileToSync: string): boolean {
             const includesMatcher = transformation.includes != null && transformation.includes.length
@@ -225,7 +228,7 @@ async function run(): Promise<void> {
                 '--name-only',
                 `remotes/template/${templateRepo.default_branch}`
             )
-                .then(content => content.split('\n')
+                .then(content => content.split(/[\r\n]+/)
                     .map(line => line.trim())
                     .filter(line => line.length > 0)
                 )
@@ -254,7 +257,7 @@ async function run(): Promise<void> {
                 }
             }
             const result = hash.digest('hex')
-            core.info(result)
+            core.info(`Result hash: ${result}`)
             return result
         }
 
@@ -483,14 +486,6 @@ async function run(): Promise<void> {
 run()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-function debug(message: string) {
-    if (process.env.RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
-        core.info(message)
-    } else {
-        core.debug(message)
-    }
-}
 
 function getSyncBranchName(): string {
     const name = core.getInput('syncBranchName', {required: true})
