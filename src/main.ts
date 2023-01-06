@@ -132,7 +132,7 @@ async function run(): Promise<void> {
         const templateSha = await git.raw('rev-parse', `template/${templateRepo.default_branch}`).then(it => it.trim())
 
         core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`)
-        await git.raw('checkout', '--force', '-B', syncBranchName, `origin/${repo.default_branch}`)
+        await git.raw('checkout', '--force', '-B', syncBranchName, originSha)
 
         const config: Config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path.join(workspacePath, configFilePath)
