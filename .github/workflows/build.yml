@@ -87,7 +87,7 @@ jobs:
     - name: Run current action
       uses: ./
       with:
-        dryRun: true
+        dryRun: 'true'
         githubToken: ${{github.token}}
 
     # $$$sync-with-template-modifiable-end$$$
