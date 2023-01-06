@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
+import * as glob from '@actions/glob'
 import {components, operations} from '@octokit/openapi-types'
 import Ajv2020 from 'ajv/dist/2020'
 import * as crypto from 'crypto'
@@ -62,44 +63,6 @@ const DEFAULT_GIT_ENV: Record<string, string> = {
     GIT_ASK_YESNO: 'false',
 }
 
-const walk = (
-    dir: string,
-    done: (results: string[]) => void,
-    filter?: (f: string) => boolean
-) => {
-    let results: string[] = []
-    fs.readdir(dir, {withFileTypes: true}, (err, list) => {
-        if (err) throw err
-        let pending = list.length
-        if (!pending) {
-            return done(results)
-        }
-        list.forEach(file => {
-            const filePath = path.resolve(dir, file.name)
-            fs.stat(filePath, (err2, stat) => {
-                if (err2) throw err2
-                if (stat.isDirectory()) {
-                    walk(filePath, res => {
-                        if (res) {
-                            results = results.concat(res)
-                        }
-                        if (!--pending) {
-                            done(results)
-                        }
-                    }, filter)
-                } else {
-                    if (typeof filter === 'undefined' || (filter && filter(filePath))) {
-                        results.push(filePath)
-                    }
-                    if (!--pending) {
-                        done(results)
-                    }
-                }
-            })
-        })
-    })
-}
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 async function run(): Promise<void> {
@@ -125,8 +88,8 @@ async function run(): Promise<void> {
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
 
-        core.info(`Files before init:`)
-        walk(workspacePath, files => files.forEach(file => core.info(`  ${file}`)))
+        core.info(`Files before init:`);
+        (await (await glob.create(`${workspacePath}/**`)).glob()).forEach(file => core.info(`  ${file}`))
 
 
         const git = simpleGit(workspacePath)
@@ -176,8 +139,8 @@ async function run(): Promise<void> {
         core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`)
         await git.raw('checkout', '--force', '-B', syncBranchName, originSha)
 
-        core.info(`Files after checkout:`)
-        walk(workspacePath, files => files.forEach(file => core.info(`  ${file}`)))
+        core.info(`Files after checkout:`);
+        (await (await glob.create(`${workspacePath}/**`)).glob()).forEach(file => core.info(`  ${file}`))
 
         const config: Config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path.join(workspacePath, configFilePath)
@@ -203,8 +166,8 @@ async function run(): Promise<void> {
         config.excludes = config.excludes || []
         config.excludes.push(transformationsFilePath)
 
-        core.info(`Files after parsing config:`)
-        walk(workspacePath, files => files.forEach(file => core.info(`  ${file}`)))
+        core.info(`Files after parsing config:`);
+        (await (await glob.create(`${workspacePath}/**`)).glob()).forEach(file => core.info(`  ${file}`))
 
 
         const localTransformations: LocalTransformations | undefined = await core.group(
