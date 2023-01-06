@@ -299,11 +299,11 @@ async function run() {
         });
         config.excludes = config.excludes || [];
         config.excludes.push(transformationsFilePath);
-        const allTransformations = await core.group(`Parsing local transformations: ${transformationsFilePath}`, async () => {
+        const localTransformations = await core.group(`Parsing local transformations: ${transformationsFilePath}`, async () => {
             const transformationsPath = path_1.default.join(workspacePath, transformationsFilePath);
             if (!fs.existsSync(transformationsPath)) {
                 core.info(`The repository doesn't have local transformations ${transformationsFilePath}`);
-                return [];
+                return undefined;
             }
             const transformationsContent = fs.readFileSync(transformationsPath, 'utf8');
             const parsedTransformations = yaml_1.default.parse(transformationsContent);
@@ -316,8 +316,19 @@ async function run() {
             }
             return parsedTransformations;
         });
-        const ignoringTransformations = allTransformations.filter(it => it.ignore === true);
-        const transformations = allTransformations.filter(it => it.ignore !== true);
+        if (localTransformations != null && localTransformations.repositories != null) {
+            const repoFullName = `${github_1.context.repo.owner}/${github_1.context.repo.repo}`;
+            if (!localTransformations.repositories.includes(repoFullName)) {
+                throw new Error(`Local transformations file ${transformationsFilePath} doesn't contain`
+                    + ` the current repository full name: ${repoFullName}`);
+            }
+        }
+        const ignoringTransformations = localTransformations != null && localTransformations.transformations != null
+            ? localTransformations.transformations.filter(it => it.ignore === true)
+            : [];
+        const transformations = localTransformations != null && localTransformations.transformations != null
+            ? localTransformations.transformations.filter(it => it.ignore !== true)
+            : [];
         function isTransforming(transformation, fileToSync) {
             const includesMatcher = transformation.includes != null && transformation.includes.length
                 ? (0, picomatch_1.default)(transformation.includes)
@@ -50659,7 +50670,7 @@ module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/s
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"array","items":{"$ref":"#/definitions/files-transformation"},"definitions":{"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w./-]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text"]},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"},"delete":{"description":"Set to true to delete files","type":"boolean"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
+module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"object","required":["repositories"],"properties":{"repositories":{"type":"array","minItems":1,"items":{"$ref":"#/definitions/repository-full-name"}},"transformations":{"type":"array","items":{"$ref":"#/definitions/files-transformation"}}},"additionalProperties":false,"definitions":{"repository-full-name":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+/[^<>:;,?\\"|/]+$"},"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w./-]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text"]},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"},"delete":{"description":"Set to true to delete files","type":"boolean"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
 
 /***/ }),
 
