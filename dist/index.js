@@ -283,7 +283,7 @@ async function run() {
         const originSha = await git.raw('rev-parse', `origin/${repo.default_branch}`).then(it => it.trim());
         const templateSha = await git.raw('rev-parse', `template/${templateRepo.default_branch}`).then(it => it.trim());
         core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`);
-        await git.raw('checkout', '--force', '-B', syncBranchName, `origin/${repo.default_branch}`);
+        await git.raw('checkout', '--force', '-B', syncBranchName, originSha);
         const config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path_1.default.join(workspacePath, configFilePath);
             if (!fs.existsSync(configPath)) {
