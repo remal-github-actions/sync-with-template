@@ -84,16 +84,11 @@ jobs:
 
     # $$$sync-with-template-modifiable: validation $$$
 
-
     - name: Run current action
-      env:
-        PUSH_BACK_TOKEN: ${{secrets.PUSH_BACK_TOKEN}}
-      if: ${{env.PUSH_BACK_TOKEN}}
       uses: ./
       with:
-        githubToken: ${{env.PUSH_BACK_TOKEN}}
         dryRun: true
-
+        githubToken: ${{github.token}}
 
     # $$$sync-with-template-modifiable-end$$$
 
