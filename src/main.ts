@@ -1,27 +1,26 @@
 import * as core from '@actions/core'
-import { context } from '@actions/github'
-import { components, operations } from '@octokit/openapi-types'
+import {context} from '@actions/github'
+import {components, operations} from '@octokit/openapi-types'
 import Ajv2020 from 'ajv/dist/2020'
 import * as crypto from 'crypto'
 import * as fs from 'fs'
-import { PathLike } from 'fs'
+import {PathLike} from 'fs'
 import path from 'path'
 import picomatch from 'picomatch'
-import simpleGit, { SimpleGit } from 'simple-git'
+import simpleGit, {SimpleGit} from 'simple-git'
 import * as tmp from 'tmp'
-import { URL } from 'url'
+import {URL} from 'url'
 import * as util from 'util'
-import { VM } from 'vm2'
+import {VM} from 'vm2'
 import YAML from 'yaml'
 import configSchema from '../config.schema.json'
 import transformationsSchema from '../local-transformations.schema.json'
-import { Config } from './internal/config'
-import { FilesTransformation, LocalTransformations } from './internal/local-transformations'
-import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections'
-import { newOctokitInstance } from './internal/octokit'
+import {Config} from './internal/config'
+import {FilesTransformation, LocalTransformations} from './internal/local-transformations'
+import {injectModifiableSections, ModifiableSections, parseModifiableSections} from './internal/modifiableSections'
+import {newOctokitInstance} from './internal/octokit'
 
 export type Repo = components['schemas']['full-repository']
-export type Issue = components['schemas']['issue']
 export type PullRequest = components['schemas']['pull-request']
 export type PullRequestSimple = components['schemas']['pull-request-simple']
 export type NewPullRequest = operations['pulls/create']['requestBody']['content']['application/json']
@@ -43,13 +42,13 @@ if (core.isDebug()) {
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-const configFilePath = core.getInput('configFile', { required: true })
-const transformationsFilePath = core.getInput('localTransformationsFile', { required: true })
-const conventionalCommits = core.getInput('conventionalCommits', { required: false })?.toLowerCase() === 'true'
-const dryRun = core.getInput('dryRun', { required: true }).toLowerCase() === 'true'
-const templateRepositoryFullName = core.getInput('templateRepository', { required: false })
+const configFilePath = core.getInput('configFile', {required: true})
+const transformationsFilePath = core.getInput('localTransformationsFile', {required: true})
+const conventionalCommits = core.getInput('conventionalCommits', {required: false})?.toLowerCase() === 'true'
+const dryRun = core.getInput('dryRun', {required: true}).toLowerCase() === 'true'
+const templateRepositoryFullName = core.getInput('templateRepository', {required: false})
 
-const githubToken = core.getInput('githubToken', { required: true })
+const githubToken = core.getInput('githubToken', {required: true})
 core.setSecret(githubToken)
 
 const octokit = newOctokitInstance(githubToken)
@@ -67,7 +66,7 @@ const DEFAULT_GIT_ENV: Record<string, string> = {
 
 async function run(): Promise<void> {
     try {
-        const workspacePath = tmp.dirSync({ unsafeCleanup: true }).name
+        const workspacePath = tmp.dirSync({unsafeCleanup: true}).name
         debug(`Workspace path: ${workspacePath}`)
 
         const repo = await octokit.repos.get({
@@ -156,13 +155,13 @@ async function run(): Promise<void> {
         config.excludes.push(transformationsFilePath)
 
 
-        const allTransformations: LocalTransformations = await core.group(
+        const localTransformations: LocalTransformations | undefined = await core.group(
             `Parsing local transformations: ${transformationsFilePath}`,
             async () => {
                 const transformationsPath = path.join(workspacePath, transformationsFilePath)
                 if (!fs.existsSync(transformationsPath)) {
                     core.info(`The repository doesn't have local transformations ${transformationsFilePath}`)
-                    return []
+                    return undefined
                 }
 
                 const transformationsContent = fs.readFileSync(transformationsPath, 'utf8')
@@ -182,14 +181,28 @@ async function run(): Promise<void> {
             }
         )
 
-        const ignoringTransformations = allTransformations.filter(it => it.ignore === true)
-        const transformations = allTransformations.filter(it => it.ignore !== true)
+        if (localTransformations != null && localTransformations.repositories != null) {
+            const repoFullName = `${context.repo.owner}/${context.repo.repo}`
+            if (!localTransformations.repositories.includes(repoFullName)) {
+                throw new Error(`Local transformations file ${transformationsFilePath} doesn't contain`
+                    + ` the current repository full name: ${repoFullName}`
+                )
+            }
+        }
+
+        const ignoringTransformations = localTransformations != null && localTransformations.transformations != null
+            ? localTransformations.transformations.filter(it => it.ignore === true)
+            : []
+        const transformations = localTransformations != null && localTransformations.transformations != null
+            ? localTransformations.transformations.filter(it => it.ignore !== true)
+            : []
 
         function isTransforming(transformation: FilesTransformation, fileToSync: string): boolean {
             const includesMatcher = transformation.includes != null && transformation.includes.length
                 ? picomatch(transformation.includes)
                 : undefined
             if (includesMatcher != null && !includesMatcher(fileToSync)) return false
+
             const excludesMatcher = transformation.excludes != null && transformation.excludes.length
                 ? picomatch(transformation.excludes)
                 : undefined
@@ -478,7 +491,7 @@ function debug(message: string) {
 }
 
 function getSyncBranchName(): string {
-    const name = core.getInput('syncBranchName', { required: true })
+    const name = core.getInput('syncBranchName', {required: true})
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
         return name
     } else {
@@ -487,7 +500,7 @@ function getSyncBranchName(): string {
 }
 
 function getCommitMessage(templateRepoName: string): string {
-    let message = core.getInput('commitMessage', { required: true })
+    let message = core.getInput('commitMessage', {required: true})
 
     message = message.replaceAll(/<template-repository>/g, templateRepoName)
 
@@ -510,7 +523,7 @@ async function getTemplateRepo(currentRepo: Repo): Promise<Repo | undefined> {
 
     } else {
         const [owner, repo] = templateRepoName.split('/')
-        return octokit.repos.get({ owner, repo }).then(it => it.data)
+        return octokit.repos.get({owner, repo}).then(it => it.data)
     }
 
     return undefined

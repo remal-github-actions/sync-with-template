@@ -5,12 +5,19 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
+export type RepositoryFullName = string;
 export type Glob = string;
+
 /**
  * Local transformations for sync-with-template GitHub action
  */
-export type LocalTransformations = FilesTransformation[];
-
+export interface LocalTransformations {
+  /**
+   * @minItems 1
+   */
+  repositories: [RepositoryFullName, ...RepositoryFullName[]];
+  transformations?: FilesTransformation[];
+}
 export interface FilesTransformation {
   /**
    * Transformation name
