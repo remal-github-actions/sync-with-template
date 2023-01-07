@@ -1,6 +1,5 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
-import * as glob from '@actions/glob'
 import {components, operations} from '@octokit/openapi-types'
 import Ajv2020 from 'ajv/dist/2020'
 import * as crypto from 'crypto'
@@ -88,10 +87,6 @@ async function run(): Promise<void> {
         core.info(`Using ${templateRepo.full_name} as a template repository`)
 
 
-        core.info(`Files before init:`);
-        (await (await glob.create(`${workspacePath}/**`)).glob()).forEach(file => core.info(`  ${file}`))
-
-
         const git = simpleGit(workspacePath)
             .env(DEFAULT_GIT_ENV)
 
@@ -139,8 +134,6 @@ async function run(): Promise<void> {
         core.info(`Creating '${syncBranchName}' branch from ${repo.html_url}/tree/${originSha}`)
         await git.raw('checkout', '--force', '-B', syncBranchName, originSha)
 
-        core.info(`Files after checkout:`);
-        (await (await glob.create(`${workspacePath}/**`)).glob()).forEach(file => core.info(`  ${file}`))
 
         const config: Config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path.join(workspacePath, configFilePath)
@@ -165,9 +158,6 @@ async function run(): Promise<void> {
 
         config.excludes = config.excludes || []
         config.excludes.push(transformationsFilePath)
-
-        core.info(`Files after parsing config:`);
-        (await (await glob.create(`${workspacePath}/**`)).glob()).forEach(file => core.info(`  ${file}`))
 
 
         const localTransformations: LocalTransformations | undefined = await core.group(
@@ -407,85 +397,115 @@ async function run(): Promise<void> {
         })
 
 
+        let isChanged = true
         if (hashBefore != null) {
             const hashAfter = await core.group('Hashing files after sync', async () => {
                 return hashFilesToSync()
             })
             if (hashBefore === hashAfter) {
                 core.info('No files were changed')
-                return
+                isChanged = false
             }
         }
 
 
-        await git.raw('add', '--all')
-        const changedFiles = await git.status().then(response => response.files)
+        if (isChanged) {
+            await git.raw('add', '--all')
+            const changedFiles = await git.status().then(response => response.files)
 
-        await core.group('Changes', async () => {
-            if (changedFiles.length === 0) {
-                core.info('No files were changed')
-                return
-            }
-
-            await git.raw('diff', '--cached').then(content => core.info(content))
-        })
-
-        await core.group('Committing and creating PR', async () => {
-            const openedPr = await getOpenedPullRequest()
-
-            if (changedFiles.length === 0) {
-                core.info('No files were changed, nothing to commit')
-                if (!dryRun) {
-                    if (openedPr != null) {
-                        await closePullRequest(
-                            openedPr,
-                            'autoclosed',
-                            `Autoclosing the PR, as no files will be changed after merging the changes`
-                            + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`
-                        )
-                    }
-                    if (repoBranches.hasOwnProperty(syncBranchName)) {
-                        core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
-                            + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`
-                        )
-                        await git.raw('push', '--delete', 'origin', syncBranchName)
-                    }
+            await core.group('Changes', async () => {
+                if (changedFiles.length === 0) {
+                    core.info('No files were changed')
+                    return
                 }
-                return
-            }
 
-            if (dryRun) {
-                core.warning('Skipping Git push and PR creation, as dry run is enabled')
-                return
-            }
-
-            const commitMessage = getCommitMessage(templateRepo.full_name)
-            await git.commit(commitMessage, {
-                '--allow-empty': null,
+                await git.raw('diff', '--cached').then(content => core.info(content))
             })
 
-            await git.raw('push', '--force', 'origin', syncBranchName)
+            await core.group('Committing and creating PR', async () => {
+                const openedPr = await getOpenedPullRequest()
 
-            if (openedPr == null) {
-                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
-                if (conventionalCommits) {
-                    pullRequestTitle = `chore(template): ${pullRequestTitle}`
+                if (changedFiles.length === 0) {
+                    core.info('No files were changed, nothing to commit')
+                    if (!dryRun) {
+                        if (openedPr != null) {
+                            await closePullRequest(
+                                openedPr,
+                                'autoclosed',
+                                `Autoclosing the PR, as no files will be changed after merging the changes`
+                                + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`
+                            )
+                        }
+                        if (repoBranches.hasOwnProperty(syncBranchName)) {
+                            core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
+                                + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`
+                            )
+                            await git.raw('push', '--delete', 'origin', syncBranchName)
+                        }
+                    }
+                    return
                 }
 
-                const newPullRequest = await createPullRequest({
-                    head: syncBranchName,
-                    base: defaultBranchName,
-                    title: pullRequestTitle,
-                    body: 'Template repository changes.'
-                        + '\n\nIf you close this PR, it will be recreated automatically.',
-                    maintainer_can_modify: true,
+                if (dryRun) {
+                    core.warning('Skipping Git push and PR creation, as dry run is enabled')
+                    return
+                }
+
+                const commitMessage = getCommitMessage(templateRepo.full_name)
+                await git.commit(commitMessage, {
+                    '--allow-empty': null,
                 })
 
-                core.info(`Pull request for '${syncBranchName}' branch has been created: ${newPullRequest.html_url}`)
-            } else {
-                core.info(`Pull request for '${syncBranchName}' branch has been created: ${openedPr.html_url}`)
-            }
-        })
+                await git.raw('push', '--force', 'origin', syncBranchName)
+
+                if (openedPr == null) {
+                    let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
+                    if (conventionalCommits) {
+                        pullRequestTitle = `chore(template): ${pullRequestTitle}`
+                    }
+
+                    const newPullRequest = await createPullRequest({
+                        head: syncBranchName,
+                        base: defaultBranchName,
+                        title: pullRequestTitle,
+                        body: 'Template repository changes.'
+                            + '\n\nIf you close this PR, it will be recreated automatically.',
+                        maintainer_can_modify: true,
+                    })
+
+                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${newPullRequest.html_url}`)
+                } else {
+                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${openedPr.html_url}`)
+                }
+            })
+
+        } else {
+            await core.group('Synchronizing PR', async () => {
+                if (dryRun) {
+                    core.warning('Skipping PR synchronization, as dry run is enabled')
+                    return
+                }
+
+                const openedPr = await getOpenedPullRequest()
+                if (openedPr == null) {
+                    let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
+                    if (conventionalCommits) {
+                        pullRequestTitle = `chore(template): ${pullRequestTitle}`
+                    }
+
+                    const newPullRequest = await createPullRequest({
+                        head: syncBranchName,
+                        base: defaultBranchName,
+                        title: pullRequestTitle,
+                        body: 'Template repository changes.'
+                            + '\n\nIf you close this PR, it will be recreated automatically.',
+                        maintainer_can_modify: true,
+                    })
+
+                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${newPullRequest.html_url}`)
+                }
+            })
+        }
 
     } catch (error) {
         core.setFailed(error instanceof Error ? error : (error as object).toString())
