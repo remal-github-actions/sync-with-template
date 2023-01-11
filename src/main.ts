@@ -397,19 +397,35 @@ async function run(): Promise<void> {
         })
 
 
-        let isChanged = true
+        let shouldBePushed = true
         if (hashBefore != null) {
             const hashAfter = await core.group('Hashing files after sync', async () => {
                 return hashFilesToSync()
             })
             if (hashBefore === hashAfter) {
                 core.info('No files were changed')
-                isChanged = false
+                shouldBePushed = false
             }
         }
 
 
-        if (isChanged) {
+        if (!shouldBePushed && repoBranches.hasOwnProperty(syncBranchName)) {
+            const comparison = await octokit.repos.compareCommits({
+                owner: repo.owner.login,
+                repo: repo.name,
+                base: repo.default_branch,
+                head: syncBranchName,
+                per_page: 1,
+            }).then(it => it.data)
+
+            if (comparison.behind_by > 0) {
+                core.info(`${syncBranchName} branch is behind by ${comparison.behind_by} commits`)
+                shouldBePushed = true
+            }
+        }
+
+
+        if (shouldBePushed) {
             await git.raw('add', '--all')
             const changedFiles = await git.status().then(response => response.files)
 
