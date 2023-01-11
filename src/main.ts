@@ -491,7 +491,7 @@ async function run(): Promise<void> {
 
                     core.info(`Pull request for '${syncBranchName}' branch has been created: ${newPullRequest.html_url}`)
                 } else {
-                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${openedPr.html_url}`)
+                    core.info(`Pull request for '${syncBranchName}' branch has been updated: ${openedPr.html_url}`)
                 }
             })
 
