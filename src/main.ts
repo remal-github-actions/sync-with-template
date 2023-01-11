@@ -496,31 +496,29 @@ async function run(): Promise<void> {
             })
 
         } else {
-            await core.group('Synchronizing PR', async () => {
+            const openedPr = await getOpenedPullRequest()
+            if (openedPr == null) {
                 if (dryRun) {
-                    core.warning('Skipping PR synchronization, as dry run is enabled')
+                    core.warning('Skipping PR creation, as dry run is enabled')
                     return
                 }
 
-                const openedPr = await getOpenedPullRequest()
-                if (openedPr == null) {
-                    let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
-                    if (conventionalCommits) {
-                        pullRequestTitle = `chore(template): ${pullRequestTitle}`
-                    }
-
-                    const newPullRequest = await createPullRequest({
-                        head: syncBranchName,
-                        base: defaultBranchName,
-                        title: pullRequestTitle,
-                        body: 'Template repository changes.'
-                            + '\n\nIf you close this PR, it will be recreated automatically.',
-                        maintainer_can_modify: true,
-                    })
-
-                    core.info(`Pull request for '${syncBranchName}' branch has been created: ${newPullRequest.html_url}`)
+                let pullRequestTitle = `Merge template repository changes: ${templateRepo.full_name}`
+                if (conventionalCommits) {
+                    pullRequestTitle = `chore(template): ${pullRequestTitle}`
                 }
-            })
+
+                const newPullRequest = await createPullRequest({
+                    head: syncBranchName,
+                    base: defaultBranchName,
+                    title: pullRequestTitle,
+                    body: 'Template repository changes.'
+                        + '\n\nIf you close this PR, it will be recreated automatically.',
+                    maintainer_can_modify: true,
+                })
+
+                core.info(`Pull request for '${syncBranchName}' branch has been created: ${newPullRequest.html_url}`)
+            }
         }
 
     } catch (error) {
