@@ -419,7 +419,7 @@ async function run(): Promise<void> {
             }).then(it => it.data)
 
             if (comparison.behind_by > 0) {
-                core.info(`${syncBranchName} branch is behind by ${comparison.behind_by} commits`)
+                core.info(`'${syncBranchName}' branch is behind by ${comparison.behind_by} commits`)
                 shouldBePushed = true
             }
         }
@@ -438,7 +438,7 @@ async function run(): Promise<void> {
                 await git.raw('diff', '--cached').then(content => core.info(content))
             })
 
-            await core.group('Committing and creating PR', async () => {
+            await core.group('Committing and creating/synchronizing PR', async () => {
                 const openedPr = await getOpenedPullRequest()
 
                 if (changedFiles.length === 0) {
