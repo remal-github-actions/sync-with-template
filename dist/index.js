@@ -581,6 +581,9 @@ async function run() {
                     await git.raw('diff', '--cached').then(content => core.info(content));
                 });
             }
+            const prSyncMessage = changedFiles.length === 0
+                ? 'Committing and synchronizing PR'
+                : 'Committing and creating/synchronizing PR';
             await core.group('Committing and creating/synchronizing PR', async () => {
                 const openedPr = await getOpenedPullRequest();
                 if (changedFiles.length === 0) {
