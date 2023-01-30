@@ -586,9 +586,12 @@ const predefinedFilesTransformationScripts: Record<string, (content: string) => 
                     tokens[i] = tokenNumber.toString()
                 }
 
-                quote = quote || ''
+                const newExpression = tokens.join(' ')
 
-                return prefix + quote + tokens.join(' ') + quote + suffix
+                core.info(`      Adjusting cron expression from '${expression}' to '${newExpression}'`)
+
+                quote = quote || ''
+                return prefix + quote + newExpression + quote + suffix
             }
         )
     },
