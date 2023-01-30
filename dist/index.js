@@ -1,6 +1,29 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 801:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.calculateHash = void 0;
+function calculateHash(value) {
+    if (value.length === 0)
+        return 0;
+    let hash = 0;
+    for (let i = 0; i < value.length; ++i) {
+        const chr = value.charCodeAt(i);
+        hash = ((hash << 5) - hash) + chr;
+        hash |= 0;
+    }
+    return hash | 0;
+}
+exports.calculateHash = calculateHash;
+
+
+/***/ }),
+
 /***/ 2932:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -201,6 +224,7 @@ const vm2_1 = __nccwpck_require__(2417);
 const yaml_1 = __importDefault(__nccwpck_require__(4083));
 const config_schema_json_1 = __importDefault(__nccwpck_require__(242));
 const local_transformations_schema_json_1 = __importDefault(__nccwpck_require__(5006));
+const calculateHash_1 = __nccwpck_require__(801);
 const modifiableSections_1 = __nccwpck_require__(2932);
 const octokit_1 = __nccwpck_require__(2931);
 (__nccwpck_require__(8237).log) = function log(...args) {
@@ -328,8 +352,14 @@ async function run() {
             }
         }
         const allTransformations = localTransformations != null && localTransformations.transformations != null
-            ? localTransformations.transformations
+            ? [...localTransformations.transformations]
             : [];
+        allTransformations.push({
+            name: "Adjust GitHub actions cron",
+            includes: ['.github/workflows/*.yml'],
+            format: "text",
+            script: '#adjustGitHubActionsCron',
+        });
         const ignoringTransformations = allTransformations.filter(it => it.ignore === true);
         const transformations = allTransformations.filter(it => it.ignore !== true);
         function isTransforming(transformation, fileToSync) {
@@ -447,21 +477,33 @@ async function run() {
                         fs.writeFileSync(fileToSyncPath, transformation.replaceWithText, 'utf8');
                         isTransformed = true;
                     }
-                    if (transformation.script != null) {
+                    const transformationScript = transformation.script?.trim();
+                    if (transformationScript != null) {
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`);
                         const fileToSyncPath = path_1.default.join(workspacePath, fileToSync);
                         if (transformation.format === 'text') {
                             const content = fs.readFileSync(fileToSyncPath, 'utf8');
-                            const vm = new vm2_1.VM({
-                                sandbox: {
-                                    content,
-                                },
-                                allowAsync: false,
-                                eval: false,
-                                wasm: false,
-                            });
-                            const script = `(function(){ ${transformation.script} })()`;
-                            const transformedContent = vm.run(script);
+                            let transformedContent;
+                            if (transformationScript.startsWith("#")) {
+                                const predefinedFilesTransformationScriptName = transformationScript.substring(1);
+                                const predefinedFilesTransformationScript = predefinedFilesTransformationScripts[predefinedFilesTransformationScriptName];
+                                if (predefinedFilesTransformationScript == null) {
+                                    throw new Error(`Unsupported transformation script: ${transformationScript}`);
+                                }
+                                transformedContent = predefinedFilesTransformationScript(content);
+                            }
+                            else {
+                                const vm = new vm2_1.VM({
+                                    sandbox: {
+                                        content,
+                                    },
+                                    allowAsync: false,
+                                    eval: false,
+                                    wasm: false,
+                                });
+                                const script = `(function(){ ${transformationScript} })()`;
+                                transformedContent = vm.run(script);
+                            }
                             if (transformedContent !== content) {
                                 fs.writeFileSync(fileToSyncPath, transformedContent, 'utf8');
                             }
@@ -605,6 +647,40 @@ async function run() {
     }
 }
 run();
+const predefinedFilesTransformationScripts = {
+    adjustGitHubActionsCron: content => {
+        return content.replaceAll(/(\s+schedule:[\r\n]+\s+-\s+cron:\s+)(['"]?)([^'"]+)\2(\s*#\s*sync-with-template\s*:\s*adjust)\b/g, (match, prefix, quote, expression, suffix) => {
+            const tokens = expression.trim().split(/\s+/);
+            if (tokens.length !== 5)
+                return match;
+            for (let i = 0; i < tokens.length; ++i) {
+                const token = tokens[i];
+                if (isNaN(token))
+                    continue;
+                let tokenNumber = token | 0;
+                tokenNumber += Math.abs((0, calculateHash_1.calculateHash)(`${github_1.context.repo.owner}/${github_1.context.repo.repo}`));
+                if (i === 0) {
+                    tokenNumber = tokenNumber % 60;
+                }
+                else if (i === 1) {
+                    tokenNumber = tokenNumber % 24;
+                }
+                else if (i === 2) {
+                    tokenNumber = 1 + tokenNumber % 31;
+                }
+                else if (i === 3) {
+                    tokenNumber = 1 + tokenNumber % 12;
+                }
+                else if (i === 4) {
+                    tokenNumber = tokenNumber % 7;
+                }
+                tokens[i] = tokenNumber.toString();
+            }
+            quote = quote || '';
+            return prefix + quote + tokens.join(' ') + quote + suffix;
+        });
+    },
+};
 function getSyncBranchName() {
     const name = core.getInput('syncBranchName', { required: true });
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
