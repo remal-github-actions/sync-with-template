@@ -563,13 +563,15 @@ const predefinedFilesTransformationScripts: Record<string, (content: string) => 
             (match, prefix, quote, expression, suffix) => {
                 const tokens = expression.trim().split(/\s+/)
                 if (tokens.length !== 5) return match
+                
+                const hash = Math.abs(calculateHash(`${context.repo.owner}/${context.repo.repo}`)) || 2398461
 
                 for (let i = 0; i < tokens.length; ++i) {
                     const token = tokens[i]
                     if (isNaN(token)) continue
 
                     let tokenNumber = token | 0
-                    tokenNumber += Math.abs(calculateHash(`${context.repo.owner}/${context.repo.repo}`))
+                    tokenNumber += hash
 
                     if (i === 0) {
                         tokenNumber = tokenNumber % 60
