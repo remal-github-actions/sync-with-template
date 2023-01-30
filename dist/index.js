@@ -676,8 +676,10 @@ const predefinedFilesTransformationScripts = {
                 }
                 tokens[i] = tokenNumber.toString();
             }
+            const newExpression = tokens.join(' ');
+            core.info(`      Adjusting cron expression from '${expression}' to '${newExpression}'`);
             quote = quote || '';
-            return prefix + quote + tokens.join(' ') + quote + suffix;
+            return prefix + quote + newExpression + quote + suffix;
         });
     },
 };
