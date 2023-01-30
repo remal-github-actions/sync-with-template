@@ -653,12 +653,13 @@ const predefinedFilesTransformationScripts = {
             const tokens = expression.trim().split(/\s+/);
             if (tokens.length !== 5)
                 return match;
+            const hash = Math.abs((0, calculateHash_1.calculateHash)(`${github_1.context.repo.owner}/${github_1.context.repo.repo}`)) || 2398461;
             for (let i = 0; i < tokens.length; ++i) {
                 const token = tokens[i];
                 if (isNaN(token))
                     continue;
                 let tokenNumber = token | 0;
-                tokenNumber += Math.abs((0, calculateHash_1.calculateHash)(`${github_1.context.repo.owner}/${github_1.context.repo.repo}`));
+                tokenNumber += hash;
                 if (i === 0) {
                     tokenNumber = tokenNumber % 60;
                 }
