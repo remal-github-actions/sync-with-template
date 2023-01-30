@@ -361,6 +361,7 @@ async function run() {
             script: '#adjustGitHubActionsCron',
         });
         const ignoringTransformations = allTransformations.filter(it => it.ignore === true);
+        const deletingTransformations = allTransformations.filter(it => it.delete === true);
         const transformations = allTransformations.filter(it => it.ignore !== true);
         function isTransforming(transformation, fileToSync) {
             const includesMatcher = transformation.includes != null && transformation.includes.length
@@ -427,6 +428,13 @@ async function run() {
                 if (isIgnoredByTransformations(fileToSync)) {
                     continue;
                 }
+                if (isDeletedByTransformations(fileToSync)) {
+                    const fileToSyncPath = path_1.default.join(workspacePath, fileToSync);
+                    if (fs.existsSync(fileToSyncPath)) {
+                        fs.unlinkSync(fileToSyncPath);
+                    }
+                    continue;
+                }
                 const modifiableSections = await parseModifiableSectionsFor(fileToSync);
                 core.info(`  Checkouting ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`);
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync);
@@ -438,6 +446,15 @@ async function run() {
                     if (!isTransforming(transformation, fileToSync))
                         continue;
                     core.info(`  Ignored by '${transformation.name}' local transformation`);
+                    return true;
+                }
+                return false;
+            }
+            function isDeletedByTransformations(fileToSync) {
+                for (const transformation of deletingTransformations) {
+                    if (!isTransforming(transformation, fileToSync))
+                        continue;
+                    core.info(`  Deleted by '${transformation.name}' local transformation`);
                     return true;
                 }
                 return false;
@@ -513,15 +530,6 @@ async function run() {
                         }
                         isTransformed = true;
                     }
-                    if (transformation.delete === true) {
-                        core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
-                            + `: deleting the file`);
-                        const fileToSyncPath = path_1.default.join(workspacePath, fileToSync);
-                        if (fs.existsSync(fileToSyncPath)) {
-                            fs.unlinkSync(fileToSyncPath);
-                        }
-                        isTransformed = true;
-                    }
                     if (!isTransformed) {
                         core.warning(`No transformation operations are defined for ${transformation.name}`);
                     }
@@ -565,13 +573,14 @@ async function run() {
         if (shouldBePushed) {
             await git.raw('add', '--all');
             const changedFiles = await git.status().then(response => response.files);
-            await core.group('Changes', async () => {
-                if (changedFiles.length === 0) {
-                    core.info('No files were changed');
-                    return;
-                }
-                await git.raw('diff', '--cached').then(content => core.info(content));
-            });
+            if (changedFiles.length === 0) {
+                core.info('No files were changed');
+            }
+            else {
+                await core.group('Changes', async () => {
+                    await git.raw('diff', '--cached').then(content => core.info(content));
+                });
+            }
             await core.group('Committing and creating/synchronizing PR', async () => {
                 const openedPr = await getOpenedPullRequest();
                 if (changedFiles.length === 0) {
