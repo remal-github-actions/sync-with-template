@@ -470,6 +470,9 @@ async function run(): Promise<void> {
 				})
 			}
 
+			const prSyncMessage = changedFiles.length === 0
+				? 'Committing and synchronizing PR'
+				: 'Committing and creating/synchronizing PR'
             await core.group('Committing and creating/synchronizing PR', async () => {
                 const openedPr = await getOpenedPullRequest()
 
