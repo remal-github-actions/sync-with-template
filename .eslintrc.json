@@ -28,6 +28,7 @@
     "no-unused-vars": "off",
     "no-inner-declarations": "off",
     "no-prototype-builtins": "off",
+    "prefer-template": "off",
     "import/no-commonjs": "off",
     "import/no-namespace": "off",
     "@typescript-eslint/semi": [
