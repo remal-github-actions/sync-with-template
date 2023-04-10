@@ -30,7 +30,7 @@
     "console-log-level": "1.4.1",
     "debug": "4.3.4",
     "picomatch": "2.3.1",
-    "rimraf": "4.4.1",
+    "rimraf": "5.0.0",
     "simple-git": "3.17.0",
     "tmp": "0.2.1",
     "vm2": "3.9.15",
