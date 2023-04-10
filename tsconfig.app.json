@@ -17,7 +17,7 @@
   },
   "include": [
     "src/**/*.ts",
-    "config.schema.json"
+    "*.schema.json"
   ],
   "exclude": [
     "**/*.spec.*"
