@@ -33,7 +33,7 @@
     "rimraf": "5.0.0",
     "simple-git": "3.17.0",
     "tmp": "0.2.1",
-    "vm2": "3.9.15",
+    "vm2": "3.9.16",
     "yaml": "2.2.1"
   },
   "devDependencies": {
