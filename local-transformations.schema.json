@@ -9,6 +9,7 @@
   "properties": {
     "repositories": {
       "type": "array",
+      "uniqueItems": true,
       "minItems": 1,
       "items": {
         "$ref": "#/definitions/repository-full-name"
