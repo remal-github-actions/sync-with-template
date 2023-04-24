@@ -19,27 +19,48 @@ function writeJsonFile(path, json) {
     fs.writeFileSync(path, content, encoding)
 }
 
-(function() {
+;(function() {
     const json = readJsonFile('package.json')
 
     json.engines = json.engines || {}
     json.engines.node = `>=${nodeVersion}`
 
-    if (json.devDependencies['@types/node'] == null) {
-        json.devDependencies['@types/node'] = ''
+    if (json.devDependencies[`@tsconfig/node${nodeVersion}`] == null) {
+        json.devDependencies[`@tsconfig/node${nodeVersion}`] = '1.0.0'
     }
+    if (json.devDependencies['@types/node'] == null) {
+        json.devDependencies['@types/node'] = `${nodeVersion}.0.0`
+    }
+
     ;[
         'dependencies',
         'devDependencies',
     ].forEach(dependenciesKey => {
         const dependencies = json[dependenciesKey]
         if (dependencies == null) return
+
         Object.entries(dependencies).forEach(([dependency, version]) => {
-            if (dependency !== '@types/node') return
-            if (version.startsWith(`${nodeVersion}.`)) return
-            dependencies[dependency] = `${nodeVersion}.0.0`
+            if (dependency.startsWith('@tsconfig/node') && dependency !== `@tsconfig/node${nodeVersion}`) {
+                delete dependencies[dependency]
+            }
+        })
+
+        Object.entries(dependencies).forEach(([dependency, version]) => {
+            if (dependency === '@types/node' && !version.startsWith(`${nodeVersion}.`)) {
+                dependencies[dependency] = `${nodeVersion}.0.0`
+            }
         })
     })
 
     writeJsonFile('package.json', json)
+})()
+
+;(function() {
+    const json = readJsonFile('tsconfig.json')
+
+    if ((json.extends || '').startsWith('@tsconfig/node')) {
+        json.extends = `@tsconfig/node${nodeVersion}/tsconfig.json`
+    }
+
+    writeJsonFile('tsconfig.json', json)
 })()
