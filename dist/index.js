@@ -498,36 +498,47 @@ async function run() {
                     if (transformationScript != null) {
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`);
                         const fileToSyncPath = path_1.default.join(workspacePath, fileToSync);
+                        let content = null;
+                        let contentToString = value => value != null ? value.toString() : '';
                         if (transformation.format === 'text') {
-                            const content = fs.readFileSync(fileToSyncPath, 'utf8');
-                            let transformedContent;
-                            if (transformationScript.startsWith("#")) {
-                                const predefinedFilesTransformationScriptName = transformationScript.substring(1);
-                                const predefinedFilesTransformationScript = predefinedFilesTransformationScripts[predefinedFilesTransformationScriptName];
-                                if (predefinedFilesTransformationScript == null) {
-                                    throw new Error(`Unsupported transformation script: ${transformationScript}`);
-                                }
-                                transformedContent = predefinedFilesTransformationScript(content);
-                            }
-                            else {
-                                const vm = new vm2_1.VM({
-                                    sandbox: {
-                                        content,
-                                    },
-                                    allowAsync: false,
-                                    eval: false,
-                                    wasm: false,
-                                });
-                                const script = `(function(){ ${transformationScript} })()`;
-                                transformedContent = vm.run(script);
-                            }
-                            if (transformedContent !== content) {
-                                fs.writeFileSync(fileToSyncPath, transformedContent, 'utf8');
-                            }
+                            content = fs.readFileSync(fileToSyncPath, 'utf8');
+                        }
+                        else if (transformation.format === 'json') {
+                            content = fs.readFileSync(fileToSyncPath, 'utf8');
+                            content = JSON.parse(content);
+                            contentToString = value => JSON.stringify(value, null, transformation.indent ?? 2);
+                        }
+                        else if (transformation.format === 'yaml') {
+                            content = fs.readFileSync(fileToSyncPath, 'utf8');
+                            content = yaml_1.default.parse(content);
+                            contentToString = value => yaml_1.default.stringify(value, null, transformation.indent ?? 2);
                         }
                         else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`);
                         }
+                        let transformedContent;
+                        if (transformationScript.startsWith("#")) {
+                            const predefinedFilesTransformationScriptName = transformationScript.substring(1);
+                            const predefinedFilesTransformationScript = predefinedFilesTransformationScripts[predefinedFilesTransformationScriptName];
+                            if (predefinedFilesTransformationScript == null) {
+                                throw new Error(`Unsupported transformation script: ${transformationScript}`);
+                            }
+                            transformedContent = predefinedFilesTransformationScript(content);
+                        }
+                        else {
+                            const vm = new vm2_1.VM({
+                                sandbox: {
+                                    content,
+                                },
+                                allowAsync: false,
+                                eval: false,
+                                wasm: false,
+                            });
+                            const script = `(function(){ ${transformationScript} })()`;
+                            transformedContent = vm.run(script);
+                        }
+                        const transformedContentString = contentToString(transformedContent);
+                        fs.writeFileSync(fileToSyncPath, transformedContentString, 'utf8');
                         isTransformed = true;
                     }
                     if (!isTransformed) {
@@ -584,7 +595,7 @@ async function run() {
             const prSyncMessage = changedFiles.length === 0
                 ? 'Committing and synchronizing PR'
                 : 'Committing and creating/synchronizing PR';
-            await core.group('Committing and creating/synchronizing PR', async () => {
+            await core.group(prSyncMessage, async () => {
                 const openedPr = await getOpenedPullRequest();
                 if (changedFiles.length === 0) {
                     core.info('No files were changed, nothing to commit');
@@ -661,7 +672,7 @@ async function run() {
 run();
 const predefinedFilesTransformationScripts = {
     adjustGitHubActionsCron: content => {
-        return content.replaceAll(/(\s+schedule:[\r\n]+\s+-\s+cron:\s+)(['"]?)([^'"]+)\2(\s*#\s*sync-with-template\s*:\s*adjust)\b/g, (match, prefix, quote, expression, suffix) => {
+        return content.toString().replaceAll(/(\s+schedule:[\r\n]+\s+-\s+cron:\s+)(['"]?)([^'"]+)\2(\s*#\s*sync-with-template\s*:\s*adjust)\b/g, (match, prefix, quote, expression, suffix) => {
             const tokens = expression.trim().split(/\s+/);
             if (tokens.length !== 5)
                 return match;
@@ -50840,7 +50851,7 @@ module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/s
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"object","required":["repositories"],"properties":{"repositories":{"type":"array","minItems":1,"items":{"$ref":"#/definitions/repository-full-name"}},"transformations":{"type":"array","items":{"$ref":"#/definitions/files-transformation"}}},"additionalProperties":false,"definitions":{"repository-full-name":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+/[^<>:;,?\\"|/]+$"},"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w./-]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text"]},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"},"delete":{"description":"Set to true to delete files","type":"boolean"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
+module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"object","required":["repositories"],"properties":{"repositories":{"type":"array","uniqueItems":true,"minItems":1,"items":{"$ref":"#/definitions/repository-full-name"}},"transformations":{"type":"array","items":{"$ref":"#/definitions/files-transformation"}}},"additionalProperties":false,"definitions":{"repository-full-name":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+/[^<>:;,?\\"|/]+$"},"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w./-]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text","json","yaml"]},"indent":{"description":"File indent","type":"number"},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"},"delete":{"description":"Set to true to delete files","type":"boolean"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
 
 /***/ }),
 
