@@ -374,39 +374,49 @@ async function run(): Promise<void> {
                     if (transformationScript != null) {
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`)
                         const fileToSyncPath = path.join(workspacePath, fileToSync)
+
+                        let content: any = null
+                        let contentToString: (value: any) => string = value => value != null ? value.toString() : ''
                         if (transformation.format === 'text') {
-                            const content = fs.readFileSync(fileToSyncPath, 'utf8')
-
-                            let transformedContent: string
-                            if (transformationScript.startsWith("#")) {
-                                const predefinedFilesTransformationScriptName = transformationScript.substring(1)
-                                const predefinedFilesTransformationScript = predefinedFilesTransformationScripts[predefinedFilesTransformationScriptName]
-                                if (predefinedFilesTransformationScript == null) {
-                                    throw new Error(`Unsupported transformation script: ${transformationScript}`)
-                                }
-
-                                transformedContent = predefinedFilesTransformationScript(content)
-
-                            } else {
-                                const vm = new VM({
-                                    sandbox: {
-                                        content,
-                                    },
-                                    allowAsync: false,
-                                    eval: false,
-                                    wasm: false,
-                                })
-                                const script = `(function(){ ${transformationScript} })()`
-                                transformedContent = vm.run(script)
-                            }
-
-                            if (transformedContent !== content) {
-                                fs.writeFileSync(fileToSyncPath, transformedContent, 'utf8')
-                            }
-
+                            content = fs.readFileSync(fileToSyncPath, 'utf8')
+                        } else if (transformation.format === 'json') {
+                            content = fs.readFileSync(fileToSyncPath, 'utf8')
+                            content = JSON.parse(content)
+                            contentToString = value => JSON.stringify(value, null, transformation.indent ?? 2)
+                        } else if (transformation.format === 'yaml') {
+                            content = fs.readFileSync(fileToSyncPath, 'utf8')
+                            content = YAML.parse(content)
+                            contentToString = value => YAML.stringify(value, null, transformation.indent ?? 2)
                         } else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`)
                         }
+
+                        let transformedContent: any
+                        if (transformationScript.startsWith("#")) {
+                            const predefinedFilesTransformationScriptName = transformationScript.substring(1)
+                            const predefinedFilesTransformationScript = predefinedFilesTransformationScripts[predefinedFilesTransformationScriptName]
+                            if (predefinedFilesTransformationScript == null) {
+                                throw new Error(`Unsupported transformation script: ${transformationScript}`)
+                            }
+
+                            transformedContent = predefinedFilesTransformationScript(content)
+
+                        } else {
+                            const vm = new VM({
+                                sandbox: {
+                                    content,
+                                },
+                                allowAsync: false,
+                                eval: false,
+                                wasm: false,
+                            })
+                            const script = `(function(){ ${transformationScript} })()`
+                            transformedContent = vm.run(script)
+                        }
+
+                        const transformedContentString = contentToString(transformedContent)
+                        fs.writeFileSync(fileToSyncPath, transformedContentString, 'utf8')
+
                         isTransformed = true
                     }
 
@@ -473,7 +483,7 @@ async function run(): Promise<void> {
 			const prSyncMessage = changedFiles.length === 0
 				? 'Committing and synchronizing PR'
 				: 'Committing and creating/synchronizing PR'
-            await core.group('Committing and creating/synchronizing PR', async () => {
+            await core.group(prSyncMessage, async () => {
                 const openedPr = await getOpenedPullRequest()
 
                 if (changedFiles.length === 0) {
@@ -567,14 +577,14 @@ run()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-const predefinedFilesTransformationScripts: Record<string, (content: string) => string> = {
+const predefinedFilesTransformationScripts: Record<string, (content: any) => string> = {
     adjustGitHubActionsCron: content => {
-        return content.replaceAll(
+        return content.toString().replaceAll(
             /(\s+schedule:[\r\n]+\s+-\s+cron:\s+)(['"]?)([^'"]+)\2(\s*#\s*sync-with-template\s*:\s*adjust)\b/g,
             (match, prefix, quote, expression, suffix) => {
                 const tokens = expression.trim().split(/\s+/)
                 if (tokens.length !== 5) return match
-                
+
                 const hash = Math.abs(calculateHash(`${context.repo.owner}/${context.repo.repo}`)) || 2398461
 
                 for (let i = 0; i < tokens.length; ++i) {

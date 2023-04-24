@@ -36,7 +36,11 @@ export interface FilesTransformation {
   /**
    * File format
    */
-  format: "text";
+  format: "text" | "json" | "yaml";
+  /**
+   * File indent
+   */
+  indent?: number;
   /**
    * Set to true to exclude files from the synchronization
    */

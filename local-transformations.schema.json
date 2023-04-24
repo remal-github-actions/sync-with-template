@@ -62,8 +62,14 @@
           "description": "File format",
           "type": "string",
           "enum": [
-            "text"
+            "text",
+            "json",
+            "yaml"
           ]
+        },
+        "indent": {
+          "description": "File indent",
+          "type": "number"
         },
         "ignore": {
           "description": "Set to true to exclude files from the synchronization",
