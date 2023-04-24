@@ -389,7 +389,10 @@ async function run(): Promise<void> {
                             contentToFileContent = value => JSON5.stringify(value, null, transformation.indent ?? 2)
                         } else if (transformation.format === 'yaml') {
                             content = YAML.parse(content)
-                            contentToFileContent = value => YAML.stringify(value, null, transformation.indent ?? 2)
+                            contentToFileContent = value => YAML.stringify(value, null, {
+                                indent: transformation.indent ?? 2,
+                                indentSeq: false,
+                            })
                         } else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`)
                         }
