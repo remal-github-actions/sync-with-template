@@ -392,6 +392,7 @@ async function run(): Promise<void> {
                             contentToFileContent = value => YAML.stringify(value, null, {
                                 indent: transformation.indent ?? 2,
                                 indentSeq: false,
+                                lineWidth: 0,
                             })
                         } else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`)
