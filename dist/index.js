@@ -514,7 +514,11 @@ async function run() {
                         }
                         else if (transformation.format === 'yaml') {
                             content = yaml_1.default.parse(content);
-                            contentToFileContent = value => yaml_1.default.stringify(value, null, transformation.indent ?? 2);
+                            contentToFileContent = value => yaml_1.default.stringify(value, null, {
+                                indent: transformation.indent ?? 2,
+                                indentSeq: false,
+                                lineWidth: 0,
+                            });
                         }
                         else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`);
