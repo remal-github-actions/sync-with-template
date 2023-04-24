@@ -64,6 +64,7 @@
           "enum": [
             "text",
             "json",
+            "json5",
             "yaml"
           ]
         },

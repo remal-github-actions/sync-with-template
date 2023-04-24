@@ -36,7 +36,7 @@ export interface FilesTransformation {
   /**
    * File format
    */
-  format: "text" | "json" | "yaml";
+  format: "text" | "json" | "json5" | "yaml";
   /**
    * File indent
    */

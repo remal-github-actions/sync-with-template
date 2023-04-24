@@ -5,6 +5,7 @@ import Ajv2020 from 'ajv/dist/2020'
 import * as crypto from 'crypto'
 import * as fs from 'fs'
 import {PathLike} from 'fs'
+import JSON5 from 'json5'
 import path from 'path'
 import picomatch from 'picomatch'
 import simpleGit, {SimpleGit} from 'simple-git'
@@ -376,17 +377,19 @@ async function run(): Promise<void> {
                         const fileToSyncPath = path.join(workspacePath, fileToSync)
 
                         let content: any = null
-                        let contentToString: (value: any) => string = value => value != null ? value.toString() : ''
+                        content = fs.readFileSync(fileToSyncPath, 'utf8')
+                        let contentToFileContent: (value: any) => string = value => (value ?? '').toString()
                         if (transformation.format === 'text') {
-                            content = fs.readFileSync(fileToSyncPath, 'utf8')
+                            // do nothing
                         } else if (transformation.format === 'json') {
-                            content = fs.readFileSync(fileToSyncPath, 'utf8')
                             content = JSON.parse(content)
-                            contentToString = value => JSON.stringify(value, null, transformation.indent ?? 2)
+                            contentToFileContent = value => JSON.stringify(value, null, transformation.indent ?? 2)
+                        } else if (transformation.format === 'json5') {
+                            content = JSON5.parse(content)
+                            contentToFileContent = value => JSON5.stringify(value, null, transformation.indent ?? 2)
                         } else if (transformation.format === 'yaml') {
-                            content = fs.readFileSync(fileToSyncPath, 'utf8')
                             content = YAML.parse(content)
-                            contentToString = value => YAML.stringify(value, null, transformation.indent ?? 2)
+                            contentToFileContent = value => YAML.stringify(value, null, transformation.indent ?? 2)
                         } else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`)
                         }
@@ -414,7 +417,7 @@ async function run(): Promise<void> {
                             transformedContent = vm.run(script)
                         }
 
-                        const transformedContentString = contentToString(transformedContent)
+                        const transformedContentString = contentToFileContent(transformedContent)
                         fs.writeFileSync(fileToSyncPath, transformedContentString, 'utf8')
 
                         isTransformed = true
