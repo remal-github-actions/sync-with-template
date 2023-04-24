@@ -5,7 +5,16 @@
   "git-submodules": {
     enabled: false, // This is in beta for now, so let's use Dependabot to update Git submodules
   },
-  
+
+  js: {
+    packageRules: [
+      {
+        matchPackageNames: ['@types/node'],
+        extends: ["github>remal/renovate-config:disable-major-updates"],
+      },
+    ],
+  },
+
   // $$$sync-with-template-modifiable: local
   // $$$sync-with-template-modifiable-end$$$
 }

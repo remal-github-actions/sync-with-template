@@ -48,11 +48,9 @@ jobs:
       with:
         node-version: '${{steps.readNodeVersion.outputs.result}}'
 
-
-    - name: Update .engines.node in package.json
+    - name: Update Node.js version in project files
       run: |
-        jq --indent 2 '.engines.node = ">=${{steps.readNodeVersion.outputs.result}}"' package.json > package-new.json
-        mv package-new.json package.json
+        node update-node-version-in-files "${{steps.readNodeVersion.outputs.result}}"
 
 
     - name: Restore node_modules cache
