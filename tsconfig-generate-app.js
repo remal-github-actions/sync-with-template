@@ -13,5 +13,5 @@ json.compilerOptions.types.splice(jestTypeIndex, 1)
 json.exclude = json.exclude || []
 json.exclude.push('**/*.spec.*')
 
-const appContent = JSON.stringify(json, null, 2) + '\n'
+const appContent = JSON.stringify(json, null, 2).replaceAll(/(\r\n)|(\n\r)|(\r)/g, '\n') + '\n'
 fs.writeFileSync('tsconfig.app.json', appContent, encoding)
