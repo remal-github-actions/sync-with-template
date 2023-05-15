@@ -34,7 +34,7 @@
     "rimraf": "5.0.0",
     "simple-git": "3.18.0",
     "tmp": "0.2.1",
-    "vm2": "3.9.17",
+    "vm2": "3.9.18",
     "yaml": "2.2.2"
   },
   "devDependencies": {
