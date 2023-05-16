@@ -34494,15 +34494,8 @@ class DefaultResolver extends Resolver {
 	}
 
 	loadJS(vm, mod, filename) {
-		filename = this.pathResolve(filename);
-		this.checkAccess(mod, filename);
-		if (this.pathContext(filename, 'js') !== 'host') {
-			const script = this.readScript(filename);
-			vm.run(script, {filename, strict: this.isStrict(filename), module: mod, wrapper: 'none', dirname: mod.path});
-		} else {
-			const m = this.hostRequire(filename);
-			mod.exports = vm.readonly(m);
-		}
+		const script = this.readScript(filename);
+		vm.run(script, {filename, strict: this.isStrict(filename), module: mod, wrapper: 'none', dirname: mod.path});
 	}
 
 	loadJSON(vm, mod, filename) {
@@ -34511,11 +34504,7 @@ class DefaultResolver extends Resolver {
 	}
 
 	loadNode(vm, mod, filename) {
-		filename = this.pathResolve(filename);
-		this.checkAccess(mod, filename);
-		if (this.pathContext(filename, 'node') !== 'host') throw new VMError('Native modules can be required only with context set to \'host\'.');
-		const m = this.hostRequire(filename);
-		mod.exports = vm.readonly(m);
+		throw new VMError('Native modules can be required only with context set to \'host\'.');
 	}
 
 	customResolve(x, path, extList) {
