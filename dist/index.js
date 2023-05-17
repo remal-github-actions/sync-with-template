@@ -5219,7 +5219,7 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 
 var BottleneckLight = _interopDefault(__nccwpck_require__(1174));
 
-const VERSION = "5.2.1";
+const VERSION = "5.2.2";
 
 const noop = () => Promise.resolve();
 // @ts-expect-error
