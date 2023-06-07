@@ -6,6 +6,12 @@
     enabled: false, // This is in beta for now, so let's use Dependabot to update Git submodules
   },
 
+  //constraintsFiltering: 'strict',
+
+  node: {
+    enabled: false,
+  },
+
   js: {
     packageRules: [
       {
@@ -13,6 +19,10 @@
         extends: ["github>remal/renovate-config:disable-major-updates"],
       },
     ],
+  },
+
+  lockFileMaintenance: {
+    enabled: true,
   },
 
   // $$$sync-with-template-modifiable: local $$$
