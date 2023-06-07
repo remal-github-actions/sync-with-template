@@ -20,6 +20,10 @@ function writeJsonFile(path, json) {
 }
 
 ;(function() {
+    fs.writeFileSync('.nvmrc', `v${nodeVersion}`, encoding)
+})()
+
+;(function() {
     const json = readJsonFile('package.json')
 
     json.engines = json.engines || {}
