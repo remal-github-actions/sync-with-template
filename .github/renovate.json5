@@ -24,6 +24,8 @@
   lockFileMaintenance: {
     enabled: true,
   },
+  
+  postUpdateOptions: [],
 
   // $$$sync-with-template-modifiable: local $$$
   // $$$sync-with-template-modifiable-end$$$
