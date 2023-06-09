@@ -43,7 +43,7 @@ jobs:
         echo "Action's Node.js version: $VERSION"
         echo "result=$VERSION" >> $GITHUB_OUTPUT
 
-    - name: Setup Node.js
+    - name: Setup Node.js ${{steps.readNodeVersion.outputs.result}}
       uses: actions/setup-node@v3
       with:
         node-version: '${{steps.readNodeVersion.outputs.result}}'
