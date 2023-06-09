@@ -1060,15 +1060,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/plugin-retry@npm:4.1.3":
-  version: 4.1.3
-  resolution: "@octokit/plugin-retry@npm:4.1.3"
+"@octokit/plugin-retry@npm:4.1.6":
+  version: 4.1.6
+  resolution: "@octokit/plugin-retry@npm:4.1.6"
   dependencies:
     "@octokit/types": ^9.0.0
     bottleneck: ^2.15.3
   peerDependencies:
     "@octokit/core": ">=3"
-  checksum: f9ed5869be23dddcf1ee896ce996e46a412a586259b55612ba44c82cdeed91436102e6e3ec57db879bd91a4446dcafbaa94632e4e059c6af56d9cca9b163eacb
+  checksum: 9bebaf7fc9c34683d7e97c0398ab9f5a164ce8770e92e8b8a65ed8e85ee3b0fddc5c72dfb18da112e2f643434d217ec7092f57496808c4ae6c2a824f42ae1ccf
   languageName: node
   linkType: hard
 
@@ -5948,7 +5948,7 @@ __metadata:
     "@actions/glob": 0.4.0
     "@actions/io": 1.1.3
     "@octokit/plugin-request-log": 1.0.4
-    "@octokit/plugin-retry": 4.1.3
+    "@octokit/plugin-retry": 4.1.6
     "@octokit/plugin-throttling": 5.2.3
     "@tsconfig/node16": 1.0.4
     "@types/jest": 29.5.2
