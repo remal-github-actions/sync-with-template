@@ -56,5 +56,6 @@
     "json-schema-to-typescript": "13.0.1",
     "ts-jest": "29.1.0",
     "typescript": "5.0.4"
-  }
+  },
+  "packageManager": "yarn@3.6.0"
 }
