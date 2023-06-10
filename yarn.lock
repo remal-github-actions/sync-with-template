@@ -1344,7 +1344,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/semver@npm:^7, @types/semver@npm:^7.3.12":
+"@types/semver@npm:7.5.0, @types/semver@npm:^7.3.12":
   version: 7.5.0
   resolution: "@types/semver@npm:7.5.0"
   checksum: 0a64b9b9c7424d9a467658b18dd70d1d781c2d6f033096a6e05762d20ebbad23c1b69b0083b0484722aabf35640b78ccc3de26368bcae1129c87e9df028a22e2
@@ -5893,7 +5893,7 @@ __metadata:
     "@types/node": 16.18.35
     "@types/picomatch": 2.3.0
     "@types/rimraf": 3.0.2
-    "@types/semver": ^7
+    "@types/semver": 7.5.0
     "@types/tmp": 0.2.3
     "@typescript-eslint/parser": 5.59.9
     "@vercel/ncc": 0.36.1
