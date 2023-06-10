@@ -19,11 +19,16 @@ function writeJsonFile(path, json) {
     fs.writeFileSync(path, content, encoding)
 }
 
-;(function() {
-    fs.writeFileSync('.nvmrc', `v${nodeVersion}`, encoding)
+;(function () {
+    const currentVer = parseInt(
+        fs.readFileSync('.nvmrc', encoding).trim().replace(/^v/, '')
+    )
+    if (currentVer !== nodeVersion) {
+        fs.writeFileSync('.nvmrc', `v${nodeVersion}`, encoding)
+    }
 })()
 
-;(function() {
+;(function () {
     const json = readJsonFile('package.json')
 
     json.engines = json.engines || {}
@@ -59,7 +64,7 @@ function writeJsonFile(path, json) {
     writeJsonFile('package.json', json)
 })()
 
-;(function() {
+;(function () {
     const json = readJsonFile('tsconfig.json')
 
     if ((json.extends || '').startsWith('@tsconfig/node')) {
