@@ -56,16 +56,12 @@ node_modules/
 .classpath
 .project
 .settings/
-.settings/*
 
 
 # Mac:
 .DS_Store
 
 # Remal GitHub actions:
-/build
-/coverage
-
 /.pnp.*
 /.yarn/*
 !/.yarn/patches/
@@ -73,3 +69,5 @@ node_modules/
 !/.yarn/releases/
 !/.yarn/sdks/
 !/.yarn/versions/
+/build
+/coverage
