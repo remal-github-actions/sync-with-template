@@ -6,20 +6,26 @@
     enabled: false, // This is in beta for now, so let's use Dependabot to update Git submodules
   },
 
-  //constraintsFiltering: 'strict',
-
-  node: {
-    enabled: false,
+  constraintsFiltering: "strict",
+  // $$$sync-with-template-modifiable: constraints $$$
+  force: {
+    constraints: {
+      node: "^16.0.0",
+    },
   },
+  // $$$sync-with-template-modifiable-end$$$
 
-  js: {
-    packageRules: [
-      {
-        matchPackageNames: ['@types/node'],
-        extends: ["github>remal/renovate-config:disable-major-updates"],
-      },
-    ],
-  },
+  packageRules: [
+    {
+      "matchCategories": ["node"],
+      "enabled": false
+    },
+    {
+      matchCategories: ["js"],
+      matchPackageNames: ['@types/node'],
+      extends: ["github>remal/renovate-config:disable-major-updates"],
+    },
+  ],
 
   // $$$sync-with-template-modifiable: local $$$
   // $$$sync-with-template-modifiable-end$$$

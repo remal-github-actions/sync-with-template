@@ -73,3 +73,14 @@ function writeJsonFile(path, json) {
 
     writeJsonFile('tsconfig.json', json)
 })()
+
+;(function () {
+    const content = fs.readFileSync('.github/renovate.json5', encoding)
+    const modifiedContent = content.replace(
+        /([ ]*)\/\/\s*\$\$\$sync-with-template-modifiable:\s*constraints\s*\$\$\$[\s\S]*?\/\/\s*\$\$\$sync-with-template-modifiable-end\s*\$\$\$/,
+        `$1// $$$$$sync-with-template-modifiable: constraints $$$$$\n$1force: {\n$1$1constraints: {\n$1$1$1node: "^${nodeVersion}.0.0",\n$1$1},\n$1},\n$1// $$$$$sync-with-template-modifiable-end$$$$$`
+    )
+    if (modifiedContent !== content) {
+        fs.writeFileSync('.github/renovate.json5', modifiedContent, encoding)
+    }
+})()
