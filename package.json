@@ -41,7 +41,7 @@
   "devDependencies": {
     "@tsconfig/node16": "16.1.1",
     "@types/jest": "29.5.4",
-    "@types/node": "16.18.43",
+    "@types/node": "16.18.44",
     "@types/picomatch": "2.3.0",
     "@types/semver": "7.5.0",
     "@types/tmp": "0.2.3",
