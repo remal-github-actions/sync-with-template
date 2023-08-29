@@ -9,7 +9,6 @@
     "experimentalDecorators": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "moduleResolution": "Node",
     "removeComments": true,
     "types": [
       "node",
