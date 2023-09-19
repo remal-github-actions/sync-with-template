@@ -4010,7 +4010,7 @@ __export(dist_src_exports, {
 module.exports = __toCommonJS(dist_src_exports);
 
 // pkg/dist-src/version.js
-var VERSION = "2.0.1";
+var VERSION = "4.0.0";
 
 // pkg/dist-src/index.js
 function requestLog(octokit) {
