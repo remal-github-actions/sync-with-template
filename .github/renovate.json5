@@ -10,7 +10,7 @@
   // $$$sync-with-template-modifiable: constraints $$$
   force: {
     constraints: {
-      node: "^16.9999.9999",
+      node: "^20.9999.9999",
     },
   },
   // $$$sync-with-template-modifiable-end$$$

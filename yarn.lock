@@ -1243,10 +1243,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node16@npm:16.1.1":
-  version: 16.1.1
-  resolution: "@tsconfig/node16@npm:16.1.1"
-  checksum: 26d83db06866083b543e73eda33585464362fd0835229b9a5b1185f0353b9b5db9ca4f66a4be53d4ec5d4c219be42b0a7582f8bcc7268f2f77b1c643375e490f
+"@tsconfig/node20@npm:1.0.0":
+  version: 1.0.0
+  resolution: "@tsconfig/node20@npm:1.0.0"
+  checksum: bb2f9ffeb73d1317f3ebfb260109b5e382cab228da2bc8b6202979605820a771fa7cf7a8defc19c9c9ae9d91d6da7b586ca3d9a1e7e1547af6a5118c462bacef
   languageName: node
   linkType: hard
 
@@ -1380,10 +1380,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:16.18.52":
-  version: 16.18.52
-  resolution: "@types/node@npm:16.18.52"
-  checksum: 6b1f27a848a69a70039cb27c2583317b5d051990933955c42bc2a2f299266ffa360f7cc3c7089d04fdf39144c476d475931900f00dabbc4f933eeb2d664f9778
+"@types/node@npm:20.0.0":
+  version: 20.0.0
+  resolution: "@types/node@npm:20.0.0"
+  checksum: 7dadc41081eee634fd0b19e46dfb0a74f8296ee562533118f7c2f2b54dcaba7124961d506db425fff74d8e8288610b93939cd06fa723f053c72b1a7e87aa4ddc
   languageName: node
   linkType: hard
 
@@ -6482,9 +6482,9 @@ __metadata:
     "@octokit/plugin-request-log": 2.0.1
     "@octokit/plugin-retry": 4.1.6
     "@octokit/plugin-throttling": 5.2.3
-    "@tsconfig/node16": 16.1.1
+    "@tsconfig/node20": 1.0.0
     "@types/jest": 29.5.5
-    "@types/node": 16.18.52
+    "@types/node": 20.0.0
     "@types/picomatch": 2.3.0
     "@types/semver": 7.5.2
     "@types/tmp": 0.2.4
