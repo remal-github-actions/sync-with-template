@@ -1415,10 +1415,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/picomatch@npm:2.3.0":
-  version: 2.3.0
-  resolution: "@types/picomatch@npm:2.3.0"
-  checksum: dde9572b6ca775185bd27a04ab050961f3e59b51863b1883669dcbf010aab394037af201ad9aa89373d9141cf1f5ba1f81266d3af09dfca5879298c128af928d
+"@types/picomatch@npm:2.3.1":
+  version: 2.3.1
+  resolution: "@types/picomatch@npm:2.3.1"
+  checksum: ae7b9186c7146c3a586ab9012a23008903c3ff2cdda4b8c8352150edff8f38a2e8490045299bd048e3b0920b5bfc40808994667a5355bd974816d2977a95f9fe
   languageName: node
   linkType: hard
 
@@ -6513,7 +6513,7 @@ __metadata:
     "@tsconfig/node20": 20.1.2
     "@types/jest": 29.5.5
     "@types/node": 20.6.4
-    "@types/picomatch": 2.3.0
+    "@types/picomatch": 2.3.1
     "@types/semver": 7.5.2
     "@types/tmp": 0.2.4
     "@typescript-eslint/parser": 6.7.2
