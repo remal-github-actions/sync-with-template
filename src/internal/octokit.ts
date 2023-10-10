@@ -1,9 +1,7 @@
 import * as core from '@actions/core'
 import { getOctokitOptions, GitHub } from '@actions/github/lib/utils'
 import { Octokit as OctokitCore } from '@octokit/core'
-import { PaginateInterface } from '@octokit/plugin-paginate-rest'
 import { requestLog } from '@octokit/plugin-request-log'
-import { RestEndpointMethods } from '@octokit/plugin-rest-endpoint-methods/dist-types/generated/method-types'
 import { retry } from '@octokit/plugin-retry'
 import { throttling } from '@octokit/plugin-throttling'
 
@@ -18,10 +16,7 @@ const OctokitWithPlugins = GitHub
         ],
     })
 
-
-export type Octokit = RestEndpointMethods & { paginate: PaginateInterface }
-
-export function newOctokitInstance(token: string): Octokit {
+export function newOctokitInstance(token: string) {
     const baseOptions = getOctokitOptions(token)
 
     const throttleOptions = {
@@ -30,11 +25,10 @@ export function newOctokitInstance(token: string): Octokit {
                 const retryCount = options.request.retryCount
                 const retryLogInfo = retryCount === 0 ? '' : ` (retry #${retryCount})`
                 core.debug(`Request quota exhausted for request ${options.method} ${options.url}${retryLogInfo}`)
-
                 return retryCount <= 4
             },
             onSecondaryRateLimit: (retryAfter, options) => {
-                core.warning(`Abuse detected for request ${options.method} ${options.url}`)
+                core.error(`Abuse detected for request ${options.method} ${options.url}`)
                 return false // Don't repeat
             },
         },
@@ -60,8 +54,16 @@ export function newOctokitInstance(token: string): Octokit {
     }
 
     const octokit = new OctokitWithPlugins(allOptions)
-    return {
+
+    type Rest = typeof octokit.rest
+    type Paginate = { paginate: typeof octokit.paginate }
+    type Client = Rest & Paginate
+
+    const client: Client = {
         ...octokit.rest,
         paginate: octokit.paginate,
     }
+    return client
 }
+
+export type Octokit = ReturnType<typeof newOctokitInstance>
