@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import {context} from '@actions/github'
-import {components, operations} from '@octokit/openapi-types'
+import type {components, operations} from '@octokit/openapi-types'
 import Ajv2020 from 'ajv/dist/2020'
 import * as crypto from 'crypto'
 import * as fs from 'fs'
@@ -8,7 +8,8 @@ import {PathLike} from 'fs'
 import JSON5 from 'json5'
 import path from 'path'
 import picomatch from 'picomatch'
-import simpleGit, {SimpleGit} from 'simple-git'
+import {simpleGit} from 'simple-git'
+import {SimpleGit} from 'simple-git/promise'
 import * as tmp from 'tmp'
 import {URL} from 'url'
 import * as util from 'util'
@@ -36,9 +37,9 @@ require('debug').log = function log(...args) {
 if (core.isDebug()) {
     require('debug').enable('simple-git,simple-git:*')
     process.env.DEBUG = [
-        process.env.DEBUG || '',
+        process.env.DEBUG ?? '',
         'simple-git',
-        'simple-git:*'
+        'simple-git:*',
     ].filter(it => it.length).join(',')
 }
 
@@ -158,7 +159,7 @@ async function run(): Promise<void> {
             return parsedConfig as unknown as Config
         })
 
-        config.excludes = config.excludes || []
+        config.excludes = config.excludes ?? []
         config.excludes.push(transformationsFilePath)
 
 
@@ -180,24 +181,24 @@ async function run(): Promise<void> {
                 const valid = validate(parsedTransformations)
                 if (!valid) {
                     throw new Error(
-                        `Transformations validation error: ${JSON.stringify(validate.errors, null, 2)}`
+                        `Transformations validation error: ${JSON.stringify(validate.errors, null, 2)}`,
                     )
                 }
 
                 return parsedTransformations as unknown as LocalTransformations
-            }
+            },
         )
 
-        if (localTransformations != null && localTransformations.repositories != null) {
+        if (localTransformations?.repositories != null) {
             const repoFullName = `${context.repo.owner}/${context.repo.repo}`
             if (!localTransformations.repositories.includes(repoFullName)) {
                 throw new Error(`Local transformations file ${transformationsFilePath} doesn't contain`
-                    + ` the current repository full name: ${repoFullName}`
+                    + ` the current repository full name: ${repoFullName}`,
                 )
             }
         }
 
-        const allTransformations = localTransformations != null && localTransformations.transformations != null
+        const allTransformations = localTransformations?.transformations != null
             ? [...localTransformations.transformations]
             : []
 
@@ -213,12 +214,12 @@ async function run(): Promise<void> {
         const transformations = allTransformations.filter(it => it.ignore !== true)
 
         function isTransforming(transformation: FilesTransformation, fileToSync: string): boolean {
-            const includesMatcher = transformation.includes != null && transformation.includes.length
+            const includesMatcher = transformation.includes?.length
                 ? picomatch(transformation.includes)
                 : undefined
             if (includesMatcher != null && !includesMatcher(fileToSync)) return false
 
-            const excludesMatcher = transformation.excludes != null && transformation.excludes.length
+            const excludesMatcher = transformation.excludes?.length
                 ? picomatch(transformation.excludes)
                 : undefined
             if (excludesMatcher != null && excludesMatcher(fileToSync)) return false
@@ -228,21 +229,21 @@ async function run(): Promise<void> {
 
 
         const filesToSync = await core.group('Calculating files to sync', async () => {
-            const includesMatcher = config.includes != null && config.includes.length
+            const includesMatcher = config.includes?.length
                 ? picomatch(config.includes)
                 : undefined
-            const excludesMatcher = config.excludes != null && config.excludes.length
+            const excludesMatcher = config.excludes?.length
                 ? picomatch(config.excludes)
                 : undefined
             return git.raw(
                 'ls-tree',
                 '-r',
                 '--name-only',
-                `remotes/template/${templateRepo.default_branch}`
+                `remotes/template/${templateRepo.default_branch}`,
             )
                 .then(content => content.split(/[\r\n]+/)
                     .map(line => line.trim())
-                    .filter(line => line.length > 0)
+                    .filter(line => line.length > 0),
                 )
                 .then(allFiles => {
                     return allFiles
@@ -293,11 +294,11 @@ async function run(): Promise<void> {
                 }
 
                 if (isDeletedByTransformations(fileToSync)) {
-					const fileToSyncPath = path.join(workspacePath, fileToSync)
-					if (fs.existsSync(fileToSyncPath)) {
-						fs.unlinkSync(fileToSyncPath)
-					}
-					continue
+                    const fileToSyncPath = path.join(workspacePath, fileToSync)
+                    if (fs.existsSync(fileToSyncPath)) {
+                        fs.unlinkSync(fileToSyncPath)
+                    }
+                    continue
                 }
 
                 const modifiableSections = await parseModifiableSectionsFor(fileToSync)
@@ -352,7 +353,7 @@ async function run(): Promise<void> {
                     if (transformation.replaceWithFile != null) {
                         const replaceWithPath = path.join(workspacePath, transformation.replaceWithFile)
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
-                            + `: replacing with the content of ${transformation.replaceWithFile}`
+                            + `: replacing with the content of ${transformation.replaceWithFile}`,
                         )
                         if (!fs.existsSync(replaceWithPath)) {
                             throw new Error(`File doesn't exist: ${transformation.replaceWithFile}`)
@@ -364,7 +365,7 @@ async function run(): Promise<void> {
 
                     if (transformation.replaceWithText != null) {
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`
-                            + `: replacing with text`
+                            + `: replacing with text`,
                         )
                         const fileToSyncPath = path.join(workspacePath, fileToSync)
                         fs.writeFileSync(fileToSyncPath, transformation.replaceWithText, 'utf8')
@@ -479,17 +480,17 @@ async function run(): Promise<void> {
             await git.raw('add', '--all')
             const changedFiles = await git.status().then(response => response.files)
 
-			if (changedFiles.length === 0) {
-				core.info('No files were changed')
-			} else {
-				await core.group('Changes', async () => {
-					await git.raw('diff', '--cached').then(content => core.info(content))
-				})
-			}
+            if (changedFiles.length === 0) {
+                core.info('No files were changed')
+            } else {
+                await core.group('Changes', async () => {
+                    await git.raw('diff', '--cached').then(content => core.info(content))
+                })
+            }
 
-			const prSyncMessage = changedFiles.length === 0
-				? 'Committing and synchronizing PR'
-				: 'Committing and creating/synchronizing PR'
+            const prSyncMessage = changedFiles.length === 0
+                ? 'Committing and synchronizing PR'
+                : 'Committing and creating/synchronizing PR'
             await core.group(prSyncMessage, async () => {
                 const openedPr = await getOpenedPullRequest()
 
@@ -501,12 +502,12 @@ async function run(): Promise<void> {
                                 openedPr,
                                 'autoclosed',
                                 `Autoclosing the PR, as no files will be changed after merging the changes`
-                                + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`
+                                + ` from \`${syncBranchName}\` branch into \`${defaultBranchName}\` branch.`,
                             )
                         }
                         if (repoBranches.hasOwnProperty(syncBranchName)) {
                             core.info(`Removing '${syncBranchName}' branch, as no files will be changed after merging the changes`
-                                + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`
+                                + ` from '${syncBranchName}' branch into '${defaultBranchName}' branch`,
                             )
                             await git.raw('push', '--delete', 'origin', syncBranchName)
                         }
@@ -574,7 +575,7 @@ async function run(): Promise<void> {
         }
 
     } catch (error) {
-        core.setFailed(error instanceof Error ? error : (error as object).toString())
+        core.setFailed(error instanceof Error ? error : (error as any).toString())
         throw error
     }
 }
@@ -622,7 +623,7 @@ const predefinedFilesTransformationScripts: Record<string, (content: any) => str
 
                 quote = quote || ''
                 return prefix + quote + newExpression + quote + suffix
-            }
+            },
         )
     },
 }
@@ -737,7 +738,7 @@ async function getOpenedPullRequest(): Promise<PullRequestSimple | undefined> {
             const promises = prs.map((pr, index) =>
                 index === 0
                     ? Promise.resolve(pr)
-                    : closePullRequest(pr, 'autoclosed redundant')
+                    : closePullRequest(pr, 'autoclosed redundant'),
             )
             return Promise.all(promises as Promise<any>[])
         })
@@ -753,7 +754,7 @@ async function getOpenedPullRequest(): Promise<PullRequestSimple | undefined> {
 async function closePullRequest(
     pullRequest: PullRequest | PullRequestSimple,
     titleSuffix?: string,
-    message?: string
+    message?: string,
 ) {
     core.info(`Closing pull request ${pullRequest.html_url}`)
 
@@ -762,7 +763,7 @@ async function closePullRequest(
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: pullRequest.number,
-            body: message
+            body: message,
         })
     }
 
@@ -773,18 +774,16 @@ async function closePullRequest(
         state: 'closed',
         title: titleSuffix
             ? `${pullRequest.title} - ${titleSuffix}`
-            : pullRequest.title
+            : pullRequest.title,
     }).then(it => it.data)
 }
 
 async function createPullRequest(info: NewPullRequest) {
-    const pullRequest = await octokit.pulls.create(Object.assign(
-        {
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-        },
-        info
-    )).then(it => it.data)
+    const pullRequest = await octokit.pulls.create({
+        ...info,
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+    }).then(it => it.data)
 
     await octokit.issues.addLabels({
         owner: context.repo.owner,
