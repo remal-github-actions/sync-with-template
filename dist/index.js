@@ -221,7 +221,7 @@ const fs = __importStar(__nccwpck_require__(7147));
 const json5_1 = __importDefault(__nccwpck_require__(6904));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const picomatch_1 = __importDefault(__nccwpck_require__(8569));
-const simple_git_1 = __importDefault(__nccwpck_require__(9103));
+const simple_git_1 = __nccwpck_require__(9103);
 const tmp = __importStar(__nccwpck_require__(8517));
 const url_1 = __nccwpck_require__(7310);
 const util = __importStar(__nccwpck_require__(3837));
@@ -238,9 +238,9 @@ const octokit_1 = __nccwpck_require__(2931);
 if (core.isDebug()) {
     (__nccwpck_require__(8237).enable)('simple-git,simple-git:*');
     process.env.DEBUG = [
-        process.env.DEBUG || '',
+        process.env.DEBUG ?? '',
         'simple-git',
-        'simple-git:*'
+        'simple-git:*',
     ].filter(it => it.length).join(',');
 }
 const configFilePath = core.getInput('configFile', { required: true });
@@ -276,7 +276,7 @@ async function run() {
             return;
         }
         core.info(`Using ${templateRepo.full_name} as a template repository`);
-        const git = (0, simple_git_1.default)(workspacePath)
+        const git = (0, simple_git_1.simpleGit)(workspacePath)
             .env(DEFAULT_GIT_ENV);
         await core.group('Initializing the repository', async () => {
             await git.init();
@@ -330,7 +330,7 @@ async function run() {
             }
             return parsedConfig;
         });
-        config.excludes = config.excludes || [];
+        config.excludes = config.excludes ?? [];
         config.excludes.push(transformationsFilePath);
         const localTransformations = await core.group(`Parsing local transformations: ${transformationsFilePath}`, async () => {
             const transformationsPath = path_1.default.join(workspacePath, transformationsFilePath);
@@ -349,14 +349,14 @@ async function run() {
             }
             return parsedTransformations;
         });
-        if (localTransformations != null && localTransformations.repositories != null) {
+        if (localTransformations?.repositories != null) {
             const repoFullName = `${github_1.context.repo.owner}/${github_1.context.repo.repo}`;
             if (!localTransformations.repositories.includes(repoFullName)) {
                 throw new Error(`Local transformations file ${transformationsFilePath} doesn't contain`
                     + ` the current repository full name: ${repoFullName}`);
             }
         }
-        const allTransformations = localTransformations != null && localTransformations.transformations != null
+        const allTransformations = localTransformations?.transformations != null
             ? [...localTransformations.transformations]
             : [];
         allTransformations.push({
@@ -369,12 +369,12 @@ async function run() {
         const deletingTransformations = allTransformations.filter(it => it.delete === true);
         const transformations = allTransformations.filter(it => it.ignore !== true);
         function isTransforming(transformation, fileToSync) {
-            const includesMatcher = transformation.includes != null && transformation.includes.length
+            const includesMatcher = transformation.includes?.length
                 ? (0, picomatch_1.default)(transformation.includes)
                 : undefined;
             if (includesMatcher != null && !includesMatcher(fileToSync))
                 return false;
-            const excludesMatcher = transformation.excludes != null && transformation.excludes.length
+            const excludesMatcher = transformation.excludes?.length
                 ? (0, picomatch_1.default)(transformation.excludes)
                 : undefined;
             if (excludesMatcher != null && excludesMatcher(fileToSync))
@@ -382,10 +382,10 @@ async function run() {
             return true;
         }
         const filesToSync = await core.group('Calculating files to sync', async () => {
-            const includesMatcher = config.includes != null && config.includes.length
+            const includesMatcher = config.includes?.length
                 ? (0, picomatch_1.default)(config.includes)
                 : undefined;
-            const excludesMatcher = config.excludes != null && config.excludes.length
+            const excludesMatcher = config.excludes?.length
                 ? (0, picomatch_1.default)(config.excludes)
                 : undefined;
             return git.raw('ls-tree', '-r', '--name-only', `remotes/template/${templateRepo.default_branch}`)
@@ -835,7 +835,7 @@ async function closePullRequest(pullRequest, titleSuffix, message) {
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
             issue_number: pullRequest.number,
-            body: message
+            body: message,
         });
     }
     return octokit.pulls.update({
@@ -845,14 +845,15 @@ async function closePullRequest(pullRequest, titleSuffix, message) {
         state: 'closed',
         title: titleSuffix
             ? `${pullRequest.title} - ${titleSuffix}`
-            : pullRequest.title
+            : pullRequest.title,
     }).then(it => it.data);
 }
 async function createPullRequest(info) {
-    const pullRequest = await octokit.pulls.create(Object.assign({
+    const pullRequest = await octokit.pulls.create({
+        ...info,
         owner: github_1.context.repo.owner,
         repo: github_1.context.repo.repo,
-    }, info)).then(it => it.data);
+    }).then(it => it.data);
     await octokit.issues.addLabels({
         owner: github_1.context.repo.owner,
         repo: github_1.context.repo.repo,
