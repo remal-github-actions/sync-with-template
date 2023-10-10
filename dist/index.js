@@ -135,7 +135,7 @@ const OctokitWithPlugins = utils_1.GitHub
     previews: [
         'baptiste',
         'mercy',
-    ]
+    ],
 });
 function newOctokitInstance(token) {
     const baseOptions = (0, utils_1.getOctokitOptions)(token);
@@ -147,16 +147,16 @@ function newOctokitInstance(token) {
                 core.debug(`Request quota exhausted for request ${options.method} ${options.url}${retryLogInfo}`);
                 return retryCount <= 4;
             },
-            onAbuseLimit: (retryAfter, options) => {
+            onSecondaryRateLimit: (retryAfter, options) => {
                 core.warning(`Abuse detected for request ${options.method} ${options.url}`);
                 return false;
-            }
-        }
+            },
+        },
     };
     const retryOptions = {
         retry: {
-            doNotRetry: ['429']
-        }
+            doNotRetry: ['429'],
+        },
     };
     const logOptions = {};
     const traceLogging = __nccwpck_require__(385)({ level: 'trace' });
@@ -167,10 +167,13 @@ function newOctokitInstance(token) {
         ...baseOptions,
         ...throttleOptions,
         ...retryOptions,
-        ...logOptions
+        ...logOptions,
     };
     const octokit = new OctokitWithPlugins(allOptions);
-    return Object.assign({}, octokit.rest, { paginate: octokit.paginate });
+    return {
+        ...octokit.rest,
+        paginate: octokit.paginate,
+    };
 }
 exports.newOctokitInstance = newOctokitInstance;
 
