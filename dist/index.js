@@ -5245,7 +5245,7 @@ async function requestWithGraphqlErrorHandling(state, octokit, request, options)
 }
 
 // pkg/dist-src/index.js
-var VERSION = "5.0.5";
+var VERSION = "6.0.1";
 function retry(octokit, octokitOptions) {
   const state = Object.assign(
     {
