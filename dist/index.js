@@ -148,7 +148,7 @@ function newOctokitInstance(token) {
                 return retryCount <= 4;
             },
             onSecondaryRateLimit: (retryAfter, options) => {
-                core.warning(`Abuse detected for request ${options.method} ${options.url}`);
+                core.error(`Abuse detected for request ${options.method} ${options.url}`);
                 return false;
             },
         },
@@ -170,10 +170,11 @@ function newOctokitInstance(token) {
         ...logOptions,
     };
     const octokit = new OctokitWithPlugins(allOptions);
-    return {
+    const client = {
         ...octokit.rest,
         paginate: octokit.paginate,
     };
+    return client;
 }
 exports.newOctokitInstance = newOctokitInstance;
 
