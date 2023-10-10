@@ -12,7 +12,7 @@
     "generate-config": "json2ts config.schema.json > src/internal/config.ts",
     "generate-local-transformations": "json2ts local-transformations.schema.json > src/internal/local-transformations.ts",
     "generate": "npm run generate-config && npm run generate-local-transformations",
-    "lint": "eslint --fix --format compact",
+    "lint": "eslint --fix 'src/**/*'",
     "test": "jest --passWithNoTests",
     "tsconfig-generate-app": "node tsconfig-generate-app",
     "compile": "npm run generate && npm run lint && rimraf build && node tsconfig-generate-app && tsc -project tsconfig.app.json --rootDir . --outDir build",
