@@ -8613,7 +8613,7 @@ var import_light = __toESM(__nccwpck_require__(1174));
 var import_core = __nccwpck_require__(6762);
 
 // pkg/dist-src/version.js
-var VERSION = "8.0.0";
+var VERSION = "8.0.1";
 
 // pkg/dist-src/wrap-request.js
 var noop = () => Promise.resolve();
