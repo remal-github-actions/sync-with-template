@@ -1136,15 +1136,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/plugin-throttling@npm:8.0.0":
-  version: 8.0.0
-  resolution: "@octokit/plugin-throttling@npm:8.0.0"
+"@octokit/plugin-throttling@npm:8.0.1":
+  version: 8.0.1
+  resolution: "@octokit/plugin-throttling@npm:8.0.1"
   dependencies:
     "@octokit/types": ^12.0.0
     bottleneck: ^2.15.3
   peerDependencies:
     "@octokit/core": ^5.0.0
-  checksum: 17a7a4b6c7d978cd337f1d3e2ba087fb129b02f3453eddac8614bd4eff2fdaa8e7a0cb3708553f5d85770ad238c5c26c3a67bf9d19aa814670e23a6e04ed3509
+  checksum: 1aac80ab5c030fb854b21ca6e29f092d54afc321165901b1a74bf550953596c7da96d91e49021deb126e13678cc5cc263c563ac792650329572e632c9320aa08
   languageName: node
   linkType: hard
 
@@ -6784,7 +6784,7 @@ __metadata:
     "@actions/io": 1.1.3
     "@octokit/plugin-request-log": 4.0.0
     "@octokit/plugin-retry": 6.0.1
-    "@octokit/plugin-throttling": 8.0.0
+    "@octokit/plugin-throttling": 8.0.1
     "@tsconfig/node20": 20.1.2
     "@types/jest": 29.5.6
     "@types/node": 20.8.7
