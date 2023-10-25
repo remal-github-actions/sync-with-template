@@ -8613,7 +8613,7 @@ var import_light = __toESM(__nccwpck_require__(1174));
 var import_core = __nccwpck_require__(6762);
 
 // pkg/dist-src/version.js
-var VERSION = "8.1.0";
+var VERSION = "8.1.2";
 
 // pkg/dist-src/wrap-request.js
 var noop = () => Promise.resolve();
@@ -8784,12 +8784,16 @@ function throttling(octokit, octokitOptions) {
         );
         return { wantRetry: wantRetry2, retryAfter: retryAfter2 };
       }
-      if (error.response.headers != null && error.response.headers["x-ratelimit-remaining"] === "0") {
+      if (error.response.headers != null && error.response.headers["x-ratelimit-remaining"] === "0" || (error.response.data?.errors ?? []).some(
+        (error2) => error2.type === "RATE_LIMITED"
+      )) {
         const rateLimitReset = new Date(
           ~~error.response.headers["x-ratelimit-reset"] * 1e3
         ).getTime();
         const retryAfter2 = Math.max(
-          Math.ceil((rateLimitReset - Date.now()) / 1e3),
+          // Add one second so we retry _after_ the reset time
+          // https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#exceeding-the-rate-limit
+          Math.ceil((rateLimitReset - Date.now()) / 1e3) + 1,
           0
         );
         const wantRetry2 = await emitter.trigger(
