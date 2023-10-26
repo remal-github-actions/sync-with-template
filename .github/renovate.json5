@@ -25,8 +25,10 @@
       matchPackageNames: ['@types/node'],
       extends: ["github>remal/renovate-config:disable-major-updates"],
     },
+    {
+      matchCategories: ["js"],
+      matchPackageNames: ["renovate"],
+      schedule: ["after 6pm on sunday"]
+    },
   ],
-
-  // $$$sync-with-template-modifiable: local $$$
-  // $$$sync-with-template-modifiable-end$$$
 }
