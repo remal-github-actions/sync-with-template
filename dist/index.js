@@ -23544,18 +23544,41 @@ module.exports.win32 = win32;
 "use strict";
 
 
-module.exports = __nccwpck_require__(3322);
+const os = __nccwpck_require__(2037);
+const pico = __nccwpck_require__(3322);
+
+const isWindows = os.platform() === 'win32';
+
+function picomatch(glob, options, returnState = false) {
+  // default to os.platform()
+  if (options && (options.windows === null || options.windows === undefined)) {
+    // don't mutate the original options object
+    options = { ...options, windows: isWindows };
+  }
+  return pico(glob, options, returnState);
+}
+
+module.exports = picomatch;
+// public api
+module.exports.test = pico.test;
+module.exports.matchBase = pico.matchBase;
+module.exports.isMatch = pico.isMatch;
+module.exports.parse = pico.parse;
+module.exports.scan = pico.scan;
+module.exports.compileRe = pico.compileRe;
+module.exports.toRegex = pico.toRegex;
+// for tests
+module.exports.makeRe = pico.makeRe;
 
 
 /***/ }),
 
 /***/ 6099:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+/***/ ((module) => {
 
 "use strict";
 
 
-const path = __nccwpck_require__(1017);
 const WIN_SLASH = '\\\\/';
 const WIN_NO_SLASH = `[^${WIN_SLASH}]`;
 
@@ -23578,6 +23601,7 @@ const NO_DOT_SLASH = `(?!${DOT_LITERAL}{0,1}${END_ANCHOR})`;
 const NO_DOTS_SLASH = `(?!${DOTS_SLASH})`;
 const QMARK_NO_DOT = `[^.${SLASH_LITERAL}]`;
 const STAR = `${QMARK}*?`;
+const SEP = '/';
 
 const POSIX_CHARS = {
   DOT_LITERAL,
@@ -23594,7 +23618,8 @@ const POSIX_CHARS = {
   NO_DOTS_SLASH,
   QMARK_NO_DOT,
   STAR,
-  START_ANCHOR
+  START_ANCHOR,
+  SEP
 };
 
 /**
@@ -23614,7 +23639,8 @@ const WINDOWS_CHARS = {
   NO_DOTS_SLASH: `(?!${DOT_LITERAL}{1,2}(?:[${WIN_SLASH}]|$))`,
   QMARK_NO_DOT: `[^.${WIN_SLASH}]`,
   START_ANCHOR: `(?:^|[${WIN_SLASH}])`,
-  END_ANCHOR: `(?:[${WIN_SLASH}]|$)`
+  END_ANCHOR: `(?:[${WIN_SLASH}]|$)`,
+  SEP: '\\'
 };
 
 /**
@@ -23707,8 +23733,6 @@ module.exports = {
   CHAR_UNDERSCORE: 95, /* _ */
   CHAR_VERTICAL_LINE: 124, /* | */
   CHAR_ZERO_WIDTH_NOBREAK_SPACE: 65279, /* \uFEFF */
-
-  SEP: path.sep,
 
   /**
    * Create EXTGLOB_CHARS
@@ -23813,10 +23837,9 @@ const parse = (input, options) => {
   const tokens = [bos];
 
   const capture = opts.capture ? '' : '?:';
-  const win32 = utils.isWindows(options);
 
   // create constants based on platform, for windows or posix
-  const PLATFORM_CHARS = constants.globChars(win32);
+  const PLATFORM_CHARS = constants.globChars(opts.windows);
   const EXTGLOB_CHARS = constants.extglobChars(PLATFORM_CHARS);
 
   const {
@@ -24752,7 +24775,6 @@ parse.fastpaths = (input, options) => {
   }
 
   input = REPLACEMENTS[input] || input;
-  const win32 = utils.isWindows(options);
 
   // create constants based on platform, for windows or posix
   const {
@@ -24765,7 +24787,7 @@ parse.fastpaths = (input, options) => {
     NO_DOTS_SLASH,
     STAR,
     START_ANCHOR
-  } = constants.globChars(win32);
+  } = constants.globChars(opts.windows);
 
   const nodot = opts.dot ? NO_DOTS : NO_DOT;
   const slashDot = opts.dot ? NO_DOTS_SLASH : NO_DOT;
@@ -24841,7 +24863,6 @@ module.exports = parse;
 "use strict";
 
 
-const path = __nccwpck_require__(1017);
 const scan = __nccwpck_require__(2429);
 const parse = __nccwpck_require__(2139);
 const utils = __nccwpck_require__(479);
@@ -24890,7 +24911,7 @@ const picomatch = (glob, options, returnState = false) => {
   }
 
   const opts = options || {};
-  const posix = utils.isWindows(options);
+  const posix = opts.windows;
   const regex = isState
     ? picomatch.compileRe(glob, options)
     : picomatch.makeRe(glob, options, false, true);
@@ -24999,9 +25020,9 @@ picomatch.test = (input, regex, options, { glob, posix } = {}) => {
  * @api public
  */
 
-picomatch.matchBase = (input, glob, options, posix = utils.isWindows(options)) => {
+picomatch.matchBase = (input, glob, options) => {
   const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options);
-  return regex.test(path.basename(input));
+  return regex.test(utils.basename(input));
 };
 
 /**
@@ -25590,8 +25611,6 @@ module.exports = scan;
 "use strict";
 
 
-const path = __nccwpck_require__(1017);
-const win32 = process.platform === 'win32';
 const {
   REGEX_BACKSLASH,
   REGEX_REMOVE_BACKSLASH,
@@ -25612,18 +25631,13 @@ exports.removeBackslashes = str => {
 };
 
 exports.supportsLookbehinds = () => {
-  const segs = process.version.slice(1).split('.').map(Number);
-  if (segs.length === 3 && segs[0] >= 9 || (segs[0] === 8 && segs[1] >= 10)) {
-    return true;
+  if (typeof process !== 'undefined') {
+    const segs = process.version.slice(1).split('.').map(Number);
+    if (segs.length === 3 && segs[0] >= 9 || (segs[0] === 8 && segs[1] >= 10)) {
+      return true;
+    }
   }
   return false;
-};
-
-exports.isWindows = options => {
-  if (options && typeof options.windows === 'boolean') {
-    return options.windows;
-  }
-  return win32 === true || path.sep === '\\';
 };
 
 exports.escapeLast = (input, char, lastIdx) => {
@@ -25651,6 +25665,17 @@ exports.wrapOutput = (input, state = {}, options = {}) => {
     output = `(?:^(?!${output}).*$)`;
   }
   return output;
+};
+
+exports.basename = (path, { windows } = {}) => {
+  const segs = path.split(windows ? /[\\/]/ : '/');
+  const last = segs[segs.length - 1];
+
+  if (last === '') {
+    return segs[segs.length - 2];
+  }
+
+  return last;
 };
 
 
