@@ -6119,10 +6119,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"picomatch@npm:3.0.0":
-  version: 3.0.0
-  resolution: "picomatch@npm:3.0.0"
-  checksum: 3565af2240d9909940f31b849c5f4cf8bd306aa23cb68425d8e2b04fc52c2a15ca19817df547d3f74b8613bcbb485bbe9b4b5f5d6709286978cba5bd0de22983
+"picomatch@npm:3.0.1":
+  version: 3.0.1
+  resolution: "picomatch@npm:3.0.1"
+  checksum: 70ec738569f1864658378b7abdab8939d15dae0718c1df994eae3346fd33daf6a3c1ff4e0c1a0cd1e2c0319130985b63a2cff34d192f2f2acbb78aca76111736
   languageName: node
   linkType: hard
 
@@ -6935,7 +6935,7 @@ __metadata:
     jest-circus: "npm:29.7.0"
     json-schema-to-typescript: "npm:13.1.1"
     json5: "npm:2.2.3"
-    picomatch: "npm:3.0.0"
+    picomatch: "npm:3.0.1"
     rimraf: "npm:5.0.5"
     semver: "npm:7.5.4"
     simple-git: "npm:3.20.0"
