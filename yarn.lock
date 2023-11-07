@@ -1387,10 +1387,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/picomatch@npm:2.3.2":
-  version: 2.3.2
-  resolution: "@types/picomatch@npm:2.3.2"
-  checksum: 91445cfc0d07fe2a44c16ee284ab2e2a279da3f6df9c62ad61e7bc50343e47bef541369aff6110c4e51bd8fe501fc9c564deefbb4c03e392254889de6b46f237
+"@types/picomatch@npm:2.3.3":
+  version: 2.3.3
+  resolution: "@types/picomatch@npm:2.3.3"
+  checksum: 5ad7f891eb3e16e8eb1f51615f0b755bc44ac5dff5a1e2513229f307f72e226c917c6b9a829a97134cedbec727036f885890a55b1975b6e3f381b6545b962c4d
   languageName: node
   linkType: hard
 
@@ -6916,7 +6916,7 @@ __metadata:
     "@tsconfig/node20": "npm:20.1.2"
     "@types/jest": "npm:29.5.7"
     "@types/node": "npm:20.8.10"
-    "@types/picomatch": "npm:2.3.2"
+    "@types/picomatch": "npm:2.3.3"
     "@types/semver": "npm:7.5.4"
     "@types/tmp": "npm:0.2.5"
     "@typescript-eslint/eslint-plugin": "npm:6.10.0"
