@@ -1422,10 +1422,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/tmp@npm:0.2.5":
-  version: 0.2.5
-  resolution: "@types/tmp@npm:0.2.5"
-  checksum: 7e14edd4238d5e34fc38cf1da017faf415a655e41e47404466dcb6eed10ca27062deb52b01358e4cc336cb2517d245271e2f03a51f2751063298d324cf0f056e
+"@types/tmp@npm:0.2.6":
+  version: 0.2.6
+  resolution: "@types/tmp@npm:0.2.6"
+  checksum: a11bfa2cd8eaa6c5d62f62a3569192d7a2c28efdc5c17af0b0551db85816b2afc8156f3ca15ac76f0b142ae1403f04f44279871424233a1f3390b2e5fc828cd0
   languageName: node
   linkType: hard
 
@@ -6918,7 +6918,7 @@ __metadata:
     "@types/node": "npm:20.8.10"
     "@types/picomatch": "npm:2.3.3"
     "@types/semver": "npm:7.5.4"
-    "@types/tmp": "npm:0.2.5"
+    "@types/tmp": "npm:0.2.6"
     "@typescript-eslint/eslint-plugin": "npm:6.10.0"
     "@typescript-eslint/parser": "npm:6.10.0"
     "@vercel/ncc": "npm:0.38.1"
