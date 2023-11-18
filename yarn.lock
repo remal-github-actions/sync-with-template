@@ -1092,6 +1092,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@octokit/openapi-types@npm:^19.0.2":
+  version: 19.0.2
+  resolution: "@octokit/openapi-types@npm:19.0.2"
+  checksum: e003a3b7471edfa970911252c19ce9331d935699cc1e91a1e151316b585c3b2f5251bc5ba137b7e14aed8a9b3890fdf67edc5cc5af4805bf4b44f5869544e678
+  languageName: node
+  linkType: hard
+
 "@octokit/plugin-paginate-rest@npm:^9.0.0":
   version: 9.0.0
   resolution: "@octokit/plugin-paginate-rest@npm:9.0.0"
@@ -1136,15 +1143,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/plugin-throttling@npm:8.1.2":
-  version: 8.1.2
-  resolution: "@octokit/plugin-throttling@npm:8.1.2"
+"@octokit/plugin-throttling@npm:8.1.3":
+  version: 8.1.3
+  resolution: "@octokit/plugin-throttling@npm:8.1.3"
   dependencies:
-    "@octokit/types": "npm:^12.0.0"
+    "@octokit/types": "npm:^12.2.0"
     bottleneck: "npm:^2.15.3"
   peerDependencies:
     "@octokit/core": ^5.0.0
-  checksum: 0c1b3fa78e46f8a52fbf67356284deb0e24820cae0dcd8682f6293155460c648d4d51de5e62b2495318f68554acf2542ac028d1329540c3c9178b39264eb0996
+  checksum: aa21da4078a64f8ce0e7f340d041ad8d58d2fc8eb3fa658ba82e0b3207d689ccfbdd0fd3e2104fb2eea1de37f7857bae835705465122dda310d0fd7041bfdf94
   languageName: node
   linkType: hard
 
@@ -1178,6 +1185,15 @@ __metadata:
   dependencies:
     "@octokit/openapi-types": "npm:^19.0.0"
   checksum: 6e5b68f8855775638db53244348d2ca07896d36a15aad41d3cb652fafaa1b307c3b6222319174dd5716accd9076e101da838b82f988a7c380a8e9d188e3aadf1
+  languageName: node
+  linkType: hard
+
+"@octokit/types@npm:^12.2.0":
+  version: 12.3.0
+  resolution: "@octokit/types@npm:12.3.0"
+  dependencies:
+    "@octokit/openapi-types": "npm:^19.0.2"
+  checksum: 083f33d8df492ef4029b94b1b5ac5ac422bc5787fe6c086d4738007f207e2b8fa523a1397ecc902d808ba235ec7bf7e38f4659cae177d40002e43eadf3b6f3d8
   languageName: node
   linkType: hard
 
@@ -6912,7 +6928,7 @@ __metadata:
     "@actions/io": "npm:1.1.3"
     "@octokit/plugin-request-log": "npm:4.0.0"
     "@octokit/plugin-retry": "npm:6.0.1"
-    "@octokit/plugin-throttling": "npm:8.1.2"
+    "@octokit/plugin-throttling": "npm:8.1.3"
     "@tsconfig/node20": "npm:20.1.2"
     "@types/jest": "npm:29.5.8"
     "@types/node": "npm:20.9.1"
