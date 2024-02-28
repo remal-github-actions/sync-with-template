@@ -6437,7 +6437,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rimraf@npm:5.0.5":
+"rimraf@npm:5.0.5, rimraf@npm:^5.0.5":
   version: 5.0.5
   resolution: "rimraf@npm:5.0.5"
   dependencies:
@@ -6448,7 +6448,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rimraf@npm:^3.0.0, rimraf@npm:^3.0.2":
+"rimraf@npm:^3.0.2":
   version: 3.0.2
   resolution: "rimraf@npm:3.0.2"
   dependencies:
@@ -6977,7 +6977,7 @@ __metadata:
     rimraf: "npm:5.0.5"
     semver: "npm:7.6.0"
     simple-git: "npm:3.22.0"
-    tmp: "npm:0.2.1"
+    tmp: "npm:0.2.2"
     ts-jest: "npm:29.1.2"
     typescript: "npm:5.3.3"
     vm2: "npm:3.9.19"
@@ -7072,12 +7072,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tmp@npm:0.2.1":
-  version: 0.2.1
-  resolution: "tmp@npm:0.2.1"
+"tmp@npm:0.2.2":
+  version: 0.2.2
+  resolution: "tmp@npm:0.2.2"
   dependencies:
-    rimraf: "npm:^3.0.0"
-  checksum: 10c0/67607aa012059c9ce697bee820ee51bc0f39b29a8766def4f92d3f764d67c7cf9205d537d24e0cb1ce9685c40d4c628ead010910118ea18348666b5c46ed9123
+    rimraf: "npm:^5.0.5"
+  checksum: 10c0/0754cffe42f45ad4991dcf9deb0c4c90ca75887c79fb668d7c66cf54f92b355563b8923b9467f4914be0a145d78667681b96f5f68cd83e2ca7c99d8675262a02
   languageName: node
   linkType: hard
 
