@@ -6437,7 +6437,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rimraf@npm:5.0.5, rimraf@npm:^5.0.5":
+"rimraf@npm:5.0.5":
   version: 5.0.5
   resolution: "rimraf@npm:5.0.5"
   dependencies:
@@ -6977,7 +6977,7 @@ __metadata:
     rimraf: "npm:5.0.5"
     semver: "npm:7.6.0"
     simple-git: "npm:3.22.0"
-    tmp: "npm:0.2.2"
+    tmp: "npm:0.2.3"
     ts-jest: "npm:29.1.2"
     typescript: "npm:5.3.3"
     vm2: "npm:3.9.19"
@@ -7072,12 +7072,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tmp@npm:0.2.2":
-  version: 0.2.2
-  resolution: "tmp@npm:0.2.2"
-  dependencies:
-    rimraf: "npm:^5.0.5"
-  checksum: 10c0/0754cffe42f45ad4991dcf9deb0c4c90ca75887c79fb668d7c66cf54f92b355563b8923b9467f4914be0a145d78667681b96f5f68cd83e2ca7c99d8675262a02
+"tmp@npm:0.2.3":
+  version: 0.2.3
+  resolution: "tmp@npm:0.2.3"
+  checksum: 10c0/3e809d9c2f46817475b452725c2aaa5d11985cf18d32a7a970ff25b568438e2c076c2e8609224feef3b7923fa9749b74428e3e634f6b8e520c534eef2fd24125
   languageName: node
   linkType: hard
 
