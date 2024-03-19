@@ -24,10 +24,14 @@ export function newOctokitInstance(token: string) {
             onRateLimit: (retryAfter, options) => {
                 const retryCount = options.request.retryCount
                 const retryLogInfo = retryCount === 0 ? '' : ` (retry #${retryCount})`
-                core.debug(`Request quota exhausted for request ${options.method} ${options.url}${retryLogInfo}`)
-                return retryCount <= 4
+                if (retryCount <= 4) {
+                    core.warning(`Request quota exhausted for request ${options.method} ${options.url}${retryLogInfo}.`
+                        + ` Retrying after ${retryAfter} seconds.`,
+                    )
+                }
+                return false
             },
-            onSecondaryRateLimit: (retryAfter, options) => {
+            onSecondaryRateLimit: (_, options) => {
                 core.error(`Abuse detected for request ${options.method} ${options.url}`)
                 return false // Don't repeat
             },
