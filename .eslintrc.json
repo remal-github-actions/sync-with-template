@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/eslintrc",
+  "root": true,
   "plugins": [
     "import",
     "jest",
@@ -7,6 +8,7 @@
   ],
   "extends": [
     "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
     "plugin:github/recommended",
     "prettier"
   ],
@@ -33,6 +35,7 @@
     "prefer-template": "off",
     "import/no-commonjs": "off",
     "import/no-namespace": "off",
+    "@typescript-eslint/no-var-requires": "off",
     "@typescript-eslint/semi": [
       "error",
       "never"
