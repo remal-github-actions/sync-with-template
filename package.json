@@ -39,7 +39,7 @@
     "yaml": "2.4.1"
   },
   "devDependencies": {
-    "@tsconfig/node20": "20.1.3",
+    "@tsconfig/node20": "20.1.4",
     "@types/jest": "29.5.12",
     "@types/node": "20.11.30",
     "@types/picomatch": "2.3.3",
