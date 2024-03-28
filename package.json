@@ -31,7 +31,7 @@
     "console-log-level": "1.4.1",
     "debug": "4.3.4",
     "json5": "2.2.3",
-    "picomatch": "4.0.1",
+    "picomatch": "4.0.2",
     "rimraf": "5.0.5",
     "simple-git": "3.23.0",
     "tmp": "0.2.3",
