@@ -19186,30 +19186,16 @@ function onceStrict (fn) {
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
-/*global navigator*/
-
 
 
 const pico = __nccwpck_require__(3322);
-
-const isWindows = () => {
-  if (typeof navigator !== 'undefined' && navigator.platform) {
-    const platform = navigator.platform.toLowerCase();
-    return platform === 'win32' || platform === 'windows';
-  }
-
-  if (typeof process !== 'undefined' && process.platform) {
-    return process.platform === 'win32';
-  }
-
-  return false;
-};
+const utils = __nccwpck_require__(479);
 
 function picomatch(glob, options, returnState = false) {
   // default to os.platform()
   if (options && (options.windows === null || options.windows === undefined)) {
     // don't mutate the original options object
-    options = { ...options, windows: isWindows() };
+    options = { ...options, windows: utils.isWindows() };
   }
 
   return pico(glob, options, returnState);
@@ -21253,6 +21239,7 @@ module.exports = scan;
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
+/*global navigator*/
 
 
 const {
@@ -21267,6 +21254,19 @@ exports.hasRegexChars = str => REGEX_SPECIAL_CHARS.test(str);
 exports.isRegexChar = str => str.length === 1 && exports.hasRegexChars(str);
 exports.escapeRegex = str => str.replace(REGEX_SPECIAL_CHARS_GLOBAL, '\\$1');
 exports.toPosixSlashes = str => str.replace(REGEX_BACKSLASH, '/');
+
+exports.isWindows = () => {
+  if (typeof navigator !== 'undefined' && navigator.platform) {
+    const platform = navigator.platform.toLowerCase();
+    return platform === 'win32' || platform === 'windows';
+  }
+
+  if (typeof process !== 'undefined' && process.platform) {
+    return process.platform === 'win32';
+  }
+
+  return false;
+};
 
 exports.removeBackslashes = str => {
   return str.replace(REGEX_REMOVE_BACKSLASH, match => {
