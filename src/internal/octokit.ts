@@ -19,28 +19,33 @@ const OctokitWithPlugins = GitHub
 export function newOctokitInstance(token: string) {
     const baseOptions = getOctokitOptions(token)
 
+    const retryOptions = {
+        retry: {
+            doNotRetry: ['429'],
+        },
+    }
+
     const throttleOptions = {
         throttle: {
             onRateLimit: (retryAfter, options) => {
                 const retryCount = options.request.retryCount
                 const retryLogInfo = retryCount === 0 ? '' : ` (retry #${retryCount})`
-                if (retryCount <= 4) {
+                if (retryCount < 3) {
                     core.warning(`Request quota exhausted for request ${options.method} ${options.url}${retryLogInfo}.`
                         + ` Retrying after ${retryAfter} seconds.`,
                     )
+                    return true
                 }
+
+                core.error(`Request quota exhausted for request ${options.method} ${options.url}${retryLogInfo}.`
+                    + ` Not retrying, as too many retries were made.`,
+                )
                 return false
             },
             onSecondaryRateLimit: (_, options) => {
                 core.error(`Abuse detected for request ${options.method} ${options.url}`)
-                return false // Don't repeat
+                return false
             },
-        },
-    }
-
-    const retryOptions = {
-        retry: {
-            doNotRetry: ['429'],
         },
     }
 
