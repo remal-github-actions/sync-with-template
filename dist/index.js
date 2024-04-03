@@ -70225,7 +70225,7 @@ function injectModifiableSections(content, sections) {
 // EXTERNAL MODULE: ./node_modules/@actions/github/lib/utils.js
 var utils = __nccwpck_require__(3030);
 ;// CONCATENATED MODULE: ./node_modules/@octokit/plugin-request-log/dist-src/version.js
-const VERSION = "5.0.0";
+const VERSION = "5.1.0";
 
 
 ;// CONCATENATED MODULE: ./node_modules/@octokit/plugin-request-log/dist-src/index.js
