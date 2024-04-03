@@ -57,8 +57,8 @@ export function newOctokitInstance(token: string) {
 
     const allOptions = {
         ...baseOptions,
-        ...throttleOptions,
         ...retryOptions,
+        ...throttleOptions,
         ...logOptions,
     }
 
