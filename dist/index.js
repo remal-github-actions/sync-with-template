@@ -70393,26 +70393,29 @@ const OctokitWithPlugins = utils.GitHub.plugin(retry)
 });
 function newOctokitInstance(token) {
     const baseOptions = (0,utils.getOctokitOptions)(token);
+    const retryOptions = {
+        retry: {
+            doNotRetry: ['429'],
+        },
+    };
     const throttleOptions = {
         throttle: {
             onRateLimit: (retryAfter, options) => {
                 const retryCount = options.request.retryCount;
                 const retryLogInfo = retryCount === 0 ? '' : ` (retry #${retryCount})`;
-                if (retryCount <= 4) {
+                if (retryCount < 3) {
                     core.warning(`Request quota exhausted for request ${options.method} ${options.url}${retryLogInfo}.`
                         + ` Retrying after ${retryAfter} seconds.`);
+                    return true;
                 }
+                core.error(`Request quota exhausted for request ${options.method} ${options.url}${retryLogInfo}.`
+                    + ` Not retrying, as too many retries were made.`);
                 return false;
             },
             onSecondaryRateLimit: (_, options) => {
                 core.error(`Abuse detected for request ${options.method} ${options.url}`);
                 return false;
             },
-        },
-    };
-    const retryOptions = {
-        retry: {
-            doNotRetry: ['429'],
         },
     };
     const logOptions = {};
@@ -70422,8 +70425,8 @@ function newOctokitInstance(token) {
     }
     const allOptions = {
         ...baseOptions,
-        ...throttleOptions,
         ...retryOptions,
+        ...throttleOptions,
         ...logOptions,
     };
     const octokit = new OctokitWithPlugins(allOptions);
