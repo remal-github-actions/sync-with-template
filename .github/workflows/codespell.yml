@@ -43,3 +43,4 @@ jobs:
         ignore_words_file: ${{steps.find-ignore-words-file.outputs.ignoreWordsFile}}
         check_filenames: 'true'
         check_hidden: 'true'
+        skip: './dist/**,./.yarn/**'
