@@ -70165,6 +70165,71 @@ function calculateHash(value) {
     return hash | 0;
 }
 
+;// CONCATENATED MODULE: ./build/src/internal/adjustGitHubActionsCron.js
+
+
+
+function adjustGitHubActionsCron(content) {
+    return content.toString().replaceAll(/(\s+schedule:[\r\n]+\s+-\s+cron:\s+)(['"]?)([^'"]+)\2(\s*#\s*sync-with-template\s*:\s*adjust)\b/g, (match, prefix, quote, expression, suffix) => {
+        const tokens = expression.trim().split(/\s+/);
+        if (tokens.length !== 5)
+            return match;
+        const hash = Math.abs(calculateHash(`${github.context.repo.owner}/${github.context.repo.repo}`)) || 2398461;
+        processCronTokens(tokens, hash);
+        const newExpression = tokens.join(' ');
+        core.info(`    Adjusting cron expression from '${expression}' to '${newExpression}'`);
+        quote = quote || '';
+        return prefix + quote + newExpression + quote + suffix;
+    });
+}
+function processCronTokens(tokens, hash) {
+    for (let i = 0; i < tokens.length; ++i) {
+        tokens[i] = processCronToken(i, tokens[i], hash);
+    }
+}
+function processCronToken(tokenIndex, token, hash) {
+    const maxValue = [60, 24, 31, 12, 7][tokenIndex];
+    if (maxValue == null) {
+        return token;
+    }
+    return token.split(/,/)
+        .filter(it => !!it.length)
+        .map(it => processCronTokenPart(it, hash, maxValue))
+        .join(',');
+}
+function processCronTokenPart(tokenPart, hash, maxValue) {
+    if (tokenPart === '*') {
+        return tokenPart;
+    }
+    if (tokenPart.match(/^\d+$/)) {
+        const num = parseInt(tokenPart, 10);
+        const resultNum = (num + hash) % maxValue;
+        return `${resultNum}`;
+    }
+    {
+        const match = tokenPart.match(/^(\d+)-(\d+)$/);
+        if (match != null) {
+            for (let n = 0;; ++n) {
+                const min = (parseInt(match[1], 10) + hash + n) % maxValue;
+                const max = (parseInt(match[2], 10) + hash + n) % maxValue;
+                if (max <= min) {
+                    continue;
+                }
+                return `${min}-${max}`;
+            }
+        }
+    }
+    {
+        const match = tokenPart.match(/^(\*|\d+)\/(\d+)$/);
+        if (match != null) {
+            const every = parseInt(match[2], 10);
+            const start = ((match[1] === '*' ? 0 : parseInt(match[1], 10)) + hash) % Math.min(every, maxValue);
+            return `${start}/${every}`;
+        }
+    }
+    return tokenPart;
+}
+
 ;// CONCATENATED MODULE: ./build/src/internal/modifiableSections.js
 const MODIFIABLE_SECTION_PREFIX = /.*\$\$\$sync-with-template-modifiable:\s*([^$]+?)\s*\$\$\$.*/;
 const MODIFIABLE_SECTION_END = /.*\$\$\$sync-with-template-modifiable-end\$\$\$.*/;
@@ -70585,9 +70650,9 @@ async function run() {
             ? [...localTransformations.transformations]
             : [];
         allTransformations.push({
-            name: "Adjust GitHub actions cron",
+            name: 'Adjust GitHub actions cron',
             includes: ['.github/workflows/*.yml'],
-            format: "text",
+            format: 'text',
             script: '#adjustGitHubActionsCron',
         });
         const ignoringTransformations = allTransformations.filter(it => it.ignore === true);
@@ -70753,7 +70818,7 @@ async function run() {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`);
                         }
                         let transformedContent;
-                        if (transformationScript.startsWith("#")) {
+                        if (transformationScript.startsWith('#')) {
                             const predefinedFilesTransformationScriptName = transformationScript.substring(1);
                             const predefinedFilesTransformationScript = predefinedFilesTransformationScripts[predefinedFilesTransformationScriptName];
                             if (predefinedFilesTransformationScript == null) {
@@ -70907,41 +70972,7 @@ async function run() {
 }
 run();
 const predefinedFilesTransformationScripts = {
-    adjustGitHubActionsCron: content => {
-        return content.toString().replaceAll(/(\s+schedule:[\r\n]+\s+-\s+cron:\s+)(['"]?)([^'"]+)\2(\s*#\s*sync-with-template\s*:\s*adjust)\b/g, (match, prefix, quote, expression, suffix) => {
-            const tokens = expression.trim().split(/\s+/);
-            if (tokens.length !== 5)
-                return match;
-            const hash = Math.abs(calculateHash(`${github.context.repo.owner}/${github.context.repo.repo}`)) || 2398461;
-            for (let i = 0; i < tokens.length; ++i) {
-                const token = tokens[i];
-                if (isNaN(token))
-                    continue;
-                let tokenNumber = token | 0;
-                tokenNumber += hash;
-                if (i === 0) {
-                    tokenNumber = tokenNumber % 60;
-                }
-                else if (i === 1) {
-                    tokenNumber = tokenNumber % 24;
-                }
-                else if (i === 2) {
-                    tokenNumber = 1 + tokenNumber % 31;
-                }
-                else if (i === 3) {
-                    tokenNumber = 1 + tokenNumber % 12;
-                }
-                else if (i === 4) {
-                    tokenNumber = tokenNumber % 7;
-                }
-                tokens[i] = tokenNumber.toString();
-            }
-            const newExpression = tokens.join(' ');
-            core.info(`    Adjusting cron expression from '${expression}' to '${newExpression}'`);
-            quote = quote || '';
-            return prefix + quote + newExpression + quote + suffix;
-        });
-    },
+    adjustGitHubActionsCron: adjustGitHubActionsCron,
 };
 function getSyncBranchName() {
     const name = core.getInput('syncBranchName', { required: true });
@@ -70983,7 +71014,7 @@ function hasAccessToFile(filePath, mode) {
         external_fs_.accessSync(filePath, mode);
         return true;
     }
-    catch (excepted) {
+    catch (_) {
         return false;
     }
 }
