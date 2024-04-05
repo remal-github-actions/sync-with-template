@@ -1,27 +1,27 @@
 import * as core from '@actions/core'
-import {context} from '@actions/github'
-import type {components, operations} from '@octokit/openapi-types'
+import { context } from '@actions/github'
+import type { components, operations } from '@octokit/openapi-types'
 import Ajv2020 from 'ajv/dist/2020'
 import * as crypto from 'crypto'
 import * as fs from 'fs'
-import {PathLike} from 'fs'
+import { PathLike } from 'fs'
 import JSON5 from 'json5'
 import path from 'path'
 import picomatch from 'picomatch'
-import {simpleGit} from 'simple-git'
-import {SimpleGit} from 'simple-git/promise'
+import { simpleGit } from 'simple-git'
+import { SimpleGit } from 'simple-git/promise'
 import * as tmp from 'tmp'
-import {URL} from 'url'
+import { URL } from 'url'
 import * as util from 'util'
-import {VM} from 'vm2'
+import { VM } from 'vm2'
 import YAML from 'yaml'
 import configSchema from '../config.schema.json'
 import transformationsSchema from '../local-transformations.schema.json'
-import {calculateHash} from './internal/calculateHash'
-import {Config} from './internal/config'
-import {FilesTransformation, LocalTransformations} from './internal/local-transformations'
-import {injectModifiableSections, ModifiableSections, parseModifiableSections} from './internal/modifiableSections'
-import {newOctokitInstance} from './internal/octokit'
+import { adjustGitHubActionsCron } from './internal/adjustGitHubActionsCron'
+import { Config } from './internal/config'
+import { FilesTransformation, LocalTransformations } from './internal/local-transformations'
+import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections'
+import { newOctokitInstance } from './internal/octokit'
 
 export type Repo = components['schemas']['full-repository']
 export type PullRequest = components['schemas']['pull-request']
@@ -45,13 +45,13 @@ if (core.isDebug()) {
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-const configFilePath = core.getInput('configFile', {required: true})
-const transformationsFilePath = core.getInput('localTransformationsFile', {required: true})
-const conventionalCommits = core.getInput('conventionalCommits', {required: false})?.toLowerCase() === 'true'
-const dryRun = core.getInput('dryRun', {required: true}).toLowerCase() === 'true'
-const templateRepositoryFullName = core.getInput('templateRepository', {required: false})
+const configFilePath = core.getInput('configFile', { required: true })
+const transformationsFilePath = core.getInput('localTransformationsFile', { required: true })
+const conventionalCommits = core.getInput('conventionalCommits', { required: false })?.toLowerCase() === 'true'
+const dryRun = core.getInput('dryRun', { required: true }).toLowerCase() === 'true'
+const templateRepositoryFullName = core.getInput('templateRepository', { required: false })
 
-const githubToken = core.getInput('githubToken', {required: true})
+const githubToken = core.getInput('githubToken', { required: true })
 core.setSecret(githubToken)
 
 const octokit = newOctokitInstance(githubToken)
@@ -69,7 +69,7 @@ const DEFAULT_GIT_ENV: Record<string, string> = {
 
 async function run(): Promise<void> {
     try {
-        const workspacePath = tmp.dirSync({unsafeCleanup: true}).name
+        const workspacePath = tmp.dirSync({ unsafeCleanup: true }).name
         core.debug(`Workspace path: ${workspacePath}`)
 
         const repo = await octokit.repos.get({
@@ -203,9 +203,9 @@ async function run(): Promise<void> {
             : []
 
         allTransformations.push({
-            name: "Adjust GitHub actions cron",
+            name: 'Adjust GitHub actions cron',
             includes: ['.github/workflows/*.yml'],
-            format: "text",
+            format: 'text',
             script: '#adjustGitHubActionsCron',
         })
 
@@ -400,7 +400,7 @@ async function run(): Promise<void> {
                         }
 
                         let transformedContent: any
-                        if (transformationScript.startsWith("#")) {
+                        if (transformationScript.startsWith('#')) {
                             const predefinedFilesTransformationScriptName = transformationScript.substring(1)
                             const predefinedFilesTransformationScript = predefinedFilesTransformationScripts[predefinedFilesTransformationScriptName]
                             if (predefinedFilesTransformationScript == null) {
@@ -586,50 +586,11 @@ run()
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 const predefinedFilesTransformationScripts: Record<string, (content: any) => string> = {
-    adjustGitHubActionsCron: content => {
-        return content.toString().replaceAll(
-            /(\s+schedule:[\r\n]+\s+-\s+cron:\s+)(['"]?)([^'"]+)\2(\s*#\s*sync-with-template\s*:\s*adjust)\b/g,
-            (match, prefix, quote, expression, suffix) => {
-                const tokens = expression.trim().split(/\s+/)
-                if (tokens.length !== 5) return match
-
-                const hash = Math.abs(calculateHash(`${context.repo.owner}/${context.repo.repo}`)) || 2398461
-
-                for (let i = 0; i < tokens.length; ++i) {
-                    const token = tokens[i]
-                    if (isNaN(token)) continue
-
-                    let tokenNumber = token | 0
-                    tokenNumber += hash
-
-                    if (i === 0) {
-                        tokenNumber = tokenNumber % 60
-                    } else if (i === 1) {
-                        tokenNumber = tokenNumber % 24
-                    } else if (i === 2) {
-                        tokenNumber = 1 + tokenNumber % 31
-                    } else if (i === 3) {
-                        tokenNumber = 1 + tokenNumber % 12
-                    } else if (i === 4) {
-                        tokenNumber = tokenNumber % 7
-                    }
-
-                    tokens[i] = tokenNumber.toString()
-                }
-
-                const newExpression = tokens.join(' ')
-
-                core.info(`    Adjusting cron expression from '${expression}' to '${newExpression}'`)
-
-                quote = quote || ''
-                return prefix + quote + newExpression + quote + suffix
-            },
-        )
-    },
+    adjustGitHubActionsCron,
 }
 
 function getSyncBranchName(): string {
-    const name = core.getInput('syncBranchName', {required: true})
+    const name = core.getInput('syncBranchName', { required: true })
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
         return name
     } else {
@@ -638,7 +599,7 @@ function getSyncBranchName(): string {
 }
 
 function getCommitMessage(templateRepoName: string): string {
-    let message = core.getInput('commitMessage', {required: true})
+    let message = core.getInput('commitMessage', { required: true })
 
     message = message.replaceAll(/<template-repository>/g, templateRepoName)
 
@@ -661,7 +622,7 @@ async function getTemplateRepo(currentRepo: Repo): Promise<Repo | undefined> {
 
     } else {
         const [owner, repo] = templateRepoName.split('/')
-        return octokit.repos.get({owner, repo}).then(it => it.data)
+        return octokit.repos.get({ owner, repo }).then(it => it.data)
     }
 
     return undefined
@@ -671,7 +632,7 @@ function hasAccessToFile(filePath: PathLike, mode: number): boolean {
     try {
         fs.accessSync(filePath, mode)
         return true
-    } catch (excepted) {
+    } catch (_) {
         return false
     }
 }
