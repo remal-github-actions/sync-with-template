@@ -36,7 +36,7 @@
     "simple-git": "3.24.0",
     "tmp": "0.2.3",
     "vm2": "3.9.19",
-    "yaml": "2.4.1"
+    "yaml": "2.4.2"
   },
   "devDependencies": {
     "@tsconfig/node20": "20.1.4",
