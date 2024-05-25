@@ -13557,6 +13557,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const codegen_1 = __nccwpck_require__(9179);
 const types_1 = __nccwpck_require__(8374);
 const compile_1 = __nccwpck_require__(813);
+const ref_error_1 = __nccwpck_require__(8190);
 const util_1 = __nccwpck_require__(3439);
 const error = {
     message: ({ params: { discrError, tagName } }) => discrError === types_1.DiscrError.Tag
@@ -13611,9 +13612,12 @@ const def = {
             for (let i = 0; i < oneOf.length; i++) {
                 let sch = oneOf[i];
                 if ((sch === null || sch === void 0 ? void 0 : sch.$ref) && !(0, util_1.schemaHasRulesButRef)(sch, it.self.RULES)) {
-                    sch = compile_1.resolveRef.call(it.self, it.schemaEnv.root, it.baseId, sch === null || sch === void 0 ? void 0 : sch.$ref);
+                    const ref = sch.$ref;
+                    sch = compile_1.resolveRef.call(it.self, it.schemaEnv.root, it.baseId, ref);
                     if (sch instanceof compile_1.SchemaEnv)
                         sch = sch.schema;
+                    if (sch === undefined)
+                        throw new ref_error_1.default(it.opts.uriResolver, it.baseId, ref);
                 }
                 const propSch = (_a = sch === null || sch === void 0 ? void 0 : sch.properties) === null || _a === void 0 ? void 0 : _a[tagName];
                 if (typeof propSch != "object") {
