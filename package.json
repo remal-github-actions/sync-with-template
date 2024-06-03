@@ -27,7 +27,7 @@
     "@octokit/plugin-request-log": "5.1.0",
     "@octokit/plugin-retry": "7.1.0",
     "@octokit/plugin-throttling": "8.2.0",
-    "ajv": "8.14.0",
+    "ajv": "8.15.0",
     "console-log-level": "1.4.1",
     "debug": "4.3.5",
     "json5": "2.2.3",
