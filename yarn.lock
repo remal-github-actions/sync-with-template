@@ -3314,9 +3314,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-github@npm:5.0.0":
-  version: 5.0.0
-  resolution: "eslint-plugin-github@npm:5.0.0"
+"eslint-plugin-github@npm:5.0.1":
+  version: 5.0.1
+  resolution: "eslint-plugin-github@npm:5.0.1"
   dependencies:
     "@github/browserslist-config": "npm:^1.0.0"
     "@typescript-eslint/eslint-plugin": "npm:^7.0.1"
@@ -3339,7 +3339,7 @@ __metadata:
     eslint: ^8.0.1
   bin:
     eslint-ignore-errors: bin/eslint-ignore-errors.js
-  checksum: 10c0/5f9ed75bdd56016de901685b0ee0026b3309ad4e0f5c9e6f86a9a53d782b650c9a4837cd0c754074eea27a7853e6ea308f3b94a35e8b44ad55357c1b10aa947c
+  checksum: 10c0/be1f9b23c076c23cc637a7abef97d6f944611b504a66233c9b6f0f575c155d9bcf3a0c00847d8818c5e127ab75a2205b36f96e77dff9985db9f7ef492eb31e43
   languageName: node
   linkType: hard
 
@@ -7131,7 +7131,7 @@ __metadata:
     debug: "npm:4.3.5"
     eslint: "npm:8.57.0"
     eslint-config-prettier: "npm:9.1.0"
-    eslint-plugin-github: "npm:5.0.0"
+    eslint-plugin-github: "npm:5.0.1"
     eslint-plugin-import: "npm:2.29.1"
     eslint-plugin-jest: "npm:28.5.0"
     eslint-plugin-prettier: "npm:5.1.3"
