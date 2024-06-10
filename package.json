@@ -6,7 +6,7 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "yarn@4.2.2",
+  "packageManager": "yarn@4.3.0",
   "main": "dist/main.js",
   "scripts": {
     "generate-config": "json2ts config.schema.json > src/internal/config.ts",
