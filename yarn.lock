@@ -1217,12 +1217,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/plugin-request-log@npm:5.1.0":
-  version: 5.1.0
-  resolution: "@octokit/plugin-request-log@npm:5.1.0"
+"@octokit/plugin-request-log@npm:5.3.0":
+  version: 5.3.0
+  resolution: "@octokit/plugin-request-log@npm:5.3.0"
   peerDependencies:
     "@octokit/core": ">=6"
-  checksum: 10c0/46843ae520dbeef035549154c5298a1951298fd5bccfe43668056cd7a84183a7c31102e95f972bf019e485a2b5208fc44642ae62df7c38bc00ee089f107ed382
+  checksum: 10c0/a20876ea9f58f2e5a58a0c0f95492d8021599c843de44f5754e8006212a97cdf502712ffd6c38d165a74e2eeb4b1f6361d4a0171faed34ed445d63b48830038c
   languageName: node
   linkType: hard
 
@@ -7088,7 +7088,7 @@ __metadata:
     "@actions/github": "npm:6.0.0"
     "@actions/glob": "npm:0.4.0"
     "@actions/io": "npm:1.1.3"
-    "@octokit/plugin-request-log": "npm:5.1.0"
+    "@octokit/plugin-request-log": "npm:5.3.0"
     "@octokit/plugin-retry": "npm:7.1.0"
     "@octokit/plugin-throttling": "npm:8.2.0"
     "@tsconfig/node20": "npm:20.1.4"
