@@ -59,7 +59,7 @@
     "jest-circus": "29.7.0",
     "json-schema-to-typescript": "14.1.0",
     "semver": "7.6.2",
-    "ts-jest": "29.2.1",
+    "ts-jest": "29.2.2",
     "typescript": "5.5.3"
   }
 }
