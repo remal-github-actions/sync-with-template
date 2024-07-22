@@ -5443,9 +5443,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json-schema-to-typescript@npm:14.1.0":
-  version: 14.1.0
-  resolution: "json-schema-to-typescript@npm:14.1.0"
+"json-schema-to-typescript@npm:15.0.0":
+  version: 15.0.0
+  resolution: "json-schema-to-typescript@npm:15.0.0"
   dependencies:
     "@apidevtools/json-schema-ref-parser": "npm:^11.5.5"
     "@types/json-schema": "npm:^7.0.15"
@@ -5461,7 +5461,7 @@ __metadata:
     prettier: "npm:^3.2.5"
   bin:
     json2ts: dist/src/cli.js
-  checksum: 10c0/374594887714e7d37c871808f904805aa63006cf72d742dc3a17ebd9bc75ec4835601a1f25a033795f7c2c3938fcd1ab69e1426ae91d5de623e4a422f6a99917
+  checksum: 10c0/1f00ea84fd3802bb2f841fb6c66a9b0aaadb2f484f1f6934988d5579470648e92482a9685f86d8bd804d11b15b504158a0a85dc58756284ba8b3d4e8b41592f6
   languageName: node
   linkType: hard
 
@@ -7191,7 +7191,7 @@ __metadata:
     eslint-plugin-prettier: "npm:5.2.1"
     jest: "npm:29.7.0"
     jest-circus: "npm:29.7.0"
-    json-schema-to-typescript: "npm:14.1.0"
+    json-schema-to-typescript: "npm:15.0.0"
     json5: "npm:2.2.3"
     picomatch: "npm:4.0.2"
     rimraf: "npm:6.0.1"
