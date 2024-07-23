@@ -60,6 +60,6 @@
     "json-schema-to-typescript": "15.0.0",
     "semver": "7.6.3",
     "ts-jest": "29.2.3",
-    "typescript": "5.5.3"
+    "typescript": "5.5.4"
   }
 }
