@@ -1525,10 +1525,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/picomatch@npm:3.0.0":
-  version: 3.0.0
-  resolution: "@types/picomatch@npm:3.0.0"
-  checksum: 10c0/d8af1c32c9a0d7c16ed3d0cedbba2e070023addaae4b54b1b4757ce39e7d3e80d8a84d95d73f2b92598947932d8b75fe57f1cf438749f5245ae1e8f79befb74c
+"@types/picomatch@npm:3.0.1":
+  version: 3.0.1
+  resolution: "@types/picomatch@npm:3.0.1"
+  checksum: 10c0/4f60d98668030e4a5b3d7dda1e0a6d86056f7e6201f013dcb411249dc9d9d34373d3e8de3b2f0c156be43e2b0da99d30e06a8292282dd5f84b105bf9ff654dec
   languageName: node
   linkType: hard
 
@@ -7183,7 +7183,7 @@ __metadata:
     "@tsconfig/node20": "npm:20.1.4"
     "@types/jest": "npm:29.5.12"
     "@types/node": "npm:20.14.14"
-    "@types/picomatch": "npm:3.0.0"
+    "@types/picomatch": "npm:3.0.1"
     "@types/semver": "npm:7.5.8"
     "@types/tmp": "npm:0.2.6"
     "@typescript-eslint/eslint-plugin": "npm:7.18.0"
