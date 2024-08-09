@@ -72,3 +72,5 @@ node_modules/
 !/.yarn/versions/
 /build
 /coverage
+/dist
+!/dist/index.js
