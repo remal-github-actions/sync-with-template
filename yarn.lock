@@ -1502,6 +1502,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/lodash@npm:^4.17.7":
+  version: 4.17.7
+  resolution: "@types/lodash@npm:4.17.7"
+  checksum: 10c0/40c965b5ffdcf7ff5c9105307ee08b782da228c01b5c0529122c554c64f6b7168fc8f11dc79aa7bae4e67e17efafaba685dc3a47e294dbf52a65ed2b67100561
+  languageName: node
+  linkType: hard
+
 "@types/node@npm:*":
   version: 20.2.5
   resolution: "@types/node@npm:20.2.5"
@@ -5313,12 +5320,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json-schema-to-typescript@npm:15.0.1":
-  version: 15.0.1
-  resolution: "json-schema-to-typescript@npm:15.0.1"
+"json-schema-to-typescript@npm:15.0.2":
+  version: 15.0.2
+  resolution: "json-schema-to-typescript@npm:15.0.2"
   dependencies:
     "@apidevtools/json-schema-ref-parser": "npm:^11.5.5"
     "@types/json-schema": "npm:^7.0.15"
+    "@types/lodash": "npm:^4.17.7"
     glob: "npm:^10.3.12"
     is-glob: "npm:^4.0.3"
     js-yaml: "npm:^4.1.0"
@@ -5327,7 +5335,7 @@ __metadata:
     prettier: "npm:^3.2.5"
   bin:
     json2ts: dist/src/cli.js
-  checksum: 10c0/1154d49920029a9621742bae9153339f5539378c7db4e845ff37147b3e4aa108eb7384734268d632a0b48dc53d177e5f5c54388aea4035fa2845c836992de8e9
+  checksum: 10c0/cad5f9f525bef3171253d5029be094c1db3fd948aa35a2f7303e9223c86fa16e5123697ae9599201c19da0d728110e77972ddefb6aa69b9b887971120ac73168
   languageName: node
   linkType: hard
 
@@ -6998,7 +7006,7 @@ __metadata:
     eslint-plugin-prettier: "npm:5.2.1"
     jest: "npm:29.7.0"
     jest-circus: "npm:29.7.0"
-    json-schema-to-typescript: "npm:15.0.1"
+    json-schema-to-typescript: "npm:15.0.2"
     json5: "npm:2.2.3"
     picomatch: "npm:4.0.2"
     rimraf: "npm:6.0.1"
