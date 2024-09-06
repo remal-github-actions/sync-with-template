@@ -29,7 +29,7 @@
     "@octokit/plugin-throttling": "8.2.0",
     "ajv": "8.17.1",
     "console-log-level": "1.4.1",
-    "debug": "4.3.6",
+    "debug": "4.3.7",
     "json5": "2.2.3",
     "picomatch": "4.0.2",
     "rimraf": "6.0.1",
