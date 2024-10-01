@@ -12,6 +12,7 @@ includes:
 - checkstyle.xml
 - lombok.config
 - .eslint*
+- eslint.config.*
 - .prettier*
 - .yarn*
 - .yarn/**
