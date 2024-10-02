@@ -1,3 +1,4 @@
+import * as logging from 'console-log-level'
 import * as core from '@actions/core'
 import { getOctokitOptions, GitHub } from '@actions/github/lib/utils'
 import { Octokit as OctokitCore } from '@octokit/core'
@@ -50,7 +51,7 @@ export function newOctokitInstance(token: string) {
     }
 
     const logOptions: { log?: OctokitCore['log'] } = {}
-    const traceLogging = require('console-log-level')({ level: 'trace' })
+    const traceLogging = logging({ level: 'trace' })
     if (core.isDebug()) {
         logOptions.log = traceLogging
     }

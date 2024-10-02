@@ -1,3 +1,4 @@
+import * as debug from 'debug'
 import * as core from '@actions/core'
 import { context } from '@actions/github'
 import type { components, operations } from '@octokit/openapi-types'
@@ -30,12 +31,12 @@ export type NewPullRequest = operations['pulls/create']['requestBody']['content'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-require('debug').log = function log(...args) {
+debug.log = function log(...args) {
     return process.stdout.write(`${util.format(...args)}\n`)
 }
 
 if (core.isDebug()) {
-    require('debug').enable('simple-git,simple-git:*')
+    debug.enable('simple-git,simple-git:*')
     process.env.DEBUG = [
         process.env.DEBUG ?? '',
         'simple-git',

@@ -67006,6 +67006,8 @@ var __webpack_exports__ = {};
 (() => {
 "use strict";
 
+// EXTERNAL MODULE: ./node_modules/debug/src/index.js
+var src = __nccwpck_require__(2830);
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(7484);
 // EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
@@ -67029,7 +67031,7 @@ var picomatch_default = /*#__PURE__*/__nccwpck_require__.n(picomatch);
 // EXTERNAL MODULE: ./node_modules/@kwsites/file-exists/dist/index.js
 var dist = __nccwpck_require__(7117);
 // EXTERNAL MODULE: ./node_modules/simple-git/node_modules/debug/src/index.js
-var src = __nccwpck_require__(1567);
+var debug_src = __nccwpck_require__(1567);
 ;// CONCATENATED MODULE: external "child_process"
 const external_child_process_namespaceObject = require("child_process");
 // EXTERNAL MODULE: ./node_modules/@kwsites/promise-deferred/dist/index.js
@@ -68159,7 +68161,7 @@ var init_reset = __esm({
 // src/lib/git-logger.ts
 
 function createLog() {
-  return src("simple-git");
+  return debug_src("simple-git");
 }
 function prefixedLogger(to, prefix, forward) {
   if (!prefix || !String(prefix).replace(/\s*/, "")) {
@@ -68213,8 +68215,8 @@ var init_git_logger = __esm({
   "src/lib/git-logger.ts"() {
     "use strict";
     init_utils();
-    src.formatters.L = (value) => String(filterHasLength(value) ? value.length : "-");
-    src.formatters.B = (value) => {
+    debug_src.formatters.L = (value) => String(filterHasLength(value) ? value.length : "-");
+    debug_src.formatters.B = (value) => {
       if (Buffer.isBuffer(value)) {
         return value.toString("utf8");
       }
@@ -71983,6 +71985,8 @@ function injectModifiableSections(content, sections) {
     return newLines.join('\n');
 }
 
+// EXTERNAL MODULE: ./node_modules/console-log-level/index.js
+var console_log_level = __nccwpck_require__(9653);
 // EXTERNAL MODULE: ./node_modules/@actions/github/lib/utils.js
 var utils = __nccwpck_require__(8006);
 ;// CONCATENATED MODULE: ./node_modules/@octokit/plugin-request-log/dist-src/version.js
@@ -72143,6 +72147,7 @@ var dist_node = __nccwpck_require__(4759);
 
 
 
+
 const OctokitWithPlugins = utils.GitHub
     .plugin(retry)
     .plugin(dist_node.throttling)
@@ -72181,7 +72186,7 @@ function newOctokitInstance(token) {
         },
     };
     const logOptions = {};
-    const traceLogging = __nccwpck_require__(9653)({ level: 'trace' });
+    const traceLogging = console_log_level({ level: 'trace' });
     if (core.isDebug()) {
         logOptions.log = traceLogging;
     }
@@ -72219,11 +72224,12 @@ function newOctokitInstance(token) {
 
 
 
-(__nccwpck_require__(2830).log) = function log(...args) {
+
+src.log = function log(...args) {
     return process.stdout.write(`${external_util_.format(...args)}\n`);
 };
 if (core.isDebug()) {
-    (__nccwpck_require__(2830).enable)('simple-git,simple-git:*');
+    src.enable('simple-git,simple-git:*');
     process.env.DEBUG = [
         process.env.DEBUG ?? '',
         'simple-git',
