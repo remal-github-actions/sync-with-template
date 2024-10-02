@@ -1446,6 +1446,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/console-log-level@npm:1.4.5":
+  version: 1.4.5
+  resolution: "@types/console-log-level@npm:1.4.5"
+  checksum: 10c0/72e9916dfbc95ff7a24428edd3b663bcdf30b4c22fec93581c53772e963f03ab9dad350457d2f833f453309ae0ced685ddf6366e5d38a62a6355ddb1dd850400
+  languageName: node
+  linkType: hard
+
 "@types/graceful-fs@npm:^4.1.3":
   version: 4.1.6
   resolution: "@types/graceful-fs@npm:4.1.6"
@@ -7428,6 +7435,7 @@ __metadata:
     "@octokit/plugin-retry": "npm:7.1.0"
     "@octokit/plugin-throttling": "npm:8.2.0"
     "@tsconfig/node20": "npm:20.1.4"
+    "@types/console-log-level": "npm:1.4.5"
     "@types/jest": "npm:29.5.13"
     "@types/node": "npm:20.16.10"
     "@types/picomatch": "npm:3.0.1"
