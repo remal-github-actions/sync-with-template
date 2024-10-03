@@ -1,7 +1,6 @@
 import * as logging from 'console-log-level'
 import * as core from '@actions/core'
 import { getOctokitOptions, GitHub } from '@actions/github/lib/utils'
-import { Octokit as OctokitCore } from '@octokit/core'
 import { requestLog } from '@octokit/plugin-request-log'
 import { retry } from '@octokit/plugin-retry'
 import { throttling } from '@octokit/plugin-throttling'
@@ -50,8 +49,8 @@ export function newOctokitInstance(token: string) {
         },
     }
 
-    const logOptions: { log?: OctokitCore['log'] } = {}
-    const traceLogging = logging({ level: 'trace' })
+    const logOptions: { log?: logging.Logger } = {}
+    const traceLogging = logging.default({ level: 'trace' })
     if (core.isDebug()) {
         logOptions.log = traceLogging
     }

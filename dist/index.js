@@ -72708,6 +72708,7 @@ function injectModifiableSections(content, sections) {
 
 // EXTERNAL MODULE: ./node_modules/console-log-level/index.js
 var console_log_level = __nccwpck_require__(9653);
+var console_log_level_default = /*#__PURE__*/__nccwpck_require__.n(console_log_level);
 // EXTERNAL MODULE: ./node_modules/@actions/github/lib/utils.js
 var utils = __nccwpck_require__(8006);
 ;// CONCATENATED MODULE: ./node_modules/@octokit/plugin-request-log/dist-src/version.js
@@ -72907,7 +72908,7 @@ function newOctokitInstance(token) {
         },
     };
     const logOptions = {};
-    const traceLogging = console_log_level({ level: 'trace' });
+    const traceLogging = console_log_level_default()({ level: 'trace' });
     if (core.isDebug()) {
         logOptions.log = traceLogging;
     }
