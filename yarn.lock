@@ -1239,16 +1239,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/plugin-retry@npm:7.1.0":
-  version: 7.1.0
-  resolution: "@octokit/plugin-retry@npm:7.1.0"
+"@octokit/plugin-retry@npm:7.1.2":
+  version: 7.1.2
+  resolution: "@octokit/plugin-retry@npm:7.1.2"
   dependencies:
     "@octokit/request-error": "npm:^6.0.0"
     "@octokit/types": "npm:^13.0.0"
     bottleneck: "npm:^2.15.3"
   peerDependencies:
     "@octokit/core": ">=6"
-  checksum: 10c0/560ac5ebe1695b2617ed39e328f7d1bfd9cee3893139c276cc69f204650725d11c60696a718299e2fc2cd55fab149c0e975db8a196daa67e2982b230d1659382
+  checksum: 10c0/bf2175faaee74b1aadba972417140ab6d983c1aadd1bffed48b7abc6eac9b6c9c230f4f7bf5f8f7e14016998890472188587a1c044e96a664b1cc0fb4c21a8c5
   languageName: node
   linkType: hard
 
@@ -7433,7 +7433,7 @@ __metadata:
     "@actions/glob": "npm:0.5.0"
     "@actions/io": "npm:1.1.3"
     "@octokit/plugin-request-log": "npm:5.1.0"
-    "@octokit/plugin-retry": "npm:7.1.0"
+    "@octokit/plugin-retry": "npm:7.1.2"
     "@octokit/plugin-throttling": "npm:8.2.0"
     "@tsconfig/node20": "npm:20.1.4"
     "@types/console-log-level": "npm:1.4.5"
