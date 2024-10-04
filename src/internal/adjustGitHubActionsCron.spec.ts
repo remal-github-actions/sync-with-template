@@ -1,6 +1,6 @@
 import { processCronTokenPart } from './adjustGitHubActionsCron.js'
 
-describe('processCronTokenPart', () => {
+describe(processCronTokenPart.name, () => {
 
     it('star', () => {
         expect(processCronTokenPart('*', 1, 10))

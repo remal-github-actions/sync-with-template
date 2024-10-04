@@ -14,12 +14,12 @@ import picomatch from 'picomatch'
 import { simpleGit, SimpleGit } from 'simple-git'
 import * as tmp from 'tmp'
 import { URL } from 'url'
-import { VM } from 'vm2'
 import YAML from 'yaml'
 import configSchema from '../config.schema.json'
 import transformationsSchema from '../local-transformations.schema.json'
 import { adjustGitHubActionsCron } from './internal/adjustGitHubActionsCron.js'
 import { Config } from './internal/config.js'
+import { evalInScope } from './internal/evalInScope.js'
 import { FilesTransformation, LocalTransformations } from './internal/local-transformations.js'
 import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections.js'
 import { newOctokitInstance } from './internal/octokit.js'
@@ -407,16 +407,9 @@ async function run(): Promise<void> {
                             transformedContent = predefinedFilesTransformationScript(content)
 
                         } else {
-                            const vm = new VM({
-                                sandbox: {
-                                    content,
-                                },
-                                allowAsync: false,
-                                eval: false,
-                                wasm: false,
+                            transformedContent = evalInScope(transformationScript, {
+                                content,
                             })
-                            const script = `(function(){ ${transformationScript} })()`
-                            transformedContent = vm.run(script)
                         }
 
                         const transformedContentString = contentToFileContent(transformedContent)
