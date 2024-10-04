@@ -1,28 +1,28 @@
-import * as debug from 'debug'
+/* eslint-disable import/no-named-as-default-member */
+
 import * as core from '@actions/core'
 import { context } from '@actions/github'
 import type { components, operations } from '@octokit/openapi-types'
-import Ajv2020 from 'ajv/dist/2020'
+import { Ajv2020 } from 'ajv/dist/2020.js'
 import * as crypto from 'crypto'
+import * as debug from 'debug'
 import * as fs from 'fs'
 import { PathLike } from 'fs'
 import JSON5 from 'json5'
 import path from 'path'
 import picomatch from 'picomatch'
-import { simpleGit } from 'simple-git'
-import { SimpleGit } from 'simple-git/promise'
+import { simpleGit, SimpleGit } from 'simple-git'
 import * as tmp from 'tmp'
 import { URL } from 'url'
-import * as util from 'util'
 import { VM } from 'vm2'
 import YAML from 'yaml'
 import configSchema from '../config.schema.json'
 import transformationsSchema from '../local-transformations.schema.json'
-import { adjustGitHubActionsCron } from './internal/adjustGitHubActionsCron'
-import { Config } from './internal/config'
-import { FilesTransformation, LocalTransformations } from './internal/local-transformations'
-import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections'
-import { newOctokitInstance } from './internal/octokit'
+import { adjustGitHubActionsCron } from './internal/adjustGitHubActionsCron.js'
+import { Config } from './internal/config.js'
+import { FilesTransformation, LocalTransformations } from './internal/local-transformations.js'
+import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections.js'
+import { newOctokitInstance } from './internal/octokit.js'
 
 export type Repo = components['schemas']['full-repository']
 export type PullRequest = components['schemas']['pull-request']
@@ -30,10 +30,6 @@ export type PullRequestSimple = components['schemas']['pull-request-simple']
 export type NewPullRequest = operations['pulls/create']['requestBody']['content']['application/json']
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-debug.log = function log(...args) {
-    return process.stdout.write(`${util.format(...args)}\n`)
-}
 
 if (core.isDebug()) {
     debug.enable('simple-git,simple-git:*')

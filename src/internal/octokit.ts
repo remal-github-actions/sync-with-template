@@ -1,23 +1,30 @@
-import * as logging from 'console-log-level'
 import * as core from '@actions/core'
-import { getOctokitOptions, GitHub } from '@actions/github/lib/utils'
+import { getOctokitOptions } from '@actions/github/lib/utils.js'
+import { Octokit as OctokitBaseFactory } from '@octokit/core'
+import { paginateRest } from '@octokit/plugin-paginate-rest'
 import { requestLog } from '@octokit/plugin-request-log'
+import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods'
 import { retry } from '@octokit/plugin-retry'
 import { throttling } from '@octokit/plugin-throttling'
+import * as logging from 'console-log-level'
 
-const OctokitWithPlugins = GitHub
-    .plugin(retry)
-    .plugin(throttling)
-    .plugin(requestLog)
-    .defaults({
+const OctokitFactory = OctokitBaseFactory.plugin(
+    restEndpointMethods,
+    paginateRest,
+    retry,
+    throttling,
+    requestLog,
+)
+
+export function newOctokitInstance(token: string) {
+    const baseOptions = getOctokitOptions(token)
+
+    const previewsOptions = {
         previews: [
             'baptiste',
             'mercy',
         ],
-    })
-
-export function newOctokitInstance(token: string) {
-    const baseOptions = getOctokitOptions(token)
+    }
 
     const retryOptions = {
         retry: {
@@ -55,14 +62,15 @@ export function newOctokitInstance(token: string) {
         logOptions.log = traceLogging
     }
 
-    const allOptions = {
+    const options = {
         ...baseOptions,
+        ...previewsOptions,
         ...retryOptions,
         ...throttleOptions,
         ...logOptions,
     }
 
-    const octokit = new OctokitWithPlugins(allOptions)
+    const octokit = new OctokitFactory(options)
 
     type Rest = typeof octokit.rest
     type Paginate = { paginate: typeof octokit.paginate }

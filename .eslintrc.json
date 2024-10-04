@@ -12,9 +12,9 @@
     "plugin:github/recommended",
     "prettier"
   ],
-  "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "ecmaVersion": 2019,
+    "ecmaVersion": "latest",
+    "sourceType": "module",
     "project": "./tsconfig.json"
   },
   "env": {
@@ -35,6 +35,7 @@
     "prefer-template": "off",
     "import/no-commonjs": "off",
     "import/no-namespace": "off",
+    "import/extensions": "off",
     "@typescript-eslint/no-var-requires": "off",
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-unused-vars": [
@@ -52,5 +53,21 @@
     "i18n-text/no-en": "off",
     "github/no-then": "off",
     "github/array-foreach": "off"
+  },
+  "settings": {
+    "import/parsers": {
+      "@typescript-eslint/parser": [
+        ".ts",
+        ".cts",
+        ".tms",
+        ".tsx"
+      ]
+    },
+    "import/resolver": {
+      "typescript": {
+        "alwaysTryTypes": true,
+        "project": "./tsconfig.json"
+      }
+    }
   }
 }

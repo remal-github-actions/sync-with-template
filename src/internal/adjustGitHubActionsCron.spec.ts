@@ -1,4 +1,4 @@
-import { processCronTokenPart } from './adjustGitHubActionsCron'
+import { processCronTokenPart } from './adjustGitHubActionsCron.js'
 
 describe('processCronTokenPart', () => {
 

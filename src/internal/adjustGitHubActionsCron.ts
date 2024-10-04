@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import { context } from '@actions/github'
-import { calculateHash } from './calculateHash'
+import { calculateHash } from './calculateHash.js'
 
 export function adjustGitHubActionsCron(content: string): string {
     return content.toString().replaceAll(

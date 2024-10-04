@@ -3,15 +3,15 @@
   "extends": "@tsconfig/node20/tsconfig.json",
   "compilerOptions": {
     "alwaysStrict": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noImplicitAny": false,
+    "removeComments": true,
+    "resolveJsonModule": true,
     "strict": true,
     "strictNullChecks": true,
-    "noImplicitAny": false,
-    "experimentalDecorators": true,
-    "resolveJsonModule": true,
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "removeComments": true,
     "types": [
       "node",
       "jest"

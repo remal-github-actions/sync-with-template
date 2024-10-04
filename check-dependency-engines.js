@@ -1,5 +1,5 @@
-const fs = require('fs')
-const semver = require('semver')
+import * as fs from 'fs'
+import * as semver from 'semver'
 
 let nodeVersion = fs.readFileSync('.nvmrc', 'utf8').trim()
 console.log(`Checking that engines.node in package.json file of all dependencies satisfies Node.js version ${nodeVersion}...`)

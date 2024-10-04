@@ -1,4 +1,4 @@
-import {injectModifiableSections, parseModifiableSections} from './modifiableSections'
+import {injectModifiableSections, parseModifiableSections} from './modifiableSections.js'
 
 describe('parseModifiableSections', () => {
 

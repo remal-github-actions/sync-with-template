@@ -1,4 +1,4 @@
-const fs = require('fs')
+import * as fs from 'fs'
 
 const encoding = 'utf8'
 const content = fs.readFileSync('tsconfig.json', encoding)
