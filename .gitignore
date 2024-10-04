@@ -73,4 +73,5 @@ node_modules/
 /build
 /coverage
 /dist
-!/dist/index.js
+!/dist/*.js
+!/dist/*.json
