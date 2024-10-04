@@ -16,7 +16,7 @@
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --passWithNoTests",
     "tsconfig-generate-app": "node tsconfig-generate-app",
     "compile": "npm run generate && npm run lint && rimraf --glob build && node tsconfig-generate-app && tsc -project tsconfig.app.json --rootDir . --outDir build",
-    "dist": "npm run compile && rimraf --glob dist && ncc build build/src/main.js --out dist",
+    "dist": "npm run compile && rimraf --glob dist && ncc build build/src/main.js --out dist && node create-dist-package-json",
     "build": "node check-dependency-engines && npm run dist && npm run test"
   },
   "dependencies": {
