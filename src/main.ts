@@ -142,8 +142,28 @@ async function run(): Promise<void> {
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', configFilePath)
             }
 
-            const configContent = fs.readFileSync(configPath, 'utf8')
-            const parsedConfig = YAML.parse(configContent)
+
+            const localConfigContent = fs.readFileSync(configPath, 'utf8')
+            const localParsedConfig = YAML.parse(localConfigContent)
+
+            let templateConfigContent: string | undefined
+            try {
+                templateConfigContent = await git.raw(
+                    'show',
+                    `template/${templateRepo.default_branch}:${configFilePath}`,
+                )
+            } catch (e) {
+                core.warning(e instanceof Error ? e : (e as any).toString())
+            }
+            let templateParsedConfig = {}
+            if (templateConfigContent?.length) {
+                templateParsedConfig = YAML.parse(templateConfigContent)
+            }
+
+            const parsedConfig = {
+                ...templateParsedConfig,
+                ...localParsedConfig,
+            }
             delete parsedConfig.$schema
 
             const ajv = new Ajv2020()
@@ -158,6 +178,9 @@ async function run(): Promise<void> {
 
         config.excludes = config.excludes ?? []
         config.excludes.push(transformationsFilePath)
+        await core.group('Config', async () => {
+            core.info(JSON.stringify(config, null, 2))
+        })
 
 
         const localTransformations: LocalTransformations | undefined = await core.group(
