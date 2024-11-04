@@ -62100,6 +62100,30 @@ function evalInScope(js, context) {
     return new Function(`with (this) { ${js} }`).call(context);
 }
 
+;// CONCATENATED MODULE: ./build/src/internal/isTextFile.js
+
+function isTextFile(filePath) {
+    if (!external_fs_.existsSync(filePath)) {
+        return false;
+    }
+    const fd = external_fs_.openSync(filePath, 'r');
+    try {
+        const buffer = Buffer.alloc(1);
+        const readBytes = external_fs_.readSync(fd, buffer, 0, 1, null);
+        if (readBytes === 0) {
+            return false;
+        }
+        const firstByte = buffer[0];
+        if (firstByte === 0) {
+            return false;
+        }
+        return true;
+    }
+    finally {
+        external_fs_.closeSync(fd);
+    }
+}
+
 ;// CONCATENATED MODULE: ./build/src/internal/modifiableSections.js
 const MODIFIABLE_SECTION_PREFIX = /.*\$\$\$sync-with-template-modifiable:\s*([^$]+?)\s*\$\$\$.*/;
 const MODIFIABLE_SECTION_END = /.*\$\$\$sync-with-template-modifiable-end\$\$\$.*/;
@@ -66074,6 +66098,7 @@ function newOctokitInstance(token) {
 
 
 
+
 if (core.isDebug()) {
     src.enable('simple-git,simple-git:*');
     process.env.DEBUG = [
@@ -66326,8 +66351,7 @@ async function run() {
             }
             async function parseModifiableSectionsFor(fileToSync) {
                 const fullFilePath = external_path_.join(workspacePath, fileToSync);
-                const isText = await isTextFile(fullFilePath);
-                if (!isText)
+                if (!isTextFile(fullFilePath))
                     return undefined;
                 const content = external_fs_.readFileSync(fullFilePath, 'utf8');
                 const modifiableSections = parseModifiableSections(content);
@@ -66578,18 +66602,6 @@ function hasAccessToFile(filePath, mode) {
     catch (_) {
         return false;
     }
-}
-async function isTextFile(filePath) {
-    if (!external_fs_.existsSync(filePath)) {
-        return false;
-    }
-    const bytes = external_fs_.readFileSync(filePath);
-    for (const pair of bytes.entries()) {
-        if (pair[1] === 0) {
-            return false;
-        }
-    }
-    return true;
 }
 async function getRemoteBranches(git, remoteName) {
     const branchPrefix = `refs/heads/`;
