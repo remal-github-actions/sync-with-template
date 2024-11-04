@@ -66165,7 +66165,7 @@ async function run() {
                 templateConfigContent = await git.raw('show', `template/${templateRepo.default_branch}:${main_configFilePath}`);
             }
             catch (e) {
-                core.warning(e instanceof Error ? e : e.toString());
+                core.warning('Error loading template config: ' + (e instanceof Error ? e : e.toString()));
             }
             let templateParsedConfig = {};
             if (templateConfigContent?.length) {
@@ -66186,7 +66186,7 @@ async function run() {
         });
         config.excludes = config.excludes ?? [];
         config.excludes.push(transformationsFilePath);
-        await core.group('Config', async () => {
+        await core.group('Parsed config', async () => {
             core.info(JSON.stringify(config, null, 2));
         });
         const localTransformations = await core.group(`Parsing local transformations: ${transformationsFilePath}`, async () => {
@@ -66297,10 +66297,13 @@ async function run() {
                     }
                     continue;
                 }
+                core.info(`  Parsing modifiable sections for ${fileToSync}`);
                 const modifiableSections = await parseModifiableSectionsFor(fileToSync);
                 core.info(`  Checkouting ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`);
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync);
+                core.info(`  Applying local transformations for ${fileToSync}`);
                 applyLocalTransformations(fileToSync);
+                core.info(`  Applying modifiable sections for ${fileToSync}`);
                 applyModifiableSections(fileToSync, modifiableSections);
             }
             function isIgnoredByTransformations(fileToSync) {
@@ -66421,9 +66424,7 @@ async function run() {
         });
         let shouldBePushed = true;
         if (hashBefore != null) {
-            const hashAfter = await core.group('Hashing files after sync', async () => {
-                return hashFilesToSync();
-            });
+            const hashAfter = await core.group('Hashing files after sync', async () => hashFilesToSync());
             if (hashBefore === hashAfter) {
                 core.info('No files were changed');
                 shouldBePushed = false;
