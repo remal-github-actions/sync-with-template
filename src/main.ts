@@ -166,13 +166,13 @@ async function run(): Promise<void> {
             }
             delete parsedConfig.$schema
 
-            if (config.excludes) {
+            if (parsedConfig.excludes) {
                 ;[
                     transformationsFilePath,
                 ].forEach(filePath => {
-                    const index = config.excludes?.indexOf(filePath) ?? -1
+                    const index = parsedConfig.excludes.indexOf(filePath)
                     if (index >= 0) {
-                        config.excludes?.splice(index, 1)
+                        parsedConfig.excludes.splice(index, 1)
                     }
                 })
             }
