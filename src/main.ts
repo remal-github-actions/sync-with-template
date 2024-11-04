@@ -20,6 +20,7 @@ import transformationsSchema from '../local-transformations.schema.json'
 import { adjustGitHubActionsCron } from './internal/adjustGitHubActionsCron.js'
 import { Config } from './internal/config.js'
 import { evalInScope } from './internal/evalInScope.js'
+import { isTextFile } from './internal/isTextFile.js'
 import { FilesTransformation, LocalTransformations } from './internal/local-transformations.js'
 import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections.js'
 import { newOctokitInstance } from './internal/octokit.js'
@@ -358,8 +359,7 @@ async function run(): Promise<void> {
 
             async function parseModifiableSectionsFor(fileToSync: string): Promise<ModifiableSections | undefined> {
                 const fullFilePath = path.join(workspacePath, fileToSync)
-                const isText = await isTextFile(fullFilePath)
-                if (!isText) return undefined
+                if (!isTextFile(fullFilePath)) return undefined
 
                 const content = fs.readFileSync(fullFilePath, 'utf8')
                 const modifiableSections = parseModifiableSections(content)
@@ -650,20 +650,6 @@ function hasAccessToFile(filePath: PathLike, mode: number): boolean {
     } catch (_) {
         return false
     }
-}
-
-async function isTextFile(filePath: fs.PathLike): Promise<boolean> {
-    if (!fs.existsSync(filePath)) {
-        return false
-    }
-
-    const bytes = fs.readFileSync(filePath)
-    for (const pair of bytes.entries()) {
-        if (pair[1] === 0) {
-            return false
-        }
-    }
-    return true
 }
 
 type BranchName = string
