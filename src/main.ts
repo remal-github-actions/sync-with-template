@@ -332,12 +332,16 @@ async function run(): Promise<void> {
                     continue
                 }
 
+                core.info(`  Parsing modifiable sections for ${fileToSync}`)
                 const modifiableSections = await parseModifiableSectionsFor(fileToSync)
 
                 core.info(`  Checkouting ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
 
+                core.info(`  Applying local transformations for ${fileToSync}`)
                 applyLocalTransformations(fileToSync)
+
+                core.info(`  Applying modifiable sections for ${fileToSync}`)
                 applyModifiableSections(fileToSync, modifiableSections)
             }
 
