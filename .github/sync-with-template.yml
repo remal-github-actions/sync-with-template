@@ -19,5 +19,5 @@ includes:
 - update-node-version-in-files.*js
 - tsconfig-generate-app.*js
 modifiable-sections-exclusions:
-- '.yarn/plugins/**'
-- '.yarn/releases/**'
+- .yarn/plugins/*
+- .yarn/releases/*
