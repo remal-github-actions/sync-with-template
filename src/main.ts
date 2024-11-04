@@ -228,6 +228,7 @@ async function run(): Promise<void> {
             includes: ['.github/workflows/*.yml'],
             format: 'text',
             script: '#adjustGitHubActionsCron',
+            excludes: config['modifiable-sections-exclusions'],
         })
 
         const ignoringTransformations = allTransformations.filter(it => it.ignore === true)

@@ -18,3 +18,6 @@ includes:
 - check-dependency-engines.*js
 - update-node-version-in-files.*js
 - tsconfig-generate-app.*js
+modifiable-sections-exclusions:
+- '.yarn/plugins/**'
+- '.yarn/releases/**'

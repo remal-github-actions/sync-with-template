@@ -21,6 +21,13 @@
       "items": {
         "$ref": "#/definitions/glob"
       }
+    },
+    "modifiable-sections-exclusions": {
+      "description": "Glob patterns for excluded files from modifiable sections transformation",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/glob"
+      }
     }
   },
   "additionalProperties": false,
