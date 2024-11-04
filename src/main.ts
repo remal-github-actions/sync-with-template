@@ -166,17 +166,6 @@ async function run(): Promise<void> {
             }
             delete parsedConfig.$schema
 
-            if (parsedConfig.excludes) {
-                ;[
-                    transformationsFilePath,
-                ].forEach(filePath => {
-                    const index = parsedConfig.excludes.indexOf(filePath)
-                    if (index >= 0) {
-                        parsedConfig.excludes.splice(index, 1)
-                    }
-                })
-            }
-
             const ajv = new Ajv2020()
             const validate = ajv.compile(configSchema)
             const valid = validate(parsedConfig)
