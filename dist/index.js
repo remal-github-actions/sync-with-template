@@ -66246,7 +66246,6 @@ async function run() {
             includes: ['.github/workflows/*.yml'],
             format: 'text',
             script: '#adjustGitHubActionsCron',
-            excludes: config['modifiable-sections-exclusions'],
         });
         const ignoringTransformations = allTransformations.filter(it => it.ignore === true);
         const deletingTransformations = allTransformations.filter(it => it.delete === true);
@@ -66310,6 +66309,15 @@ async function run() {
                 await git.raw('checkout', '--force', '-B', syncBranchName, `remotes/origin/${repo.default_branch}`);
                 return hash;
             });
+        function isExcludedFromModifiableSections(fileToSync) {
+            const excludes = config['modifiable-sections-exclusions'] ?? [];
+            const excludesMatcher = excludes?.length
+                ? picomatch(excludes)
+                : undefined;
+            if (excludesMatcher != null && excludesMatcher(fileToSync))
+                return true;
+            return false;
+        }
         await core.group('Checkouting template files', async () => {
             for (const fileToSync of filesToSync) {
                 core.info(`Synchronizing '${fileToSync}'`);
@@ -66323,14 +66331,19 @@ async function run() {
                     }
                     continue;
                 }
-                core.info(`  Parsing modifiable sections for ${fileToSync}`);
-                const modifiableSections = await parseModifiableSectionsFor(fileToSync);
+                let modifiableSections = undefined;
+                if (!isExcludedFromModifiableSections(fileToSync)) {
+                    core.info(`  Parsing modifiable sections for ${fileToSync}`);
+                    modifiableSections = await parseModifiableSectionsFor(fileToSync);
+                }
                 core.info(`  Checkouting ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`);
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync);
                 core.info(`  Applying local transformations for ${fileToSync}`);
                 applyLocalTransformations(fileToSync);
-                core.info(`  Applying modifiable sections for ${fileToSync}`);
-                applyModifiableSections(fileToSync, modifiableSections);
+                if (modifiableSections) {
+                    core.info(`  Applying modifiable sections for ${fileToSync}`);
+                    applyModifiableSections(fileToSync, modifiableSections);
+                }
             }
             function isIgnoredByTransformations(fileToSync) {
                 for (const transformation of ignoringTransformations) {
