@@ -66158,8 +66158,23 @@ async function run() {
                 core.info(`The repository doesn't have config ${main_configFilePath}, checkouting from ${templateRepo.html_url}/blob/${templateSha}/${main_configFilePath}`);
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', main_configFilePath);
             }
-            const configContent = external_fs_.readFileSync(configPath, 'utf8');
-            const parsedConfig = yaml_dist.parse(configContent);
+            const localConfigContent = external_fs_.readFileSync(configPath, 'utf8');
+            const localParsedConfig = yaml_dist.parse(localConfigContent);
+            let templateConfigContent;
+            try {
+                templateConfigContent = await git.raw('show', `template/${templateRepo.default_branch}:${main_configFilePath}`);
+            }
+            catch (e) {
+                core.warning(e instanceof Error ? e : e.toString());
+            }
+            let templateParsedConfig = {};
+            if (templateConfigContent?.length) {
+                templateParsedConfig = yaml_dist.parse(templateConfigContent);
+            }
+            const parsedConfig = {
+                ...templateParsedConfig,
+                ...localParsedConfig,
+            };
             delete parsedConfig.$schema;
             const ajv = new _2020.Ajv2020();
             const validate = ajv.compile(config_schema_namespaceObject);
@@ -66171,6 +66186,9 @@ async function run() {
         });
         config.excludes = config.excludes ?? [];
         config.excludes.push(transformationsFilePath);
+        await core.group('Config', async () => {
+            core.info(JSON.stringify(config, null, 2));
+        });
         const localTransformations = await core.group(`Parsing local transformations: ${transformationsFilePath}`, async () => {
             const transformationsPath = external_path_.join(workspacePath, transformationsFilePath);
             if (!external_fs_.existsSync(transformationsPath)) {
