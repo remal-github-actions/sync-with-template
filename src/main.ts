@@ -311,9 +311,9 @@ async function run(): Promise<void> {
             const excludesMatcher = excludes?.length
                 ? picomatch(excludes)
                 : undefined
-            if (excludesMatcher != null && excludesMatcher(fileToSync)) return false
+            if (excludesMatcher != null && excludesMatcher(fileToSync)) return true
 
-            return true
+            return false
         }
 
         await core.group('Checkouting template files', async () => {
