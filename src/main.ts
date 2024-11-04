@@ -153,7 +153,7 @@ async function run(): Promise<void> {
                     `template/${templateRepo.default_branch}:${configFilePath}`,
                 )
             } catch (e) {
-                core.warning(e instanceof Error ? e : (e as any).toString())
+                core.warning('Error loading template config: ' + (e instanceof Error ? e : (e as any).toString()))
             }
             let templateParsedConfig = {}
             if (templateConfigContent?.length) {
@@ -165,6 +165,17 @@ async function run(): Promise<void> {
                 ...localParsedConfig,
             }
             delete parsedConfig.$schema
+
+            if (config.excludes) {
+                ;[
+                    transformationsFilePath,
+                ].forEach(filePath => {
+                    const index = config.excludes?.indexOf(filePath) ?? -1
+                    if (index >= 0) {
+                        config.excludes?.splice(index, 1)
+                    }
+                })
+            }
 
             const ajv = new Ajv2020()
             const validate = ajv.compile(configSchema)
@@ -178,7 +189,7 @@ async function run(): Promise<void> {
 
         config.excludes = config.excludes ?? []
         config.excludes.push(transformationsFilePath)
-        await core.group('Config', async () => {
+        await core.group('Parsed config', async () => {
             core.info(JSON.stringify(config, null, 2))
         })
 
@@ -463,9 +474,7 @@ async function run(): Promise<void> {
 
         let shouldBePushed = true
         if (hashBefore != null) {
-            const hashAfter = await core.group('Hashing files after sync', async () => {
-                return hashFilesToSync()
-            })
+            const hashAfter = await core.group('Hashing files after sync', async () => hashFilesToSync())
             if (hashBefore === hashAfter) {
                 core.info('No files were changed')
                 shouldBePushed = false
