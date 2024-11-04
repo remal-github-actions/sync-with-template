@@ -18,6 +18,9 @@ includes:
 - check-dependency-engines.*js
 - update-node-version-in-files.*js
 - tsconfig-generate-app.*js
+excludes:
+- .github/template-cleanup/**
+- .github/workflows/template-cleanup.*
 modifiable-sections-exclusions:
 - .yarn/plugins/**
 - .yarn/releases/**
