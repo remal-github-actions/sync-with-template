@@ -57,9 +57,10 @@ jobs:
       id: restore-node_modules-cache
       uses: actions/cache/restore@v4
       with:
-        key: ${{runner.os}}-node_modules-${{steps.readNodeVersion.outputs.result}}-${{hashFiles('package.json', 'yarn.lock', '.yarnrc.yml', '.yarn/patches/**', '.yarn/plugins/**', '.yarn/releases/**', '.yarn/versions/**')}}
+        key: ${{runner.os}}-node_modules-${{steps.readNodeVersion.outputs.result}}-${{hashFiles('package.json', '.yarnrc.yml', 'yarn.lock' , '.pnp.*', '.yarn/patches/**', '.yarn/plugins/**', '.yarn/releases/**', '.yarn/versions/**')}}
         path: |
           node_modules
+          .yarn/cache
 
     - name: Install dependencies
       if: steps.restore-node_modules-cache.outputs.cache-hit != 'true'
@@ -70,9 +71,10 @@ jobs:
       if: steps.restore-node_modules-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        key: ${{runner.os}}-node_modules-${{steps.readNodeVersion.outputs.result}}-${{hashFiles('package.json', 'yarn.lock', '.yarnrc.yml', '.yarn/patches/**', '.yarn/plugins/**', '.yarn/releases/**', '.yarn/versions/**')}}
+        key: ${{runner.os}}-node_modules-${{steps.readNodeVersion.outputs.result}}-${{hashFiles('package.json', '.yarnrc.yml', 'yarn.lock' , '.pnp.*', '.yarn/patches/**', '.yarn/plugins/**', '.yarn/releases/**', '.yarn/versions/**')}}
         path: |
           node_modules
+          .yarn/cache
 
 
     - name: Build
