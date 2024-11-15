@@ -37,13 +37,27 @@ describe(isTextFile.name, () => {
         fs.rmSync(dir, { recursive: true, force: true })
     })
 
-    it('binary file', () => {
+    it('binary file with 0 at the start', () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), isTextFile.name))
         const file = `${dir}/file`
 
         const buffer = Buffer.alloc(10)
         buffer.fill(0)
         buffer.fill(65, 1)
+        fs.writeFileSync(file, buffer)
+
+        expect(isTextFile(file)).toBeFalsy()
+
+        fs.rmSync(dir, { recursive: true, force: true })
+    })
+
+    it('binary file with 0 in the middle', () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), isTextFile.name))
+        const file = `${dir}/file`
+
+        const buffer = Buffer.alloc(10)
+        buffer.fill(65)
+        buffer[buffer.length / 2] = 0
         fs.writeFileSync(file, buffer)
 
         expect(isTextFile(file)).toBeFalsy()

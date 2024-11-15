@@ -7,15 +7,17 @@ export function isTextFile(filePath: fs.PathLike): boolean {
 
     const fd = fs.openSync(filePath, 'r')
     try {
-        const buffer = Buffer.alloc(1)
-        const readBytes = fs.readSync(fd, buffer, 0, 1, null)
+        const buffer = Buffer.alloc(100)
+        const readBytes = fs.readSync(fd, buffer, 0, buffer.length, null)
         if (readBytes === 0) {
             return false
         }
 
-        const firstByte = buffer[0]
-        if (firstByte === 0) {
-            return false
+        for (let i = 0; i < readBytes; ++i) {
+            const byte = buffer[i]
+            if (byte === 0) {
+                return false
+            }
         }
 
         return true
