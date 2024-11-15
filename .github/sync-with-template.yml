@@ -19,8 +19,10 @@ includes:
 - update-node-version-in-files.*js
 - tsconfig-generate-app.*js
 excludes:
-- .github/template-cleanup/**
 - .github/workflows/template-cleanup.*
+- .github/template-cleanup/**
+- .github/workflows/release-drafter.yml
+- .github/release-drafter.yml
 modifiable-sections-exclusions:
 - .yarn/plugins/**
 - .yarn/releases/**
