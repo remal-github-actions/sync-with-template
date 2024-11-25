@@ -15,8 +15,6 @@ import { simpleGit, SimpleGit } from 'simple-git'
 import * as tmp from 'tmp'
 import { URL } from 'url'
 import YAML from 'yaml'
-import configSchema from '../config.schema.json'
-import transformationsSchema from '../local-transformations.schema.json'
 import { adjustGitHubActionsCron } from './internal/adjustGitHubActionsCron.js'
 import { Config } from './internal/config.js'
 import { evalInScope } from './internal/evalInScope.js'
@@ -24,6 +22,7 @@ import { isTextFile } from './internal/isTextFile.js'
 import { FilesTransformation, LocalTransformations } from './internal/local-transformations.js'
 import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections.js'
 import { newOctokitInstance } from './internal/octokit.js'
+import * as schemas from './internal/schemas.no-coverage.js'
 
 export type Repo = components['schemas']['full-repository']
 export type PullRequest = components['schemas']['pull-request']
@@ -168,7 +167,7 @@ async function run(): Promise<void> {
             delete parsedConfig.$schema
 
             const ajv = new Ajv2020()
-            const validate = ajv.compile(configSchema)
+            const validate = ajv.compile(schemas.config)
             const valid = validate(parsedConfig)
             if (!valid) {
                 throw new Error(`Config validation error: ${JSON.stringify(validate.errors, null, 2)}`)
@@ -198,7 +197,7 @@ async function run(): Promise<void> {
                 delete parsedTransformations.$schema
 
                 const ajv = new Ajv2020()
-                const validate = ajv.compile(transformationsSchema)
+                const validate = ajv.compile(schemas.transformations)
                 const valid = validate(parsedTransformations)
                 if (!valid) {
                     throw new Error(
@@ -238,12 +237,16 @@ async function run(): Promise<void> {
             const includesMatcher = transformation.includes?.length
                 ? picomatch(transformation.includes)
                 : undefined
-            if (includesMatcher != null && !includesMatcher(fileToSync)) return false
+            if (includesMatcher != null && !includesMatcher(fileToSync)) {
+                return false
+            }
 
             const excludesMatcher = transformation.excludes?.length
                 ? picomatch(transformation.excludes)
                 : undefined
-            if (excludesMatcher != null && excludesMatcher(fileToSync)) return false
+            if (excludesMatcher != null && excludesMatcher(fileToSync)) {
+                return false
+            }
 
             return true
         }
@@ -311,7 +314,9 @@ async function run(): Promise<void> {
             const excludesMatcher = excludes?.length
                 ? picomatch(excludes)
                 : undefined
-            if (excludesMatcher != null && excludesMatcher(fileToSync)) return true
+            if (excludesMatcher != null && excludesMatcher(fileToSync)) {
+                return true
+            }
 
             return false
         }
@@ -352,7 +357,9 @@ async function run(): Promise<void> {
 
             function isIgnoredByTransformations(fileToSync: string): boolean {
                 for (const transformation of ignoringTransformations) {
-                    if (!isTransforming(transformation, fileToSync)) continue
+                    if (!isTransforming(transformation, fileToSync)) {
+                        continue
+                    }
 
                     core.info(`  Ignored by '${transformation.name}' local transformation`)
                     return true
@@ -363,7 +370,9 @@ async function run(): Promise<void> {
 
             function isDeletedByTransformations(fileToSync: string): boolean {
                 for (const transformation of deletingTransformations) {
-                    if (!isTransforming(transformation, fileToSync)) continue
+                    if (!isTransforming(transformation, fileToSync)) {
+                        continue
+                    }
 
                     core.info(`  Deleted by '${transformation.name}' local transformation`)
                     return true
@@ -374,7 +383,9 @@ async function run(): Promise<void> {
 
             async function parseModifiableSectionsFor(fileToSync: string): Promise<ModifiableSections | undefined> {
                 const fullFilePath = path.join(workspacePath, fileToSync)
-                if (!isTextFile(fullFilePath)) return undefined
+                if (!isTextFile(fullFilePath)) {
+                    return undefined
+                }
 
                 const content = fs.readFileSync(fullFilePath, 'utf8')
                 const modifiableSections = parseModifiableSections(content)
@@ -386,7 +397,9 @@ async function run(): Promise<void> {
 
             function applyLocalTransformations(fileToSync: string) {
                 for (const transformation of transformations) {
-                    if (!isTransforming(transformation, fileToSync)) continue
+                    if (!isTransforming(transformation, fileToSync)) {
+                        continue
+                    }
 
                     let isTransformed = false
                     if (transformation.replaceWithFile != null) {
@@ -467,7 +480,9 @@ async function run(): Promise<void> {
             }
 
             function applyModifiableSections(fileToSync: string, modifiableSections: ModifiableSections | undefined) {
-                if (modifiableSections == null || !Object.keys(modifiableSections).length) return
+                if (modifiableSections == null || !Object.keys(modifiableSections).length) {
+                    return
+                }
 
                 core.info(`  Processing modifiable sections: ${Object.keys(modifiableSections).join(', ')}`)
                 const fullFilePath = path.join(workspacePath, fileToSync)

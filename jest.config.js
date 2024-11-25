@@ -20,7 +20,8 @@ export default {
     ],
     collectCoverage: true,
     collectCoverageFrom: [
-        'src/**'
+        'src/**',
+        '!**/*.no-coverage.*',
     ],
     errorOnDeprecated: true,
     verbose: true,
