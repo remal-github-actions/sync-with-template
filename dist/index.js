@@ -62022,10 +62022,6 @@ var tmp = __nccwpck_require__(1288);
 var external_url_ = __nccwpck_require__(7016);
 // EXTERNAL MODULE: ./node_modules/yaml/dist/index.js
 var yaml_dist = __nccwpck_require__(8815);
-;// CONCATENATED MODULE: ./build/config.schema.json
-const config_schema_namespaceObject = /*#__PURE__*/JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Config","description":"Config for sync-with-template GitHub action","type":"object","required":["includes"],"properties":{"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"modifiable-sections-exclusions":{"description":"Glob patterns for excluded files from modifiable sections transformation","type":"array","items":{"$ref":"#/definitions/glob"}}},"additionalProperties":false,"definitions":{"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
-;// CONCATENATED MODULE: ./build/local-transformations.schema.json
-const local_transformations_schema_namespaceObject = /*#__PURE__*/JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"object","required":["repositories"],"properties":{"repositories":{"type":"array","uniqueItems":true,"minItems":1,"items":{"$ref":"#/definitions/repository-full-name"}},"transformations":{"type":"array","items":{"$ref":"#/definitions/files-transformation"}}},"additionalProperties":false,"definitions":{"repository-full-name":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+/[^<>:;,?\\"|/]+$"},"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w./-]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text","json","json5","yaml"]},"indent":{"description":"File indent","type":"number"},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"},"delete":{"description":"Set to true to delete files","type":"boolean"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
 ;// CONCATENATED MODULE: ./build/src/internal/calculateHash.js
 function calculateHash(value) {
     if (value.length === 0)
@@ -66089,8 +66085,16 @@ function newOctokitInstance(token) {
     return client;
 }
 
-;// CONCATENATED MODULE: ./build/src/main.js
+;// CONCATENATED MODULE: ./build/config.schema.json
+const config_schema_namespaceObject = /*#__PURE__*/JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Config","description":"Config for sync-with-template GitHub action","type":"object","required":["includes"],"properties":{"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"modifiable-sections-exclusions":{"description":"Glob patterns for excluded files from modifiable sections transformation","type":"array","items":{"$ref":"#/definitions/glob"}}},"additionalProperties":false,"definitions":{"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
+;// CONCATENATED MODULE: ./build/local-transformations.schema.json
+const local_transformations_schema_namespaceObject = /*#__PURE__*/JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"object","required":["repositories"],"properties":{"repositories":{"type":"array","uniqueItems":true,"minItems":1,"items":{"$ref":"#/definitions/repository-full-name"}},"transformations":{"type":"array","items":{"$ref":"#/definitions/files-transformation"}}},"additionalProperties":false,"definitions":{"repository-full-name":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+/[^<>:;,?\\"|/]+$"},"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w./-]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text","json","json5","yaml"]},"indent":{"description":"File indent","type":"number"},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"},"delete":{"description":"Set to true to delete files","type":"boolean"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
+;// CONCATENATED MODULE: ./build/src/internal/schemas.no-coverage.js
 
+
+
+
+;// CONCATENATED MODULE: ./build/src/main.js
 
 
 
@@ -66265,13 +66269,15 @@ async function run() {
             const includesMatcher = transformation.includes?.length
                 ? picomatch(transformation.includes)
                 : undefined;
-            if (includesMatcher != null && !includesMatcher(fileToSync))
+            if (includesMatcher != null && !includesMatcher(fileToSync)) {
                 return false;
+            }
             const excludesMatcher = transformation.excludes?.length
                 ? picomatch(transformation.excludes)
                 : undefined;
-            if (excludesMatcher != null && excludesMatcher(fileToSync))
+            if (excludesMatcher != null && excludesMatcher(fileToSync)) {
                 return false;
+            }
             return true;
         }
         const filesToSync = await core.group('Calculating files to sync', async () => {
@@ -66325,8 +66331,9 @@ async function run() {
             const excludesMatcher = excludes?.length
                 ? picomatch(excludes)
                 : undefined;
-            if (excludesMatcher != null && excludesMatcher(fileToSync))
+            if (excludesMatcher != null && excludesMatcher(fileToSync)) {
                 return true;
+            }
             return false;
         }
         await core.group('Checkouting template files', async () => {
@@ -66358,8 +66365,9 @@ async function run() {
             }
             function isIgnoredByTransformations(fileToSync) {
                 for (const transformation of ignoringTransformations) {
-                    if (!isTransforming(transformation, fileToSync))
+                    if (!isTransforming(transformation, fileToSync)) {
                         continue;
+                    }
                     core.info(`  Ignored by '${transformation.name}' local transformation`);
                     return true;
                 }
@@ -66367,8 +66375,9 @@ async function run() {
             }
             function isDeletedByTransformations(fileToSync) {
                 for (const transformation of deletingTransformations) {
-                    if (!isTransforming(transformation, fileToSync))
+                    if (!isTransforming(transformation, fileToSync)) {
                         continue;
+                    }
                     core.info(`  Deleted by '${transformation.name}' local transformation`);
                     return true;
                 }
@@ -66376,8 +66385,9 @@ async function run() {
             }
             async function parseModifiableSectionsFor(fileToSync) {
                 const fullFilePath = external_path_.join(workspacePath, fileToSync);
-                if (!isTextFile(fullFilePath))
+                if (!isTextFile(fullFilePath)) {
                     return undefined;
+                }
                 const content = external_fs_.readFileSync(fullFilePath, 'utf8');
                 const modifiableSections = parseModifiableSections(content);
                 if (Object.keys(modifiableSections).length) {
@@ -66387,8 +66397,9 @@ async function run() {
             }
             function applyLocalTransformations(fileToSync) {
                 for (const transformation of transformations) {
-                    if (!isTransforming(transformation, fileToSync))
+                    if (!isTransforming(transformation, fileToSync)) {
                         continue;
+                    }
                     let isTransformed = false;
                     if (transformation.replaceWithFile != null) {
                         const replaceWithPath = external_path_.join(workspacePath, transformation.replaceWithFile);
@@ -66460,8 +66471,9 @@ async function run() {
                 }
             }
             function applyModifiableSections(fileToSync, modifiableSections) {
-                if (modifiableSections == null || !Object.keys(modifiableSections).length)
+                if (modifiableSections == null || !Object.keys(modifiableSections).length) {
                     return;
+                }
                 core.info(`  Processing modifiable sections: ${Object.keys(modifiableSections).join(', ')}`);
                 const fullFilePath = external_path_.join(workspacePath, fileToSync);
                 const content = external_fs_.readFileSync(fullFilePath, 'utf8');
