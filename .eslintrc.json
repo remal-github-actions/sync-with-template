@@ -53,7 +53,8 @@
     ],
     "i18n-text/no-en": "off",
     "github/no-then": "off",
-    "github/array-foreach": "off"
+    "github/array-foreach": "off",
+    "github/filenames-match-regex": "off"
   },
   "settings": {
     "import/parsers": {
