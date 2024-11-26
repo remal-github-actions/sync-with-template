@@ -3733,23 +3733,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-filenames@npm:^1.3.2":
-  version: 1.3.2
-  resolution: "eslint-plugin-filenames@npm:1.3.2"
-  dependencies:
-    lodash.camelcase: "npm:4.3.0"
-    lodash.kebabcase: "npm:4.1.1"
-    lodash.snakecase: "npm:4.1.1"
-    lodash.upperfirst: "npm:4.3.1"
-  peerDependencies:
-    eslint: "*"
-  checksum: 10c0/e7c3d4ce217d276edc626de855a486a968a84ef57ccce31466441db14fcd3e7aee7829b2818ce39bfd40f95b2c63c023c1b1180aedee737d3e964d22a17c6a40
-  languageName: node
-  linkType: hard
-
-"eslint-plugin-github@npm:5.1.1":
-  version: 5.1.1
-  resolution: "eslint-plugin-github@npm:5.1.1"
+"eslint-plugin-github@npm:5.1.2":
+  version: 5.1.2
+  resolution: "eslint-plugin-github@npm:5.1.2"
   dependencies:
     "@eslint/compat": "npm:^1.2.3"
     "@eslint/eslintrc": "npm:^3.1.0"
@@ -3759,7 +3745,6 @@ __metadata:
     eslint-config-prettier: "npm:>=8.0.0"
     eslint-plugin-escompat: "npm:^3.11.3"
     eslint-plugin-eslint-comments: "npm:^3.2.0"
-    eslint-plugin-filenames: "npm:^1.3.2"
     eslint-plugin-i18n-text: "npm:^1.0.1"
     eslint-plugin-import: "npm:^2.25.2"
     eslint-plugin-jsx-a11y: "npm:^6.7.1"
@@ -3775,7 +3760,7 @@ __metadata:
     eslint: ^8 || ^9
   bin:
     eslint-ignore-errors: bin/eslint-ignore-errors.js
-  checksum: 10c0/2cfa20362859d626fc3025f7f753dc455420431de14015f7ea39f6d63747ad3994b560f4f508797487ca87702bfa32a61792d2fc4799c67e472e8a678f68e6cc
+  checksum: 10c0/84c6e0a6e6bfe52335ccd81acc75703cdc5500edcdec642f84255a01bfba530c8538c84d34e3782d1a4f9a4238bb9969a50b16087f41fb610a56162d00aa43e1
   languageName: node
   linkType: hard
 
@@ -6015,20 +6000,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash.camelcase@npm:4.3.0":
-  version: 4.3.0
-  resolution: "lodash.camelcase@npm:4.3.0"
-  checksum: 10c0/fcba15d21a458076dd309fce6b1b4bf611d84a0ec252cb92447c948c533ac250b95d2e00955801ebc367e5af5ed288b996d75d37d2035260a937008e14eaf432
-  languageName: node
-  linkType: hard
-
-"lodash.kebabcase@npm:4.1.1":
-  version: 4.1.1
-  resolution: "lodash.kebabcase@npm:4.1.1"
-  checksum: 10c0/da5d8f41dbb5bc723d4bf9203d5096ca8da804d6aec3d2b56457156ba6c8d999ff448d347ebd97490da853cb36696ea4da09a431499f1ee8deb17b094ecf4e33
-  languageName: node
-  linkType: hard
-
 "lodash.memoize@npm:^4.1.2":
   version: 4.1.2
   resolution: "lodash.memoize@npm:4.1.2"
@@ -6040,20 +6011,6 @@ __metadata:
   version: 4.6.2
   resolution: "lodash.merge@npm:4.6.2"
   checksum: 10c0/402fa16a1edd7538de5b5903a90228aa48eb5533986ba7fa26606a49db2572bf414ff73a2c9f5d5fd36b31c46a5d5c7e1527749c07cbcf965ccff5fbdf32c506
-  languageName: node
-  linkType: hard
-
-"lodash.snakecase@npm:4.1.1":
-  version: 4.1.1
-  resolution: "lodash.snakecase@npm:4.1.1"
-  checksum: 10c0/f0b3f2497eb20eea1a1cfc22d645ecaeb78ac14593eb0a40057977606d2f35f7aaff0913a06553c783b535aafc55b718f523f9eb78f8d5293f492af41002eaf9
-  languageName: node
-  linkType: hard
-
-"lodash.upperfirst@npm:4.3.1":
-  version: 4.3.1
-  resolution: "lodash.upperfirst@npm:4.3.1"
-  checksum: 10c0/435625da4b3ee74e7a1367a780d9107ab0b13ef4359fc074b2a1a40458eb8d91b655af62f6795b7138d493303a98c0285340160341561d6896e4947e077fa975
   languageName: node
   linkType: hard
 
@@ -7617,7 +7574,7 @@ __metadata:
     eslint: "npm:8.57.1"
     eslint-config-prettier: "npm:9.1.0"
     eslint-import-resolver-typescript: "npm:3.6.3"
-    eslint-plugin-github: "npm:5.1.1"
+    eslint-plugin-github: "npm:5.1.2"
     eslint-plugin-import: "npm:2.31.0"
     eslint-plugin-jest: "npm:28.9.0"
     eslint-plugin-prettier: "npm:5.2.1"
