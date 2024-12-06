@@ -27,7 +27,7 @@
     "@octokit/rest": "21.0.2",
     "ajv": "8.17.1",
     "console-log-level": "1.4.1",
-    "debug": "4.3.7",
+    "debug": "4.4.0",
     "json5": "2.2.3",
     "octokit": "4.0.2",
     "picomatch": "4.0.2",
