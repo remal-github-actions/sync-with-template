@@ -1186,9 +1186,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/app@npm:^15.0.0":
-  version: 15.1.0
-  resolution: "@octokit/app@npm:15.1.0"
+"@octokit/app@npm:^15.1.1":
+  version: 15.1.1
+  resolution: "@octokit/app@npm:15.1.1"
   dependencies:
     "@octokit/auth-app": "npm:^7.0.0"
     "@octokit/auth-unauthenticated": "npm:^6.0.0"
@@ -1197,7 +1197,7 @@ __metadata:
     "@octokit/plugin-paginate-rest": "npm:^11.0.0"
     "@octokit/types": "npm:^13.0.0"
     "@octokit/webhooks": "npm:^13.0.0"
-  checksum: 10c0/9bc035dd729fd1ea08e6d391a4c34a35a49e107137c06355c4df4cee907f8591fea83081ce3bb84fdb3db8ea9565cce90333248f256a3d399c66cdd6977d870d
+  checksum: 10c0/cbcc7dca922a753ecf20eabf4046d5b3a945ff4c814c48fe245077543013dfff051da36eec28d3593d44ebe79a1ef554782f9b31bebcdedbd8c0420b35a1147e
   languageName: node
   linkType: hard
 
@@ -1567,6 +1567,15 @@ __metadata:
   dependencies:
     "@octokit/openapi-types": "npm:^22.2.0"
   checksum: 10c0/891334b5786ba6aef953384cec05d53e05132dd577c0c22db124d55eaa69609362d1e3147853b46e91bf226e046ba24d615c55214c8f8f4e7c3a5c38429b38e9
+  languageName: node
+  linkType: hard
+
+"@octokit/types@npm:^13.6.2":
+  version: 13.6.2
+  resolution: "@octokit/types@npm:13.6.2"
+  dependencies:
+    "@octokit/openapi-types": "npm:^22.2.0"
+  checksum: 10c0/ea51afb21b667b25dad9e5daae1701da1b362a4d6ed9609f6d3f9f219e5389bf50f7e53ae029ca190750e278be3ab963cac648a95ad248f245a5fda16a4f1ed1
   languageName: node
   linkType: hard
 
@@ -6675,11 +6684,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"octokit@npm:4.0.2":
-  version: 4.0.2
-  resolution: "octokit@npm:4.0.2"
+"octokit@npm:4.0.3":
+  version: 4.0.3
+  resolution: "octokit@npm:4.0.3"
   dependencies:
-    "@octokit/app": "npm:^15.0.0"
+    "@octokit/app": "npm:^15.1.1"
     "@octokit/core": "npm:^6.0.0"
     "@octokit/oauth-app": "npm:^7.0.0"
     "@octokit/plugin-paginate-graphql": "npm:^5.0.0"
@@ -6688,8 +6697,8 @@ __metadata:
     "@octokit/plugin-retry": "npm:^7.0.0"
     "@octokit/plugin-throttling": "npm:^9.0.0"
     "@octokit/request-error": "npm:^6.0.0"
-    "@octokit/types": "npm:^13.0.0"
-  checksum: 10c0/30d057ccd526d0d25017018ec4df3ae90981e3bf7bfbd923c4e365b69fb7155bc77ad400e9ae11186c8307c35eb0cdddb32ddc5ba8c0ae4d003b2838a18334e9
+    "@octokit/types": "npm:^13.6.2"
+  checksum: 10c0/b7631e46212e640542968eff1d436430db2286c67f37373ebd30038b02ea99099324bb2d9f3a77ce770e86b8ce46ffcd95facdb005763eee806f08e81402e724
   languageName: node
   linkType: hard
 
@@ -7759,7 +7768,7 @@ __metadata:
     jest-extended: "npm:4.0.2"
     json-schema-to-typescript: "npm:15.0.3"
     json5: "npm:2.2.3"
-    octokit: "npm:4.0.2"
+    octokit: "npm:4.0.3"
     picomatch: "npm:4.0.2"
     rimraf: "npm:6.0.1"
     semver: "npm:7.6.3"
