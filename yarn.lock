@@ -1387,10 +1387,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/openapi-types@npm:23.0.0":
-  version: 23.0.0
-  resolution: "@octokit/openapi-types@npm:23.0.0"
-  checksum: 10c0/565fd0f6b86cf1d7449a5857932a4b48a46af3e600b42022dba4f24f76a556df7643d5b20c74d7cbba2bf35c62b8fe7ded349b37cb09212777ced7eaeebaa6ae
+"@octokit/openapi-types@npm:23.0.1":
+  version: 23.0.1
+  resolution: "@octokit/openapi-types@npm:23.0.1"
+  checksum: 10c0/ab734ceb26343d9f051a59503b8cb5bdc7fec9ca044b60511b227179bec73141dd9144a6b2d68bcd737741881b136c1b7d5392da89ae2e35e39acc489e5eb4c1
   languageName: node
   linkType: hard
 
@@ -7750,7 +7750,7 @@ __metadata:
     "@actions/github": "npm:6.0.0"
     "@actions/glob": "npm:0.5.0"
     "@actions/io": "npm:1.1.3"
-    "@octokit/openapi-types": "npm:23.0.0"
+    "@octokit/openapi-types": "npm:23.0.1"
     "@octokit/rest": "npm:21.0.2"
     "@tsconfig/node20": "npm:20.1.4"
     "@types/console-log-level": "npm:1.4.5"
