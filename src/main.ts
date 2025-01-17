@@ -45,7 +45,7 @@ if (core.isDebug()) {
 const configFilePath = core.getInput('configFile', { required: true })
 const transformationsFilePath = core.getInput('localTransformationsFile', { required: true })
 const conventionalCommits = core.getInput('conventionalCommits', { required: false })?.toLowerCase() === 'true'
-const dryRun = core.getInput('dryRun', { required: true }).toLowerCase() === 'true'
+const dryRun = core.getInput('dryRun', { required: false }).toLowerCase() === 'true'
 const templateRepositoryFullName = core.getInput('templateRepository', { required: false })
 
 const githubToken = core.getInput('githubToken', { required: true })
@@ -620,7 +620,7 @@ async function run(): Promise<void> {
         }
 
     } catch (error) {
-        core.setFailed(error instanceof Error ? error : (error as any).toString())
+        core.setFailed(error instanceof Error ? error : `${error}`)
         throw error
     }
 }
