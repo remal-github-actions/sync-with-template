@@ -1177,9 +1177,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/app@npm:^15.1.2":
-  version: 15.1.2
-  resolution: "@octokit/app@npm:15.1.2"
+"@octokit/app@npm:^15.1.3":
+  version: 15.1.3
+  resolution: "@octokit/app@npm:15.1.3"
   dependencies:
     "@octokit/auth-app": "npm:^7.1.4"
     "@octokit/auth-unauthenticated": "npm:^6.1.1"
@@ -1187,8 +1187,8 @@ __metadata:
     "@octokit/oauth-app": "npm:^7.1.5"
     "@octokit/plugin-paginate-rest": "npm:^11.3.6"
     "@octokit/types": "npm:^13.6.2"
-    "@octokit/webhooks": "npm:^13.4.2"
-  checksum: 10c0/7207b6b60851a69a5632c736bd8b7431286c7e22480f3fc41b98f1c68ab879d5a570b7004737a0b3e6bf55c80617866707179ebee9dae2d59a59cb4aff2827e6
+    "@octokit/webhooks": "npm:^13.5.1"
+  checksum: 10c0/b6acf647a8e5d3148ac824db17ee73ee418e4017ba683c014de1492b2b194009042e69e3f50f21b6d9b4dd755611cefe9e3c4d5a45a2a5d41d5c9c59b12c079c
   languageName: node
   linkType: hard
 
@@ -1596,21 +1596,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/webhooks-methods@npm:^5.0.0":
-  version: 5.1.0
-  resolution: "@octokit/webhooks-methods@npm:5.1.0"
-  checksum: 10c0/8f59f960c44ed9bdecd0f4a71ec6a50d490e9b46aa588887df8a69b15722262ce4cc02f0c1915cc145b452fd5b1e38e4b4ab0fb1d92e151308da550a7dfc1f6a
+"@octokit/webhooks-methods@npm:^5.1.1":
+  version: 5.1.1
+  resolution: "@octokit/webhooks-methods@npm:5.1.1"
+  checksum: 10c0/837aa49dbc7f8bc01448f4eaea32cfb0c1cbfa0b4ac570f7bcda385c71f43e4be05e91a3fb63708448410b27e246570fde42056b6b87d755154d84eff5a6500c
   languageName: node
   linkType: hard
 
-"@octokit/webhooks@npm:^13.4.2":
-  version: 13.4.2
-  resolution: "@octokit/webhooks@npm:13.4.2"
+"@octokit/webhooks@npm:^13.5.1":
+  version: 13.5.1
+  resolution: "@octokit/webhooks@npm:13.5.1"
   dependencies:
     "@octokit/openapi-webhooks-types": "npm:8.5.1"
     "@octokit/request-error": "npm:^6.1.6"
-    "@octokit/webhooks-methods": "npm:^5.0.0"
-  checksum: 10c0/ba8ba97b562f0f5886726a56d681ad377648fc1c53fe852271e7abaac4ecfba94e032da025355dc9dbe21f1769add5b7790b5997221f62795b354a539c3fe54a
+    "@octokit/webhooks-methods": "npm:^5.1.1"
+  checksum: 10c0/f0933fa25efdb5801580cae8f110963c02ae6f6a28950ce2d3fed98b4186e7b1f0f5a34235322cd7ab6c8d548f8e57d99006a53780fcea0073fbedfe6d676182
   languageName: node
   linkType: hard
 
@@ -7071,11 +7071,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"octokit@npm:4.1.0":
-  version: 4.1.0
-  resolution: "octokit@npm:4.1.0"
+"octokit@npm:4.1.1":
+  version: 4.1.1
+  resolution: "octokit@npm:4.1.1"
   dependencies:
-    "@octokit/app": "npm:^15.1.2"
+    "@octokit/app": "npm:^15.1.3"
     "@octokit/core": "npm:^6.1.3"
     "@octokit/oauth-app": "npm:^7.1.4"
     "@octokit/plugin-paginate-graphql": "npm:^5.2.4"
@@ -7085,7 +7085,7 @@ __metadata:
     "@octokit/plugin-throttling": "npm:^9.4.0"
     "@octokit/request-error": "npm:^6.1.6"
     "@octokit/types": "npm:^13.7.0"
-  checksum: 10c0/8e62131881957836dbd8dfda56aa4d231da54a04f32d42f44022741cebf29fe5fbcaf4b5a1ff5fc72eca5837abec61aa546631c705571a54a79c30c6118574bd
+  checksum: 10c0/e54c1d51513241613f702ba771416c704e15bf659dd053e1b5ab1147c37a50db30d3b1636dd199dc5999bbde32d13e0419b4d97990f784301f6fa0cc860d2311
   languageName: node
   linkType: hard
 
@@ -8320,7 +8320,7 @@ __metadata:
     jest-extended: "npm:4.0.2"
     json-schema-to-typescript: "npm:15.0.4"
     json5: "npm:2.2.3"
-    octokit: "npm:4.1.0"
+    octokit: "npm:4.1.1"
     picomatch: "npm:4.0.2"
     rimraf: "npm:6.0.1"
     semver: "npm:7.7.1"
