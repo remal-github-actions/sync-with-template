@@ -29,7 +29,7 @@
     "console-log-level": "1.4.1",
     "debug": "4.4.0",
     "json5": "2.2.3",
-    "octokit": "4.1.0",
+    "octokit": "4.1.1",
     "picomatch": "4.0.2",
     "rimraf": "6.0.1",
     "simple-git": "3.27.0",
