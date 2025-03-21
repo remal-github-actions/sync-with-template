@@ -41,7 +41,7 @@
     "@tsconfig/node20": "20.1.4",
     "@types/console-log-level": "1.4.5",
     "@types/jest": "29.5.14",
-    "@types/node": "20.17.24",
+    "@types/node": "20.17.25",
     "@types/picomatch": "3.0.2",
     "@types/semver": "7.5.8",
     "@types/tmp": "0.2.6",
