@@ -4126,9 +4126,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-import-resolver-typescript@npm:4.2.7":
-  version: 4.2.7
-  resolution: "eslint-import-resolver-typescript@npm:4.2.7"
+"eslint-import-resolver-typescript@npm:4.3.0":
+  version: 4.3.0
+  resolution: "eslint-import-resolver-typescript@npm:4.3.0"
   dependencies:
     debug: "npm:^4.4.0"
     get-tsconfig: "npm:^4.10.0"
@@ -4145,7 +4145,7 @@ __metadata:
       optional: true
     eslint-plugin-import-x:
       optional: true
-  checksum: 10c0/de3676402f88d7827a2ce70245ae10e57f2fdd028e658970266d6da5a071a36ea1fb069f871299b8ab826f675c1b9aa69603181be4654db04140e9b7d33f4c0e
+  checksum: 10c0/42ad53bc54337378a8093ae1b06c9f50dfbc4e9d0d1b51ba335f1a28181ed7b29b1f8349ffd02958fb6b3b7e6d1b807dd218e3e3d2f4bcd00781c42e7a551b8a
   languageName: node
   linkType: hard
 
@@ -8481,7 +8481,7 @@ __metadata:
     debug: "npm:4.4.0"
     eslint: "npm:8.57.1"
     eslint-config-prettier: "npm:10.1.1"
-    eslint-import-resolver-typescript: "npm:4.2.7"
+    eslint-import-resolver-typescript: "npm:4.3.0"
     eslint-plugin-github: "npm:5.1.8"
     eslint-plugin-import: "npm:2.31.0"
     eslint-plugin-jest: "npm:28.11.0"
