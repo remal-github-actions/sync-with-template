@@ -14,6 +14,7 @@ includes:
 - .eslint*
 - .prettier*
 - .yarn*
+- .corepack.env
 - .yarn/**
 - check-dependency-engines.*js
 - update-node-version-in-files.*js
