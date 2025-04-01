@@ -1909,10 +1909,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/picomatch@npm:3.0.2":
-  version: 3.0.2
-  resolution: "@types/picomatch@npm:3.0.2"
-  checksum: 10c0/f35d16fe10a6e13ead6499dd7d7d317e4fd78e48260398104e837e5ca83d393024bdc6f432cb644c0a69b0726a071fcc6eb09befbbcfafb3c3c5f71dbbfde487
+"@types/picomatch@npm:4.0.0":
+  version: 4.0.0
+  resolution: "@types/picomatch@npm:4.0.0"
+  checksum: 10c0/6455234501d3829301cc7291d5322b1737fd96fae7f0617c3b3ec97a58c41a3a3f40df65117714e502c245f603184a4511883c74727b7a9f9957b3fec0777e97
   languageName: node
   linkType: hard
 
@@ -8472,7 +8472,7 @@ __metadata:
     "@types/console-log-level": "npm:1.4.5"
     "@types/jest": "npm:29.5.14"
     "@types/node": "npm:20.17.30"
-    "@types/picomatch": "npm:3.0.2"
+    "@types/picomatch": "npm:4.0.0"
     "@types/semver": "npm:7.7.0"
     "@types/tmp": "npm:0.2.6"
     "@vercel/ncc": "npm:0.38.3"
