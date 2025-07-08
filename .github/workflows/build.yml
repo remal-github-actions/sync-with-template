@@ -43,28 +43,8 @@ jobs:
         echo "Action's Node.js version: $VERSION"
         echo "result=$VERSION" >> $GITHUB_OUTPUT
 
-    - name: Setup Node.js ${{steps.readNodeVersion.outputs.result}}
-      uses: actions/setup-node@v4
-      with:
-        node-version: '${{steps.readNodeVersion.outputs.result}}'
-
-    - name: Update Node.js version in project files
-      run: |
-        node update-node-version-in-files "${{steps.readNodeVersion.outputs.result}}"
-
-
-    - name: Restore node_modules cache
-      id: restore-node_modules-cache
-      uses: actions/cache/restore@v4
-      with:
-        key: ${{runner.os}}-node_modules-${{steps.readNodeVersion.outputs.result}}-${{hashFiles('package.json', '.yarnrc.yml', 'yarn.lock' , '.pnp.*', '.yarn/patches/**', '.yarn/plugins/**', '.yarn/releases/**', '.yarn/versions/**')}}
-        path: |
-          node_modules
-          .yarn/cache
-
     - name: Get package manager
       id: package-manager
-      if: steps.restore-node_modules-cache.outputs.cache-hit != 'true'
       run: |
         PACKAGE_MANAGER=$( yq -r '.packageManager' ./package.json )
         PACKAGE_MANAGER=${PACKAGE_MANAGER%%@*}
@@ -74,30 +54,34 @@ jobs:
         fi
         echo "Package manager: $PACKAGE_MANAGER"
         echo "PACKAGE_MANAGER=$PACKAGE_MANAGER" >> $GITHUB_ENV
+        echo "result=$PACKAGE_MANAGER" >> $GITHUB_OUTPUT
+
+    - name: Setup Node.js ${{steps.readNodeVersion.outputs.result}}
+      uses: actions/setup-node@v4
+      with:
+        node-version: '${{steps.readNodeVersion.outputs.result}}'
+        cache: ${{steps.package-manager.outputs.result}}
+
+
+    - name: Update Node.js version in project files
+      run: |
+        node update-node-version-in-files "${{steps.readNodeVersion.outputs.result}}"
 
     - name: Install dependencies
-      if: steps.restore-node_modules-cache.outputs.cache-hit != 'true'
       run: |
-        if [ "$PACKAGE_MANAGER" == "yarn" ]; then
+        if [ "${{steps.package-manager.outputs.result}}" == "pnpm" ]; then
+          pnpm install --no-frozen-lockfile
+        elif [ "${{steps.package-manager.outputs.result}}" == "yarn" ]; then
           yarn install --no-immutable
         else
           echo "::error::Unsupported package manager: $PACKAGE_MANAGER"
           exit 1
         fi
 
-    - name: Save node_modules cache
-      if: steps.restore-node_modules-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        key: ${{runner.os}}-node_modules-${{steps.readNodeVersion.outputs.result}}-${{hashFiles('package.json', '.yarnrc.yml', 'yarn.lock' , '.pnp.*', '.yarn/patches/**', '.yarn/plugins/**', '.yarn/releases/**', '.yarn/versions/**')}}
-        path: |
-          node_modules
-          .yarn/cache
-
 
     - name: Build
       run: |
-        npm run build
+        ${{steps.package-manager.outputs.result}} run build
 
     - name: Upload dist to artifacts
       if: ${{always()}}
