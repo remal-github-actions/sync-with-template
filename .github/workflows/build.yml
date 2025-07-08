@@ -34,7 +34,7 @@ jobs:
     - name: Read action's Node.js version
       id: readNodeVersion
       run: |
-        USING=$( yq .runs.using ./action.yml )
+        USING=$( yq '.runs.using' ./action.yml )
         if ! [[ "$USING" =~ ^node[0-9]+$ ]]; then
           echo "::error::action.yml: .runs.using doesn't start with 'node': '$USING'"
           exit 1
@@ -62,10 +62,28 @@ jobs:
           node_modules
           .yarn/cache
 
+    - name: Get package manager
+      id: package-manager
+      if: steps.restore-node_modules-cache.outputs.cache-hit != 'true'
+      run: |
+        PACKAGE_MANAGER=$( yq -r '.packageManager' ./package.json )
+        PACKAGE_MANAGER=${PACKAGE_MANAGER%%@*}
+        if ! [[ "$PACKAGE_MANAGER" =~ ^[a-z]+$ ]]; then
+          echo "::error::package.json: unsupported .packageManager format: '$PACKAGE_MANAGER'"
+          exit 1
+        fi
+        echo "Package manager: $PACKAGE_MANAGER"
+        echo "PACKAGE_MANAGER=$PACKAGE_MANAGER" >> $GITHUB_ENV
+
     - name: Install dependencies
       if: steps.restore-node_modules-cache.outputs.cache-hit != 'true'
       run: |
-        yarn install --no-immutable
+        if [ "$PACKAGE_MANAGER" == "yarn" ]; then
+          yarn install --no-immutable
+        else
+          echo "::error::Unsupported package manager: $PACKAGE_MANAGER"
+          exit 1
+        fi
 
     - name: Save node_modules cache
       if: steps.restore-node_modules-cache.outputs.cache-hit != 'true'
