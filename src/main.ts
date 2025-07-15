@@ -377,14 +377,14 @@ async function run(): Promise<void> {
                 }
 
                 {
-                    let templateFileToDeleteContent: string
+                    let templateFileToDeleteContent: string = ''
                     try {
                         templateFileToDeleteContent = await git.raw(
                             'show',
                             `template/${templateRepo.default_branch}:${filesToDeletePath}`,
                         )
                     } catch (_) {
-                        return
+                        // do nothing
                     }
                     templateFileToDeleteContent
                         .split(/[\r\n]+/)
@@ -397,6 +397,7 @@ async function run(): Promise<void> {
                         })
                 }
 
+                fs.mkdirSync(path.dirname(filesToDeletePath), {recursive: true})
                 fs.writeFileSync(
                     filesToDeletePath,
                     filesToDelete.toSorted().join('\n') + '\n',
