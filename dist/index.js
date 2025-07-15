@@ -74570,6 +74570,9 @@ async function run() {
         }
         await core.group('Checking out template files', async () => {
             for (const fileToSync of filesToSync) {
+                if (fileToSync === filesToDeletePath) {
+                    continue;
+                }
                 core.info(`Synchronizing '${fileToSync}'`);
                 if (isIgnoredByTransformations(fileToSync)) {
                     continue;
@@ -74659,15 +74662,12 @@ async function run() {
                 else {
                     filesToDelete.forEach(fileToDelete => {
                         const fileToDeleteFull = external_path_.join(workspacePath, fileToDelete);
-                        const fileToDeleteDir = external_path_.dirname(fileToDeleteFull);
-                        core.info(`  fileToDeleteDir=${fileToDeleteDir}`);
-                        external_fs_.readdirSync(fileToDeleteDir).forEach(f => core.info(`    ${f}`));
                         if (external_fs_.existsSync(fileToDeleteFull)) {
-                            core.info(`  Deleting ${fileToDeleteFull}`);
+                            core.info(`  Deleting ${fileToDelete}`);
                             rimrafSync(fileToDeleteFull);
                         }
                         else {
-                            core.info(`  Already deleted: ${fileToDeleteFull}`);
+                            core.info(`  Already deleted: ${fileToDelete}`);
                         }
                     });
                 }
