@@ -74575,6 +74575,7 @@ async function run() {
                     continue;
                 }
                 if (isDeletedByTransformations(fileToSync)) {
+                    core.info(`  Deleting by local transformations '${fileToSync}'`);
                     const fileToSyncPath = external_path_.join(workspacePath, fileToSync);
                     if (external_fs_.existsSync(fileToSyncPath)) {
                         external_fs_.unlinkSync(fileToSyncPath);
@@ -74595,11 +74596,19 @@ async function run() {
                     applyModifiableSections(fileToSync, modifiableSections);
                 }
             }
-            {
+            do {
                 core.info(`Synchronizing '${filesToDeletePath}'`);
+                const filesToDeletePathFull = external_path_.join(workspacePath, filesToDeletePath);
+                if (isDeletedByTransformations(filesToDeletePath)) {
+                    core.info(`  Deleting by local transformations '${filesToDeletePath}'`);
+                    if (external_fs_.existsSync(filesToDeletePathFull)) {
+                        external_fs_.unlinkSync(filesToDeletePathFull);
+                    }
+                    break;
+                }
                 const filesToDelete = [];
-                if (external_fs_.existsSync(filesToDeletePath)) {
-                    external_fs_.readFileSync(filesToDeletePath, 'utf8')
+                if (external_fs_.existsSync(filesToDeletePathFull)) {
+                    external_fs_.readFileSync(filesToDeletePathFull, 'utf8')
                         .split(/[\r\n]+/)
                         .map(line => line.trim())
                         .filter(line => line.length)
@@ -74626,13 +74635,13 @@ async function run() {
                         }
                     });
                 }
-                external_fs_.mkdirSync(external_path_.dirname(filesToDeletePath), { recursive: true });
-                external_fs_.writeFileSync(filesToDeletePath, filesToDelete.toSorted().join('\n') + '\n', 'utf8');
+                external_fs_.mkdirSync(external_path_.dirname(filesToDeletePathFull), { recursive: true });
+                external_fs_.writeFileSync(filesToDeletePathFull, filesToDelete.toSorted().join('\n') + '\n', 'utf8');
                 if (hasLocalTransformations(filesToDeletePath)) {
                     core.info(`  Applying local transformations for ${filesToDeletePath}`);
                     applyLocalTransformations(filesToDeletePath);
                     filesToDelete.length = 0;
-                    external_fs_.readFileSync(filesToDeletePath, 'utf8')
+                    external_fs_.readFileSync(filesToDeletePathFull, 'utf8')
                         .split(/[\r\n]+/)
                         .map(line => line.trim())
                         .forEach(line => {
@@ -74643,23 +74652,26 @@ async function run() {
                 }
                 if (!filesToDelete.length) {
                     core.info(`  No files to delete`);
-                    external_fs_.unlinkSync(filesToDeletePath);
+                    if (external_fs_.existsSync(filesToDeletePathFull)) {
+                        external_fs_.unlinkSync(filesToDeletePathFull);
+                    }
                 }
                 else {
                     filesToDelete.forEach(fileToDelete => {
-                        const fileToDeleteDir = external_path_.dirname(fileToDelete);
+                        const fileToDeleteFull = external_path_.join(workspacePath, fileToDelete);
+                        const fileToDeleteDir = external_path_.dirname(fileToDeleteFull);
                         core.info(`  fileToDeleteDir=${fileToDeleteDir}`);
                         external_fs_.readdirSync(fileToDeleteDir).forEach(f => core.info(`    ${f}`));
-                        if (external_fs_.existsSync(fileToDelete)) {
-                            core.info(`  Deleting ${fileToDelete}`);
-                            rimrafSync(fileToDelete);
+                        if (external_fs_.existsSync(fileToDeleteFull)) {
+                            core.info(`  Deleting ${fileToDeleteFull}`);
+                            rimrafSync(fileToDeleteFull);
                         }
                         else {
-                            core.info(`  Already deleted: ${fileToDelete}`);
+                            core.info(`  Already deleted: ${fileToDeleteFull}`);
                         }
                     });
                 }
-            }
+            } while (false);
             function isIgnoredByTransformations(fileToSync) {
                 for (const transformation of ignoringTransformations) {
                     if (!isTransforming(transformation, fileToSync)) {
