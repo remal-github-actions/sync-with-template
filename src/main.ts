@@ -443,14 +443,11 @@ async function run(): Promise<void> {
                 } else {
                     filesToDelete.forEach(fileToDelete => {
                         const fileToDeleteFull = path.join(workspacePath, fileToDelete)
-                        const fileToDeleteDir = path.dirname(fileToDeleteFull)
-                        core.info(`  fileToDeleteDir=${fileToDeleteDir}`)
-                        fs.readdirSync(fileToDeleteDir).forEach(f => core.info(`    ${f}`))
                         if (fs.existsSync(fileToDeleteFull)) {
-                            core.info(`  Deleting ${fileToDeleteFull}`)
+                            core.info(`  Deleting ${fileToDelete}`)
                             rimrafSync(fileToDeleteFull)
                         } else {
-                            core.info(`  Already deleted: ${fileToDeleteFull}`)
+                            core.info(`  Already deleted: ${fileToDelete}`)
                         }
                     })
                 }
