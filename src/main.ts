@@ -335,6 +335,7 @@ async function run(): Promise<void> {
                 }
 
                 if (isDeletedByTransformations(fileToSync)) {
+                    core.info(`  Deleting by local transformations '${fileToSync}'`)
                     const fileToSyncPath = path.join(workspacePath, fileToSync)
                     if (fs.existsSync(fileToSyncPath)) {
                         fs.unlinkSync(fileToSyncPath)
@@ -360,13 +361,21 @@ async function run(): Promise<void> {
                 }
             }
 
-            { // files to delete
+            do { // files to delete
                 core.info(`Synchronizing '${filesToDeletePath}'`)
+                const filesToDeletePathFull = path.join(workspacePath, filesToDeletePath)
+
+                if (isDeletedByTransformations(filesToDeletePath)) {
+                    core.info(`  Deleting by local transformations '${filesToDeletePath}'`)
+                    if (fs.existsSync(filesToDeletePathFull)) {
+                        fs.unlinkSync(filesToDeletePathFull)
+                    }
+                }
 
                 const filesToDelete: string[] = []
 
-                if (fs.existsSync(filesToDeletePath)) {
-                    fs.readFileSync(filesToDeletePath, 'utf8')
+                if (fs.existsSync(filesToDeletePathFull)) {
+                    fs.readFileSync(filesToDeletePathFull, 'utf8')
                         .split(/[\r\n]+/)
                         .map(line => line.trim())
                         .filter(line => line.length)
@@ -398,9 +407,9 @@ async function run(): Promise<void> {
                         })
                 }
 
-                fs.mkdirSync(path.dirname(filesToDeletePath), {recursive: true})
+                fs.mkdirSync(path.dirname(filesToDeletePathFull), {recursive: true})
                 fs.writeFileSync(
-                    filesToDeletePath,
+                    filesToDeletePathFull,
                     filesToDelete.toSorted().join('\n') + '\n',
                     'utf8',
                 )
@@ -410,7 +419,7 @@ async function run(): Promise<void> {
                     applyLocalTransformations(filesToDeletePath)
 
                     filesToDelete.length = 0
-                    fs.readFileSync(filesToDeletePath, 'utf8')
+                    fs.readFileSync(filesToDeletePathFull, 'utf8')
                         .split(/[\r\n]+/)
                         .map(line => line.trim())
                         .forEach(line => {
@@ -422,21 +431,25 @@ async function run(): Promise<void> {
 
                 if (!filesToDelete.length) {
                     core.info(`  No files to delete`)
-                    fs.unlinkSync(filesToDeletePath)
+                    if (fs.existsSync(filesToDeletePathFull)) {
+                        fs.unlinkSync(filesToDeletePathFull)
+                    }
                 } else {
                     filesToDelete.forEach(fileToDelete => {
-                        const fileToDeleteDir = path.dirname(fileToDelete)
+                        const fileToDeleteFull = path.join(workspacePath, fileToDelete)
+                        const fileToDeleteDir = path.dirname(fileToDeleteFull)
                         core.info(`  fileToDeleteDir=${fileToDeleteDir}`)
                         fs.readdirSync(fileToDeleteDir).forEach(f => core.info(`    ${f}`))
-                        if (fs.existsSync(fileToDelete)) {
-                            core.info(`  Deleting ${fileToDelete}`)
-                            rimrafSync(fileToDelete)
+                        if (fs.existsSync(fileToDeleteFull)) {
+                            core.info(`  Deleting ${fileToDeleteFull}`)
+                            rimrafSync(fileToDeleteFull)
                         } else {
-                            core.info(`  Already deleted: ${fileToDelete}`)
+                            core.info(`  Already deleted: ${fileToDeleteFull}`)
                         }
                     })
                 }
-            }
+                // eslint-disable-next-line no-constant-condition
+            } while (false)
 
             function isIgnoredByTransformations(fileToSync: string): boolean {
                 for (const transformation of ignoringTransformations) {
