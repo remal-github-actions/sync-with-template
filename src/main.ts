@@ -381,7 +381,7 @@ async function run(): Promise<void> {
                     try {
                         templateFileToDeleteContent = await git.raw(
                             'show',
-                            `template/${templateRepo.default_branch}:${configFilePath}`,
+                            `template/${templateRepo.default_branch}:${filesToDeletePath}`,
                         )
                     } catch (_) {
                         return
