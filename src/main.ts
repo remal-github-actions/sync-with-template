@@ -425,6 +425,9 @@ async function run(): Promise<void> {
                     fs.unlinkSync(filesToDeletePath)
                 } else {
                     filesToDelete.forEach(fileToDelete => {
+                        const fileToDeleteDir = path.dirname(fileToDelete)
+                        core.info(`  fileToDeleteDir=${fileToDeleteDir}`)
+                        fs.readdirSync(fileToDeleteDir).forEach(f => core.info(`    ${f}`))
                         if (fs.existsSync(fileToDelete)) {
                             core.info(`  Deleting ${fileToDelete}`)
                             rimrafSync(fileToDelete)
