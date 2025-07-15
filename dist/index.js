@@ -65649,12 +65649,11 @@ async function run() {
                     });
                 }
                 {
-                    let templateFileToDeleteContent;
+                    let templateFileToDeleteContent = '';
                     try {
                         templateFileToDeleteContent = await git.raw('show', `template/${templateRepo.default_branch}:${filesToDeletePath}`);
                     }
                     catch (_) {
-                        return;
                     }
                     templateFileToDeleteContent
                         .split(/[\r\n]+/)
@@ -65666,6 +65665,7 @@ async function run() {
                         }
                     });
                 }
+                external_fs_.mkdirSync(external_path_.dirname(filesToDeletePath), { recursive: true });
                 external_fs_.writeFileSync(filesToDeletePath, filesToDelete.toSorted().join('\n') + '\n', 'utf8');
                 if (hasLocalTransformations(filesToDeletePath)) {
                     core.info(`  Applying local transformations for ${filesToDeletePath}`);
