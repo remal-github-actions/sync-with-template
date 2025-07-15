@@ -14,7 +14,7 @@ import picomatch from 'picomatch'
 import {rimrafSync} from 'rimraf'
 import {simpleGit, SimpleGit} from 'simple-git'
 import * as tmp from 'tmp'
-import {URL} from 'url'
+import {fileURLToPath, URL} from 'url'
 import YAML from 'yaml'
 import {adjustGitHubActionsCron} from './internal/adjustGitHubActionsCron.js'
 import {Config} from './internal/config.js'
@@ -32,7 +32,8 @@ export type NewPullRequest = operations['pulls/create']['requestBody']['content'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-console.log(__filename);
+const __filename = fileURLToPath(import.meta.url)
+core.info(__filename)
 
 if (core.isDebug()) {
     debug.enable('simple-git,simple-git:*')
@@ -298,6 +299,9 @@ async function run(): Promise<void> {
                         hash.update(`${accessConstant}:${hasAccess}`, 'utf8')
                     })
                     hash.update('\n', 'utf8')
+                } else {
+                    core.info(`${fileToSync} - not found`)
+                    hash.update(`${fileToSync}|deleted`, 'utf8')
                 }
             }
             const result = hash.digest('hex')
