@@ -386,6 +386,7 @@ async function run(): Promise<void> {
 
                 const filesToDelete: string[] = []
 
+                /*
                 if (fs.existsSync(filesToDeletePathFull)) {
                     fs.readFileSync(filesToDeletePathFull, 'utf8')
                         .split(/[\r\n]+/)
@@ -397,6 +398,7 @@ async function run(): Promise<void> {
                             }
                         })
                 }
+                */
 
                 {
                     let templateFileToDeleteContent: string = ''
