@@ -420,6 +420,7 @@ async function run(): Promise<void> {
                 }
 
                 if (!filesToDelete.length) {
+                    core.info(`  No files to delete`)
                     fs.unlinkSync(filesToDeletePath)
                 } else {
                     filesToDelete.forEach(fileToDelete => {
