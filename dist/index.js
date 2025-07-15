@@ -74343,6 +74343,8 @@ const local_transformations_schema_namespaceObject = /*#__PURE__*/JSON.parse('{"
 
 
 
+const main_filename = (0,external_url_.fileURLToPath)(import.meta.url);
+core.info(main_filename);
 if (core.isDebug()) {
     src.enable('simple-git,simple-git:*');
     process.env.DEBUG = [
@@ -74543,6 +74545,10 @@ async function run() {
                         hash.update(`${accessConstant}:${hasAccess}`, 'utf8');
                     });
                     hash.update('\n', 'utf8');
+                }
+                else {
+                    core.info(`${fileToSync} - not found`);
+                    hash.update(`${fileToSync}|deleted`, 'utf8');
                 }
             }
             const result = hash.digest('hex');
