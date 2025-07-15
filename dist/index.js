@@ -74647,6 +74647,9 @@ async function run() {
                 }
                 else {
                     filesToDelete.forEach(fileToDelete => {
+                        const fileToDeleteDir = external_path_.dirname(fileToDelete);
+                        core.info(`  fileToDeleteDir=${fileToDeleteDir}`);
+                        external_fs_.readdirSync(fileToDeleteDir).forEach(f => core.info(`    ${f}`));
                         if (external_fs_.existsSync(fileToDelete)) {
                             core.info(`  Deleting ${fileToDelete}`);
                             rimrafSync(fileToDelete);
