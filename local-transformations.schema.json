@@ -65,7 +65,8 @@
             "text",
             "json",
             "json5",
-            "yaml"
+            "yaml",
+            "list"
           ]
         },
         "indent": {

@@ -6,6 +6,10 @@ inputs:
     required: true
     default: '.github/sync-with-template.yml'
     description: Path to config file
+  filesToDeleteFile:
+    required: false
+    default: '.github/sync-with-template-delete.list'
+    description: Path to a file with a list of files to delete
   localTransformationsFile:
     required: true
     default: '.github/sync-with-template-local-transformations.yml'

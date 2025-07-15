@@ -1,27 +1,27 @@
 /* eslint-disable import/no-named-as-default-member */
 
 import * as core from '@actions/core'
-import { context } from '@actions/github'
-import type { components, operations } from '@octokit/openapi-types'
-import { Ajv2020 } from 'ajv/dist/2020.js'
+import {context} from '@actions/github'
+import type {components, operations} from '@octokit/openapi-types'
+import {Ajv2020} from 'ajv/dist/2020.js'
 import * as crypto from 'crypto'
 import * as debug from 'debug'
 import * as fs from 'fs'
-import { PathLike } from 'fs'
+import {PathLike} from 'fs'
 import JSON5 from 'json5'
 import path from 'path'
 import picomatch from 'picomatch'
-import { simpleGit, SimpleGit } from 'simple-git'
+import {simpleGit, SimpleGit} from 'simple-git'
 import * as tmp from 'tmp'
-import { URL } from 'url'
+import {URL} from 'url'
 import YAML from 'yaml'
-import { adjustGitHubActionsCron } from './internal/adjustGitHubActionsCron.js'
-import { Config } from './internal/config.js'
-import { evalInScope } from './internal/evalInScope.js'
-import { isTextFile } from './internal/isTextFile.js'
-import { FilesTransformation, LocalTransformations } from './internal/local-transformations.js'
-import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections.js'
-import { newOctokitInstance } from './internal/octokit.js'
+import {adjustGitHubActionsCron} from './internal/adjustGitHubActionsCron.js'
+import {Config} from './internal/config.js'
+import {evalInScope} from './internal/evalInScope.js'
+import {isTextFile} from './internal/isTextFile.js'
+import {FilesTransformation, LocalTransformations} from './internal/local-transformations.js'
+import {injectModifiableSections, ModifiableSections, parseModifiableSections} from './internal/modifiableSections.js'
+import {newOctokitInstance} from './internal/octokit.js'
 import * as schemas from './internal/schemas.no-coverage.js'
 
 export type Repo = components['schemas']['full-repository']
@@ -42,13 +42,14 @@ if (core.isDebug()) {
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-const configFilePath = core.getInput('configFile', { required: true })
-const transformationsFilePath = core.getInput('localTransformationsFile', { required: true })
-const conventionalCommits = core.getInput('conventionalCommits', { required: false })?.toLowerCase() === 'true'
-const dryRun = core.getInput('dryRun', { required: false }).toLowerCase() === 'true'
-const templateRepositoryFullName = core.getInput('templateRepository', { required: false })
+const configFilePath = core.getInput('configFile', {required: true})
+const filesToDeletePath = core.getInput('filesToDeleteFile', {required: false})
+const transformationsFilePath = core.getInput('localTransformationsFile', {required: true})
+const conventionalCommits = core.getInput('conventionalCommits', {required: false})?.toLowerCase() === 'true'
+const dryRun = core.getInput('dryRun', {required: false}).toLowerCase() === 'true'
+const templateRepositoryFullName = core.getInput('templateRepository', {required: false})
 
-const githubToken = core.getInput('githubToken', { required: true })
+const githubToken = core.getInput('githubToken', {required: true})
 core.setSecret(githubToken)
 
 const octokit = newOctokitInstance(githubToken)
@@ -66,7 +67,7 @@ const DEFAULT_GIT_ENV: Record<string, string> = {
 
 async function run(): Promise<void> {
     try {
-        const workspacePath = tmp.dirSync({ unsafeCleanup: true }).name
+        const workspacePath = tmp.dirSync({unsafeCleanup: true}).name
         core.debug(`Workspace path: ${workspacePath}`)
 
         const repo = await octokit.repos.get({
@@ -138,7 +139,7 @@ async function run(): Promise<void> {
         const config: Config = await core.group(`Parsing config: ${configFilePath}`, async () => {
             const configPath = path.join(workspacePath, configFilePath)
             if (!fs.existsSync(configPath)) {
-                core.info(`The repository doesn't have config ${configFilePath}, checkouting from ${templateRepo.html_url}/blob/${templateSha}/${configFilePath}`)
+                core.info(`The repository doesn't have config ${configFilePath}, checking out from ${templateRepo.html_url}/blob/${templateSha}/${configFilePath}`)
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', configFilePath)
             }
 
@@ -175,6 +176,9 @@ async function run(): Promise<void> {
 
             return parsedConfig as unknown as Config
         })
+
+        config.includes = config.includes ?? []
+        config.includes.push(filesToDeletePath)
 
         config.excludes = config.excludes ?? []
         config.excludes.push(transformationsFilePath)
@@ -321,7 +325,7 @@ async function run(): Promise<void> {
             return false
         }
 
-        await core.group('Checkouting template files', async () => {
+        await core.group('Checking out template files', async () => {
             for (const fileToSync of filesToSync) {
                 core.info(`Synchronizing '${fileToSync}'`)
 
@@ -343,7 +347,7 @@ async function run(): Promise<void> {
                     modifiableSections = await parseModifiableSectionsFor(fileToSync)
                 }
 
-                core.info(`  Checkouting ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
+                core.info(`  Checking out ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`)
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync)
 
                 core.info(`  Applying local transformations for ${fileToSync}`)
@@ -352,6 +356,75 @@ async function run(): Promise<void> {
                 if (modifiableSections) {
                     core.info(`  Applying modifiable sections for ${fileToSync}`)
                     applyModifiableSections(fileToSync, modifiableSections)
+                }
+            }
+
+            { // files to delete
+                core.info(`Synchronizing '${filesToDeletePath}'`)
+
+                const filesToDelete: string[] = []
+
+                if (fs.existsSync(filesToDeletePath)) {
+                    fs.readFileSync(filesToDeletePath, 'utf8')
+                        .split(/[\r\n]+/)
+                        .map(line => line.trim())
+                        .filter(line => line.length)
+                        .forEach(line => {
+                            if (!filesToDelete.includes(line)) {
+                                filesToDelete.push(line)
+                            }
+                        })
+                }
+
+                {
+                    let templateFileToDeleteContent: string
+                    try {
+                        templateFileToDeleteContent = await git.raw(
+                            'show',
+                            `template/${templateRepo.default_branch}:${configFilePath}`,
+                        )
+                    } catch (_) {
+                        return
+                    }
+                    templateFileToDeleteContent
+                        .split(/[\r\n]+/)
+                        .map(line => line.trim())
+                        .filter(line => line.length)
+                        .forEach(line => {
+                            if (!filesToDelete.includes(line)) {
+                                filesToDelete.push(line)
+                            }
+                        })
+                }
+
+                fs.writeFileSync(
+                    filesToDeletePath,
+                    filesToDelete.toSorted().join('\n') + '\n',
+                    'utf8',
+                )
+
+                if (hasLocalTransformations(filesToDeletePath)) {
+                    core.info(`  Applying local transformations for ${filesToDeletePath}`)
+                    applyLocalTransformations(filesToDeletePath)
+
+                    filesToDelete.length = 0
+                    fs.readFileSync(filesToDeletePath, 'utf8')
+                        .split(/[\r\n]+/)
+                        .map(line => line.trim())
+                        .forEach(line => {
+                            if (!filesToDelete.includes(line)) {
+                                filesToDelete.push(line)
+                            }
+                        })
+                }
+
+                if (!filesToDelete.length) {
+                    fs.unlinkSync(filesToDeletePath)
+                } else {
+                    filesToDelete.forEach(fileToDelete => {
+                        core.info(`  Deleting ${fileToDelete}`)
+                        fs.unlinkSync(fileToDelete)
+                    })
                 }
             }
 
@@ -393,6 +466,12 @@ async function run(): Promise<void> {
                     core.info(`  Found modifiable sections: ${Object.keys(modifiableSections).join(', ')}`)
                 }
                 return modifiableSections
+            }
+
+            function hasLocalTransformations(fileToSync: string): boolean {
+                return transformations.some(transformation =>
+                    isTransforming(transformation, fileToSync),
+                )
             }
 
             function applyLocalTransformations(fileToSync: string) {
@@ -447,6 +526,17 @@ async function run(): Promise<void> {
                                 indentSeq: false,
                                 lineWidth: 0,
                             })
+                        } else if (transformation.format === 'list') {
+                            content = content
+                                .split(/[\r\n]+/)
+                                .map(line => line.trim())
+                                .filter(line => line.length)
+                            contentToFileContent = value => (value as any[])
+                                .filter(item => item != null)
+                                .map(item => `${item}`.trim())
+                                .filter((v, i, a) => a.indexOf(v) === i)
+                                .toSorted()
+                                .join('\n') + '\n'
                         } else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`)
                         }
@@ -635,7 +725,7 @@ const predefinedFilesTransformationScripts: Record<string, (content: any) => str
 }
 
 function getSyncBranchName(): string {
-    const name = core.getInput('syncBranchName', { required: true })
+    const name = core.getInput('syncBranchName', {required: true})
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
         return name
     } else {
@@ -644,7 +734,7 @@ function getSyncBranchName(): string {
 }
 
 function getCommitMessage(templateRepoName: string): string {
-    let message = core.getInput('commitMessage', { required: true })
+    let message = core.getInput('commitMessage', {required: true})
 
     message = message.replaceAll(/<template-repository>/g, templateRepoName)
 
@@ -667,7 +757,7 @@ async function getTemplateRepo(currentRepo: Repo): Promise<Repo | undefined> {
 
     } else {
         const [owner, repo] = templateRepoName.split('/')
-        return octokit.repos.get({ owner, repo }).then(it => it.data)
+        return octokit.repos.get({owner, repo}).then(it => it.data)
     }
 
     return undefined
@@ -700,7 +790,7 @@ async function getRemoteBranches(git: SimpleGit, remoteName: string): Promise<Re
         .then(content => {
             return content.split('\n')
                 .map(line => line.trim())
-                .filter(line => line.length > 0)
+                .filter(line => line.length)
         })
         .then(lines => {
             const result: Record<BranchName, CommitHash> = {}
