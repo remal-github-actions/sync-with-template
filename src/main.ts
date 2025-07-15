@@ -32,6 +32,8 @@ export type NewPullRequest = operations['pulls/create']['requestBody']['content'
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+console.log(__filename);
+
 if (core.isDebug()) {
     debug.enable('simple-git,simple-git:*')
     process.env.DEBUG = [
