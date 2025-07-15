@@ -65356,7 +65356,7 @@ function newOctokitInstance(token) {
 ;// CONCATENATED MODULE: ./build/config.schema.json
 const config_schema_namespaceObject = /*#__PURE__*/JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Config","description":"Config for sync-with-template GitHub action","type":"object","required":["includes"],"properties":{"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"modifiable-sections-exclusions":{"description":"Glob patterns for excluded files from modifiable sections transformation","type":"array","items":{"$ref":"#/definitions/glob"}}},"additionalProperties":false,"definitions":{"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
 ;// CONCATENATED MODULE: ./build/local-transformations.schema.json
-const local_transformations_schema_namespaceObject = /*#__PURE__*/JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"object","required":["repositories"],"properties":{"repositories":{"type":"array","uniqueItems":true,"minItems":1,"items":{"$ref":"#/definitions/repository-full-name"}},"transformations":{"type":"array","items":{"$ref":"#/definitions/files-transformation"}}},"additionalProperties":false,"definitions":{"repository-full-name":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+/[^<>:;,?\\"|/]+$"},"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w./-]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text","json","json5","yaml"]},"indent":{"description":"File indent","type":"number"},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"},"delete":{"description":"Set to true to delete files","type":"boolean"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
+const local_transformations_schema_namespaceObject = /*#__PURE__*/JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Local transformations","description":"Local transformations for sync-with-template GitHub action","type":"object","required":["repositories"],"properties":{"repositories":{"type":"array","uniqueItems":true,"minItems":1,"items":{"$ref":"#/definitions/repository-full-name"}},"transformations":{"type":"array","items":{"$ref":"#/definitions/files-transformation"}}},"additionalProperties":false,"definitions":{"repository-full-name":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+/[^<>:;,?\\"|/]+$"},"files-transformation":{"type":"object","required":["name","includes","format"],"properties":{"name":{"description":"Transformation name","type":"string","minLength":1,"pattern":"^[\\\\w./-]+$"},"includes":{"description":"Glob patterns for included files","type":"array","items":{"$ref":"#/definitions/glob"},"minItems":1},"excludes":{"description":"Glob patterns for excluded files","type":"array","items":{"$ref":"#/definitions/glob"}},"format":{"description":"File format","type":"string","enum":["text","json","json5","yaml","list"]},"indent":{"description":"File indent","type":"number"},"ignore":{"description":"Set to true to exclude files from the synchronization","type":"boolean"},"replaceWithFile":{"description":"File to replace the matched file with","type":"string","minLength":1,"pattern":"^[^*<>:;,?\\"|/]+(/[^*<>:;,?\\"|/]+)*$"},"replaceWithText":{"description":"File to replace the matched file with","type":"string"},"script":{"description":"JavaScript code transforming files","type":"string"},"delete":{"description":"Set to true to delete files","type":"boolean"}},"additionalProperties":false},"glob":{"type":"string","minLength":1,"pattern":"^[^<>:;,?\\"|/]+(/[^<>:;,?\\"|/]+)*$"}}}');
 ;// CONCATENATED MODULE: ./build/src/internal/schemas.no-coverage.js
 
 
@@ -65391,6 +65391,7 @@ if (core.isDebug()) {
     ].filter(it => it.length).join(',');
 }
 const main_configFilePath = core.getInput('configFile', { required: true });
+const filesToDeletePath = core.getInput('filesToDeleteFile', { required: false });
 const transformationsFilePath = core.getInput('localTransformationsFile', { required: true });
 const conventionalCommits = core.getInput('conventionalCommits', { required: false })?.toLowerCase() === 'true';
 const dryRun = core.getInput('dryRun', { required: false }).toLowerCase() === 'true';
@@ -65463,7 +65464,7 @@ async function run() {
         const config = await core.group(`Parsing config: ${main_configFilePath}`, async () => {
             const configPath = external_path_.join(workspacePath, main_configFilePath);
             if (!external_fs_.existsSync(configPath)) {
-                core.info(`The repository doesn't have config ${main_configFilePath}, checkouting from ${templateRepo.html_url}/blob/${templateSha}/${main_configFilePath}`);
+                core.info(`The repository doesn't have config ${main_configFilePath}, checking out from ${templateRepo.html_url}/blob/${templateSha}/${main_configFilePath}`);
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', main_configFilePath);
             }
             const localConfigContent = external_fs_.readFileSync(configPath, 'utf8');
@@ -65492,6 +65493,8 @@ async function run() {
             }
             return parsedConfig;
         });
+        config.includes = config.includes ?? [];
+        config.includes.push(filesToDeletePath);
         config.excludes = config.excludes ?? [];
         config.excludes.push(transformationsFilePath);
         await core.group('Parsed config', async () => {
@@ -65604,7 +65607,7 @@ async function run() {
             }
             return false;
         }
-        await core.group('Checkouting template files', async () => {
+        await core.group('Checking out template files', async () => {
             for (const fileToSync of filesToSync) {
                 core.info(`Synchronizing '${fileToSync}'`);
                 if (isIgnoredByTransformations(fileToSync)) {
@@ -65622,13 +65625,69 @@ async function run() {
                     core.info(`  Parsing modifiable sections for ${fileToSync}`);
                     modifiableSections = await parseModifiableSectionsFor(fileToSync);
                 }
-                core.info(`  Checkouting ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`);
+                core.info(`  Checking out ${templateRepo.html_url}/blob/${templateSha}/${fileToSync}`);
                 await git.raw('checkout', `template/${templateRepo.default_branch}`, '--', fileToSync);
                 core.info(`  Applying local transformations for ${fileToSync}`);
                 applyLocalTransformations(fileToSync);
                 if (modifiableSections) {
                     core.info(`  Applying modifiable sections for ${fileToSync}`);
                     applyModifiableSections(fileToSync, modifiableSections);
+                }
+            }
+            {
+                core.info(`Synchronizing '${filesToDeletePath}'`);
+                const filesToDelete = [];
+                if (external_fs_.existsSync(filesToDeletePath)) {
+                    external_fs_.readFileSync(filesToDeletePath, 'utf8')
+                        .split(/[\r\n]+/)
+                        .map(line => line.trim())
+                        .filter(line => line.length)
+                        .forEach(line => {
+                        if (!filesToDelete.includes(line)) {
+                            filesToDelete.push(line);
+                        }
+                    });
+                }
+                {
+                    let templateFileToDeleteContent;
+                    try {
+                        templateFileToDeleteContent = await git.raw('show', `template/${templateRepo.default_branch}:${filesToDeletePath}`);
+                    }
+                    catch (_) {
+                        return;
+                    }
+                    templateFileToDeleteContent
+                        .split(/[\r\n]+/)
+                        .map(line => line.trim())
+                        .filter(line => line.length)
+                        .forEach(line => {
+                        if (!filesToDelete.includes(line)) {
+                            filesToDelete.push(line);
+                        }
+                    });
+                }
+                external_fs_.writeFileSync(filesToDeletePath, filesToDelete.toSorted().join('\n') + '\n', 'utf8');
+                if (hasLocalTransformations(filesToDeletePath)) {
+                    core.info(`  Applying local transformations for ${filesToDeletePath}`);
+                    applyLocalTransformations(filesToDeletePath);
+                    filesToDelete.length = 0;
+                    external_fs_.readFileSync(filesToDeletePath, 'utf8')
+                        .split(/[\r\n]+/)
+                        .map(line => line.trim())
+                        .forEach(line => {
+                        if (!filesToDelete.includes(line)) {
+                            filesToDelete.push(line);
+                        }
+                    });
+                }
+                if (!filesToDelete.length) {
+                    external_fs_.unlinkSync(filesToDeletePath);
+                }
+                else {
+                    filesToDelete.forEach(fileToDelete => {
+                        core.info(`  Deleting ${fileToDelete}`);
+                        external_fs_.unlinkSync(fileToDelete);
+                    });
                 }
             }
             function isIgnoredByTransformations(fileToSync) {
@@ -65662,6 +65721,9 @@ async function run() {
                     core.info(`  Found modifiable sections: ${Object.keys(modifiableSections).join(', ')}`);
                 }
                 return modifiableSections;
+            }
+            function hasLocalTransformations(fileToSync) {
+                return transformations.some(transformation => isTransforming(transformation, fileToSync));
             }
             function applyLocalTransformations(fileToSync) {
                 for (const transformation of transformations) {
@@ -65711,6 +65773,18 @@ async function run() {
                                 indentSeq: false,
                                 lineWidth: 0,
                             });
+                        }
+                        else if (transformation.format === 'list') {
+                            content = content
+                                .split(/[\r\n]+/)
+                                .map(line => line.trim())
+                                .filter(line => line.length);
+                            contentToFileContent = value => value
+                                .filter(item => item != null)
+                                .map(item => `${item}`.trim())
+                                .filter((v, i, a) => a.indexOf(v) === i)
+                                .toSorted()
+                                .join('\n') + '\n';
                         }
                         else {
                             throw new Error(`Unsupported transformation file format: ${transformation.format}`);
@@ -65922,7 +65996,7 @@ async function getRemoteBranches(git, remoteName) {
         .then(content => {
         return content.split('\n')
             .map(line => line.trim())
-            .filter(line => line.length > 0);
+            .filter(line => line.length);
     })
         .then(lines => {
         const result = {};
