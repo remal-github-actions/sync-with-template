@@ -370,6 +370,7 @@ async function run(): Promise<void> {
                     if (fs.existsSync(filesToDeletePathFull)) {
                         fs.unlinkSync(filesToDeletePathFull)
                     }
+                    break
                 }
 
                 const filesToDelete: string[] = []
