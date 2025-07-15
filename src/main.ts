@@ -14,7 +14,7 @@ import picomatch from 'picomatch'
 import {rimrafSync} from 'rimraf'
 import {simpleGit, SimpleGit} from 'simple-git'
 import * as tmp from 'tmp'
-import {fileURLToPath, URL} from 'url'
+import {URL} from 'url'
 import YAML from 'yaml'
 import {adjustGitHubActionsCron} from './internal/adjustGitHubActionsCron.js'
 import {Config} from './internal/config.js'
@@ -31,9 +31,6 @@ export type PullRequestSimple = components['schemas']['pull-request-simple']
 export type NewPullRequest = operations['pulls/create']['requestBody']['content']['application/json']
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-const __filename = fileURLToPath(import.meta.url)
-core.info(__filename)
 
 if (core.isDebug()) {
     debug.enable('simple-git,simple-git:*')
@@ -287,26 +284,29 @@ async function run(): Promise<void> {
 
 
         function hashFilesToSync(): string {
-            const hash = crypto.createHash('sha512')
+            const hashBuilder = crypto.createHash('sha512')
+            hashBuilder.update('$$$HASH:$$$\n', 'utf8')
+
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = path.join(workspacePath, fileToSync)
                 if (fs.existsSync(fileToSyncFullPath)) {
                     core.info(fileToSync)
-                    hash.update(fileToSync, 'utf8')
-                    hash.update(fs.readFileSync(fileToSyncFullPath))
+                    hashBuilder.update(fileToSync, 'utf8')
+                    hashBuilder.update(fs.readFileSync(fileToSyncFullPath))
                     ;['R_OK', 'W_OK', 'X_OK'].forEach(accessConstant => {
                         const hasAccess = hasAccessToFile(fileToSyncFullPath, fs.constants[accessConstant])
-                        hash.update(`${accessConstant}:${hasAccess}`, 'utf8')
+                        hashBuilder.update(`${accessConstant}:${hasAccess}`, 'utf8')
                     })
-                    hash.update('\n', 'utf8')
+                    hashBuilder.update('\n', 'utf8')
                 } else {
                     core.info(`${fileToSync} - not found`)
-                    hash.update(`${fileToSync}|deleted`, 'utf8')
+                    hashBuilder.update(`${fileToSync}|deleted`, 'utf8')
                 }
             }
-            const result = hash.digest('hex')
-            core.info(`Result hash: ${result}`)
-            return result
+
+            const hash = hashBuilder.digest('hex')
+            core.info(`Result hash: ${hash}`)
+            return hash
         }
 
         const hashBefore = !repoBranches.hasOwnProperty(syncBranchName)
