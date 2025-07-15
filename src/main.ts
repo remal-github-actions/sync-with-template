@@ -11,6 +11,7 @@ import {PathLike} from 'fs'
 import JSON5 from 'json5'
 import path from 'path'
 import picomatch from 'picomatch'
+import {rimrafSync} from 'rimraf'
 import {simpleGit, SimpleGit} from 'simple-git'
 import * as tmp from 'tmp'
 import {URL} from 'url'
@@ -424,8 +425,12 @@ async function run(): Promise<void> {
                     fs.unlinkSync(filesToDeletePath)
                 } else {
                     filesToDelete.forEach(fileToDelete => {
-                        core.info(`  Deleting ${fileToDelete}`)
-                        fs.unlinkSync(fileToDelete)
+                        if (fs.existsSync(fileToDelete)) {
+                            core.info(`  Deleting ${fileToDelete}`)
+                            rimrafSync(fileToDelete)
+                        } else {
+                            core.info(`  Already deleted: ${fileToDelete}`)
+                        }
                     })
                 }
             }
