@@ -328,6 +328,11 @@ async function run(): Promise<void> {
 
         await core.group('Checking out template files', async () => {
             for (const fileToSync of filesToSync) {
+                if (fileToSync === filesToDeletePath) {
+                    // implemented separately
+                    continue
+                }
+
                 core.info(`Synchronizing '${fileToSync}'`)
 
                 if (isIgnoredByTransformations(fileToSync)) {
