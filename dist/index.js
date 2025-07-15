@@ -74343,8 +74343,6 @@ const local_transformations_schema_namespaceObject = /*#__PURE__*/JSON.parse('{"
 
 
 
-const main_filename = (0,external_url_.fileURLToPath)(import.meta.url);
-core.info(main_filename);
 if (core.isDebug()) {
     src.enable('simple-git,simple-git:*');
     process.env.DEBUG = [
@@ -74533,27 +74531,28 @@ async function run() {
             });
         });
         function hashFilesToSync() {
-            const hash = external_crypto_.createHash('sha512');
+            const hashBuilder = external_crypto_.createHash('sha512');
+            hashBuilder.update('!!!HASH:bef344c47ec2dd211d79432cac9469d86dea9ad9d5fdd1088c93a14ace8dab0cfa1a4aebfe814a94874e68c8fe0d098982ff7e7c76ae5dfd6637f9cc91f7fd51!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
                     core.info(fileToSync);
-                    hash.update(fileToSync, 'utf8');
-                    hash.update(external_fs_.readFileSync(fileToSyncFullPath));
+                    hashBuilder.update(fileToSync, 'utf8');
+                    hashBuilder.update(external_fs_.readFileSync(fileToSyncFullPath));
                     ['R_OK', 'W_OK', 'X_OK'].forEach(accessConstant => {
                         const hasAccess = hasAccessToFile(fileToSyncFullPath, external_fs_.constants[accessConstant]);
-                        hash.update(`${accessConstant}:${hasAccess}`, 'utf8');
+                        hashBuilder.update(`${accessConstant}:${hasAccess}`, 'utf8');
                     });
-                    hash.update('\n', 'utf8');
+                    hashBuilder.update('\n', 'utf8');
                 }
                 else {
                     core.info(`${fileToSync} - not found`);
-                    hash.update(`${fileToSync}|deleted`, 'utf8');
+                    hashBuilder.update(`${fileToSync}|deleted`, 'utf8');
                 }
             }
-            const result = hash.digest('hex');
-            core.info(`Result hash: ${result}`);
-            return result;
+            const hash = hashBuilder.digest('hex');
+            core.info(`Result hash: ${hash}`);
+            return hash;
         }
         const hashBefore = !repoBranches.hasOwnProperty(syncBranchName)
             ? undefined

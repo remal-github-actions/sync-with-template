@@ -4,12 +4,12 @@ import * as fs from 'fs'
 const distFile = 'dist/index.js'
 
 let content = fs.readFileSync(distFile, 'utf8')
-content = content.replaceAll(/\$\$\$HASH:\w*\$\$\$/g, `$$$HASH:$$$`)
+content = content.replaceAll(/!!!HASH:\w*!!!/g, `!!!HASH:!!!`)
 
 const hashBuilder = crypto.createHash('sha512')
 hashBuilder.update(content, 'utf8')
 const hash = hashBuilder.digest('hex')
-content = content.replaceAll(/\$\$\$HASH:\w*\$\$\$/g, `$$$HASH:${hash}$$$`)
+content = content.replaceAll(/!!!HASH:\w*!!!/g, `!!!HASH:${hash}!!!`)
 
-fs.readFileSync(distFile, content, 'utf8')
+fs.writeFileSync(distFile, content, 'utf8')
 

@@ -285,7 +285,7 @@ async function run(): Promise<void> {
 
         function hashFilesToSync(): string {
             const hashBuilder = crypto.createHash('sha512')
-            hashBuilder.update('$$$HASH:$$$\n', 'utf8')
+            hashBuilder.update('!!!HASH:!!!\n', 'utf8')
 
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = path.join(workspacePath, fileToSync)
