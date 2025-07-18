@@ -21304,6 +21304,7 @@ module.exports = {
 
   // Replace globs with equivalent patterns to reduce parsing time.
   REPLACEMENTS: {
+    __proto__: null,
     '***': '*',
     '**/**': '**',
     '**/**/**': '**'
@@ -74532,7 +74533,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:cf45cee97f7d55b838521c1a286ea26f2c957a50b9839c177c341ed517c7a8dd3cf0eb135c306d535bd1fc785bc89029460e047bd9dbd71db931cb2125135b48!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:35f5e0424a8621a1a42e1a63bf2aa04abfbcc238921cfc05d2e8dac0b2afbffe6f40945910bc35c5fa608c810d6ebe73621e3a0782883d1bddc386cd16cc44b1!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
