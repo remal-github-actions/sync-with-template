@@ -55,8 +55,11 @@ jobs:
         echo "Package manager: $PACKAGE_MANAGER"
         echo "PACKAGE_MANAGER=$PACKAGE_MANAGER" >> $GITHUB_ENV
         echo "result=$PACKAGE_MANAGER" >> $GITHUB_OUTPUT
+        PACKAGE_MANAGER_NAME=${PACKAGE_MANAGER^}
+        echo "Package manager name: $PACKAGE_MANAGER_NAME"
+        echo "name=$PACKAGE_MANAGER_NAME" >> $GITHUB_OUTPUT
 
-    - name: Setup Node.js ${{steps.readNodeVersion.outputs.result}}
+    - name: Setup Node.js ${{steps.readNodeVersion.outputs.result}} with ${{steps.package-manager.outputs.name}}
       uses: actions/setup-node@v4
       with:
         node-version: '${{steps.readNodeVersion.outputs.result}}'
