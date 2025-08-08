@@ -56042,7 +56042,7 @@ function blockString({ comment, type, value }, ctx, onComment, onChompKeep) {
     const { blockQuote, commentString, lineWidth } = ctx.options;
     // 1. Block can't end in whitespace unless the last line is non-empty.
     // 2. Strings consisting of only whitespace are best rendered explicitly.
-    if (!blockQuote || /\n[\t ]+$/.test(value) || /^\s*$/.test(value)) {
+    if (!blockQuote || /\n[\t ]+$/.test(value)) {
         return quotedString(value, ctx);
     }
     const indent = ctx.indent ||
@@ -74591,7 +74591,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:50ec4e6c2f699e5452e6ea230e54e20dfeac630af3a626d06733b6d2316ca98dc8443d4c8504ed278949d113e0680f1a8237306f15f3ea3480cb31f4e690cfbc!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:fe1ccdcf61522be472add7891753a82361246fa97ec68288a0bc0a7b22aff11120f8127a04b1e2c86e09836b59b0fea3c60130c4ccc3eb37b163be1b78bf4679!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
