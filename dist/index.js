@@ -23918,7 +23918,7 @@ function _resolvePath(name, tmpDir, cb) {
         cb(null, path.join(parentDir, path.basename(pathToResolve)));
       });
     } else {
-      fs.realpath(path, cb);
+      fs.realpath(pathToResolve, cb);
     }
   });
 }
@@ -74591,7 +74591,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:fe1ccdcf61522be472add7891753a82361246fa97ec68288a0bc0a7b22aff11120f8127a04b1e2c86e09836b59b0fea3c60130c4ccc3eb37b163be1b78bf4679!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:c017a85b83e3e89e2e32d94ecdcb29d9b77b8a2679329dcecc69192a5be8e0c2b6472b497b299a41ceb4f4b9721e12b5ade01ebbc3f80c37eaff044d40da6457!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
