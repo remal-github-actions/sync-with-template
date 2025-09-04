@@ -60,7 +60,7 @@ jobs:
         echo "name=$PACKAGE_MANAGER_NAME" >> $GITHUB_OUTPUT
 
     - name: Setup Node.js ${{steps.readNodeVersion.outputs.result}} with ${{steps.package-manager.outputs.name}}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '${{steps.readNodeVersion.outputs.result}}'
         cache: ${{steps.package-manager.outputs.result}}
