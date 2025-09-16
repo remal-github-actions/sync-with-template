@@ -29,7 +29,7 @@
     "@octokit/rest": "22.0.0",
     "ajv": "8.17.1",
     "console-log-level": "1.4.1",
-    "debug": "4.4.1",
+    "debug": "4.4.3",
     "json5": "2.2.3",
     "picomatch": "4.0.3",
     "rimraf": "6.0.1",
