@@ -6,6 +6,10 @@ on:
     - main
   pull_request: { }
 
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+
 defaults:
   run:
     shell: bash
@@ -20,8 +24,6 @@ jobs:
     name: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    concurrency: build-${{github.ref}}
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v5
