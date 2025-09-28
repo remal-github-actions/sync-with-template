@@ -6,10 +6,6 @@ on:
     - main
   pull_request: { }
 
-concurrency:
-  group: build-${{github.ref}}
-  cancel-in-progress: true
-
 defaults:
   run:
     shell: bash
@@ -21,9 +17,11 @@ jobs:
       || (github.event_name == 'push' && !startsWith(github.event.head_commit.message, '[push-back]'))
       || github.event_name != 'push'
       }}
-    name: build
+    concurrency:
+      group: build-${{github.ref}}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
     - name: Checkout repository
       uses: actions/checkout@v5
@@ -34,7 +32,7 @@ jobs:
 
 
     - name: Read action's Node.js version
-      id: readNodeVersion
+      id: read-node-version
       run: |
         USING=$( yq '.runs.using' ./action.yml )
         if ! [[ "$USING" =~ ^node[0-9]+$ ]]; then
@@ -43,7 +41,17 @@ jobs:
         fi
         VERSION=${USING:4}
         echo "Action's Node.js version: $VERSION"
-        echo "result=$VERSION" >> $GITHUB_OUTPUT
+        echo "result=$VERSION" | tee -a $GITHUB_OUTPUT
+
+    - name: Setup Node.js ${{steps.read-node-version.outputs.result}}
+      uses: actions/setup-node@v5
+      with:
+        node-version: '${{steps.read-node-version.outputs.result}}'
+
+    - name: Update Node.js version in project files
+      run: |
+        node update-node-version-in-files "${{steps.read-node-version.outputs.result}}"
+
 
     - name: Get package manager
       id: package-manager
@@ -54,23 +62,26 @@ jobs:
           echo "::error::package.json: unsupported .packageManager format: '$PACKAGE_MANAGER'"
           exit 1
         fi
-        echo "Package manager: $PACKAGE_MANAGER"
-        echo "PACKAGE_MANAGER=$PACKAGE_MANAGER" >> $GITHUB_ENV
-        echo "result=$PACKAGE_MANAGER" >> $GITHUB_OUTPUT
+        echo "PACKAGE_MANAGER=$PACKAGE_MANAGER" | tee -a $GITHUB_ENV
+        echo "result=$PACKAGE_MANAGER" | tee -a $GITHUB_OUTPUT
         PACKAGE_MANAGER_NAME=${PACKAGE_MANAGER^}
-        echo "Package manager name: $PACKAGE_MANAGER_NAME"
-        echo "name=$PACKAGE_MANAGER_NAME" >> $GITHUB_OUTPUT
+        echo "name=$PACKAGE_MANAGER_NAME" | tee -a $GITHUB_OUTPUT
 
-    - name: Setup Node.js ${{steps.readNodeVersion.outputs.result}} with ${{steps.package-manager.outputs.name}}
-      uses: actions/setup-node@v5
-      with:
-        node-version: '${{steps.readNodeVersion.outputs.result}}'
-        cache: ${{steps.package-manager.outputs.result}}
-
-
-    - name: Update Node.js version in project files
+    - name: Create cache params
+      id: cache-params
       run: |
-        node update-node-version-in-files "${{steps.readNodeVersion.outputs.result}}"
+        echo "key=${{runner.os}}-dependencies-${{steps.read-node-version.outputs.result}}-${{hashFiles('package.json', 'pnpm-*.yml', '.yarnrc.yml', 'yarn.lock' , '.pnp.*', '.yarn/patches/**', '.yarn/plugins/**', '.yarn/releases/**', '.yarn/versions/**')}}" | tee -a $GITHUB_OUTPUT
+        echo "paths<<EOF" | tee -a $GITHUB_OUTPUT
+        echo "node_modules" | tee -a $GITHUB_OUTPUT
+        echo ".yarn/cache" | tee -a $GITHUB_OUTPUT
+        echo "EOF" | tee -a $GITHUB_OUTPUT
+
+    - name: Restore dependencies cache
+      id: restore-dependencies-cache
+      uses: actions/cache/restore@v4
+      with:
+        key: ${{steps.cache-params.outputs.key}}
+        path: ${{steps.cache-params.outputs.paths}}
 
     - name: Install dependencies
       run: |
@@ -82,6 +93,13 @@ jobs:
           echo "::error::Unsupported package manager: $PACKAGE_MANAGER"
           exit 1
         fi
+
+    - name: Save dependencies cache
+      if: ${{steps.restore-dependencies-cache.outputs.cache-hit != 'true'}}
+      uses: actions/cache/save@v4
+      with:
+        key: ${{steps.cache-params.outputs.key}}
+        path: ${{steps.cache-params.outputs.paths}}
 
 
     - name: Build
