@@ -75126,7 +75126,7 @@ function throttling(octokit, octokitOptions) {
     const retryCount = ~~request.retryCount;
     request.retryCount = retryCount;
     options.request.retryCount = retryCount;
-    const { wantRetry, retryAfter = 0 } = await async function() {
+    const { wantRetry, retryAfter = 0 } = await (async function() {
       if (/\bsecondary rate\b/i.test(error.message)) {
         const retryAfter2 = Number(error.response.headers["retry-after"]) || state2.fallbackSecondaryRateRetryAfter;
         const wantRetry2 = await emitter.trigger(
@@ -75160,7 +75160,7 @@ function throttling(octokit, octokitOptions) {
         return { wantRetry: wantRetry2, retryAfter: retryAfter2 };
       }
       return {};
-    }();
+    })();
     if (wantRetry) {
       request.retryCount++;
       return retryAfter * state2.retryAfterBaseValue;
@@ -75458,7 +75458,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:f0556befc9974a8b7ce9bb9352e6bcc646594dc58a54c147527a590a79437ecb0c93c1c9fdd1e9712dcf75fb6509a5836982db5f9b0c149d5406d49393543dc7!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:5b3ff1e6977b0a3c6b11855b0b0695c47f67a9200e25ad36bc533eb7f7674075c643579e129691c6b52689c1dd5ed97580b8ea9dc1ebf918d878745e6f780fba!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
