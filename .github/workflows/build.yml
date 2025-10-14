@@ -44,7 +44,7 @@ jobs:
         echo "result=$VERSION" | tee -a $GITHUB_OUTPUT
 
     - name: Setup Node.js ${{steps.read-node-version.outputs.result}}
-      uses: actions/setup-node@v5
+      uses: actions/setup-node@v6
       with:
         node-version: '${{steps.read-node-version.outputs.result}}'
 
