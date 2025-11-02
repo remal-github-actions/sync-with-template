@@ -33,7 +33,7 @@
     "json5": "2.2.3",
     "picomatch": "4.0.3",
     "rimraf": "6.0.1",
-    "simple-git": "3.28.0",
+    "simple-git": "3.29.0",
     "tmp": "0.2.5",
     "yaml": "2.8.1"
   },
