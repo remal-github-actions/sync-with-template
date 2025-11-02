@@ -31,7 +31,7 @@
     {
       matchCategories: ["js"],
       matchPackageNames: ["renovate"],
-      schedule: ["after 6pm on sunday"]
+      schedule: ["* 15-23 * * 6"]
     },
   ],
 }
