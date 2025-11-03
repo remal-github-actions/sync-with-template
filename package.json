@@ -38,7 +38,7 @@
     "yaml": "2.8.1"
   },
   "devDependencies": {
-    "@octokit/openapi-types": "26.0.0",
+    "@octokit/openapi-types": "27.0.0",
     "@tsconfig/node20": "20.1.6",
     "@types/console-log-level": "1.4.5",
     "@types/jest": "30.0.0",
