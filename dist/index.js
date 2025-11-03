@@ -16397,75 +16397,6 @@ exports["default"] = def;
 
 /***/ }),
 
-/***/ 6999:
-/***/ ((module) => {
-
-
-module.exports = balanced;
-function balanced(a, b, str) {
-  if (a instanceof RegExp) a = maybeMatch(a, str);
-  if (b instanceof RegExp) b = maybeMatch(b, str);
-
-  var r = range(a, b, str);
-
-  return r && {
-    start: r[0],
-    end: r[1],
-    pre: str.slice(0, r[0]),
-    body: str.slice(r[0] + a.length, r[1]),
-    post: str.slice(r[1] + b.length)
-  };
-}
-
-function maybeMatch(reg, str) {
-  var m = str.match(reg);
-  return m ? m[0] : null;
-}
-
-balanced.range = range;
-function range(a, b, str) {
-  var begs, beg, left, right, result;
-  var ai = str.indexOf(a);
-  var bi = str.indexOf(b, ai + 1);
-  var i = ai;
-
-  if (ai >= 0 && bi > 0) {
-    if(a===b) {
-      return [ai, bi];
-    }
-    begs = [];
-    left = str.length;
-
-    while (i >= 0 && !result) {
-      if (i == ai) {
-        begs.push(i);
-        ai = str.indexOf(a, i + 1);
-      } else if (begs.length == 1) {
-        result = [ begs.pop(), bi ];
-      } else {
-        beg = begs.pop();
-        if (beg < left) {
-          left = beg;
-          right = bi;
-        }
-
-        bi = str.indexOf(b, i + 1);
-      }
-
-      i = ai < bi && ai >= 0 ? ai : bi;
-    }
-
-    if (begs.length) {
-      result = [ left, right ];
-    }
-  }
-
-  return result;
-}
-
-
-/***/ }),
-
 /***/ 2732:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -18173,216 +18104,6 @@ function removeHook(state, name, method) {
 	return lib;
 
 })));
-
-
-/***/ }),
-
-/***/ 4691:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-var balanced = __nccwpck_require__(6999);
-
-module.exports = expandTop;
-
-var escSlash = '\0SLASH'+Math.random()+'\0';
-var escOpen = '\0OPEN'+Math.random()+'\0';
-var escClose = '\0CLOSE'+Math.random()+'\0';
-var escComma = '\0COMMA'+Math.random()+'\0';
-var escPeriod = '\0PERIOD'+Math.random()+'\0';
-
-function numeric(str) {
-  return parseInt(str, 10) == str
-    ? parseInt(str, 10)
-    : str.charCodeAt(0);
-}
-
-function escapeBraces(str) {
-  return str.split('\\\\').join(escSlash)
-            .split('\\{').join(escOpen)
-            .split('\\}').join(escClose)
-            .split('\\,').join(escComma)
-            .split('\\.').join(escPeriod);
-}
-
-function unescapeBraces(str) {
-  return str.split(escSlash).join('\\')
-            .split(escOpen).join('{')
-            .split(escClose).join('}')
-            .split(escComma).join(',')
-            .split(escPeriod).join('.');
-}
-
-
-// Basically just str.split(","), but handling cases
-// where we have nested braced sections, which should be
-// treated as individual members, like {a,{b,c},d}
-function parseCommaParts(str) {
-  if (!str)
-    return [''];
-
-  var parts = [];
-  var m = balanced('{', '}', str);
-
-  if (!m)
-    return str.split(',');
-
-  var pre = m.pre;
-  var body = m.body;
-  var post = m.post;
-  var p = pre.split(',');
-
-  p[p.length-1] += '{' + body + '}';
-  var postParts = parseCommaParts(post);
-  if (post.length) {
-    p[p.length-1] += postParts.shift();
-    p.push.apply(p, postParts);
-  }
-
-  parts.push.apply(parts, p);
-
-  return parts;
-}
-
-function expandTop(str) {
-  if (!str)
-    return [];
-
-  // I don't know why Bash 4.3 does this, but it does.
-  // Anything starting with {} will have the first two bytes preserved
-  // but *only* at the top level, so {},a}b will not expand to anything,
-  // but a{},b}c will be expanded to [a}c,abc].
-  // One could argue that this is a bug in Bash, but since the goal of
-  // this module is to match Bash's rules, we escape a leading {}
-  if (str.substr(0, 2) === '{}') {
-    str = '\\{\\}' + str.substr(2);
-  }
-
-  return expand(escapeBraces(str), true).map(unescapeBraces);
-}
-
-function embrace(str) {
-  return '{' + str + '}';
-}
-function isPadded(el) {
-  return /^-?0\d/.test(el);
-}
-
-function lte(i, y) {
-  return i <= y;
-}
-function gte(i, y) {
-  return i >= y;
-}
-
-function expand(str, isTop) {
-  var expansions = [];
-
-  var m = balanced('{', '}', str);
-  if (!m) return [str];
-
-  // no need to expand pre, since it is guaranteed to be free of brace-sets
-  var pre = m.pre;
-  var post = m.post.length
-    ? expand(m.post, false)
-    : [''];
-
-  if (/\$$/.test(m.pre)) {    
-    for (var k = 0; k < post.length; k++) {
-      var expansion = pre+ '{' + m.body + '}' + post[k];
-      expansions.push(expansion);
-    }
-  } else {
-    var isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
-    var isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
-    var isSequence = isNumericSequence || isAlphaSequence;
-    var isOptions = m.body.indexOf(',') >= 0;
-    if (!isSequence && !isOptions) {
-      // {a},b}
-      if (m.post.match(/,.*\}/)) {
-        str = m.pre + '{' + m.body + escClose + m.post;
-        return expand(str);
-      }
-      return [str];
-    }
-
-    var n;
-    if (isSequence) {
-      n = m.body.split(/\.\./);
-    } else {
-      n = parseCommaParts(m.body);
-      if (n.length === 1) {
-        // x{{a,b}}y ==> x{a}y x{b}y
-        n = expand(n[0], false).map(embrace);
-        if (n.length === 1) {
-          return post.map(function(p) {
-            return m.pre + n[0] + p;
-          });
-        }
-      }
-    }
-
-    // at this point, n is the parts, and we know it's not a comma set
-    // with a single entry.
-    var N;
-
-    if (isSequence) {
-      var x = numeric(n[0]);
-      var y = numeric(n[1]);
-      var width = Math.max(n[0].length, n[1].length)
-      var incr = n.length == 3
-        ? Math.abs(numeric(n[2]))
-        : 1;
-      var test = lte;
-      var reverse = y < x;
-      if (reverse) {
-        incr *= -1;
-        test = gte;
-      }
-      var pad = n.some(isPadded);
-
-      N = [];
-
-      for (var i = x; test(i, y); i += incr) {
-        var c;
-        if (isAlphaSequence) {
-          c = String.fromCharCode(i);
-          if (c === '\\')
-            c = '';
-        } else {
-          c = String(i);
-          if (pad) {
-            var need = width - c.length;
-            if (need > 0) {
-              var z = new Array(need + 1).join('0');
-              if (i < 0)
-                c = '-' + z + c.slice(1);
-              else
-                c = z + c;
-            }
-          }
-        }
-        N.push(c);
-      }
-    } else {
-      N = [];
-
-      for (var j = 0; j < n.length; j++) {
-        N.push.apply(N, expand(n[j], false));
-      }
-    }
-
-    for (var j = 0; j < N.length; j++) {
-      for (var k = 0; k < post.length; k++) {
-        var expansion = pre + N[j] + post[k];
-        if (!isTop || isSequence || expansion)
-          expansions.push(expansion);
-      }
-    }
-  }
-
-  return expansions;
-}
-
 
 
 /***/ }),
@@ -57508,8 +57229,255 @@ var lib = __nccwpck_require__(4841);
 var external_path_ = __nccwpck_require__(6928);
 // EXTERNAL MODULE: ./node_modules/picomatch/index.js
 var picomatch = __nccwpck_require__(4006);
-// EXTERNAL MODULE: ./node_modules/brace-expansion/index.js
-var brace_expansion = __nccwpck_require__(4691);
+;// CONCATENATED MODULE: ./node_modules/@isaacs/balanced-match/dist/esm/index.js
+const balanced = (a, b, str) => {
+    const ma = a instanceof RegExp ? maybeMatch(a, str) : a;
+    const mb = b instanceof RegExp ? maybeMatch(b, str) : b;
+    const r = ma !== null && mb != null && range(ma, mb, str);
+    return (r && {
+        start: r[0],
+        end: r[1],
+        pre: str.slice(0, r[0]),
+        body: str.slice(r[0] + ma.length, r[1]),
+        post: str.slice(r[1] + mb.length),
+    });
+};
+const maybeMatch = (reg, str) => {
+    const m = str.match(reg);
+    return m ? m[0] : null;
+};
+const range = (a, b, str) => {
+    let begs, beg, left, right = undefined, result;
+    let ai = str.indexOf(a);
+    let bi = str.indexOf(b, ai + 1);
+    let i = ai;
+    if (ai >= 0 && bi > 0) {
+        if (a === b) {
+            return [ai, bi];
+        }
+        begs = [];
+        left = str.length;
+        while (i >= 0 && !result) {
+            if (i === ai) {
+                begs.push(i);
+                ai = str.indexOf(a, i + 1);
+            }
+            else if (begs.length === 1) {
+                const r = begs.pop();
+                if (r !== undefined)
+                    result = [r, bi];
+            }
+            else {
+                beg = begs.pop();
+                if (beg !== undefined && beg < left) {
+                    left = beg;
+                    right = bi;
+                }
+                bi = str.indexOf(b, i + 1);
+            }
+            i = ai < bi && ai >= 0 ? ai : bi;
+        }
+        if (begs.length && right !== undefined) {
+            result = [left, right];
+        }
+    }
+    return result;
+};
+//# sourceMappingURL=index.js.map
+;// CONCATENATED MODULE: ./node_modules/@isaacs/brace-expansion/dist/esm/index.js
+
+const escSlash = '\0SLASH' + Math.random() + '\0';
+const escOpen = '\0OPEN' + Math.random() + '\0';
+const escClose = '\0CLOSE' + Math.random() + '\0';
+const escComma = '\0COMMA' + Math.random() + '\0';
+const escPeriod = '\0PERIOD' + Math.random() + '\0';
+const escSlashPattern = new RegExp(escSlash, 'g');
+const escOpenPattern = new RegExp(escOpen, 'g');
+const escClosePattern = new RegExp(escClose, 'g');
+const escCommaPattern = new RegExp(escComma, 'g');
+const escPeriodPattern = new RegExp(escPeriod, 'g');
+const slashPattern = /\\\\/g;
+const openPattern = /\\{/g;
+const closePattern = /\\}/g;
+const commaPattern = /\\,/g;
+const periodPattern = /\\./g;
+function numeric(str) {
+    return !isNaN(str) ? parseInt(str, 10) : str.charCodeAt(0);
+}
+function escapeBraces(str) {
+    return str
+        .replace(slashPattern, escSlash)
+        .replace(openPattern, escOpen)
+        .replace(closePattern, escClose)
+        .replace(commaPattern, escComma)
+        .replace(periodPattern, escPeriod);
+}
+function unescapeBraces(str) {
+    return str
+        .replace(escSlashPattern, '\\')
+        .replace(escOpenPattern, '{')
+        .replace(escClosePattern, '}')
+        .replace(escCommaPattern, ',')
+        .replace(escPeriodPattern, '.');
+}
+/**
+ * Basically just str.split(","), but handling cases
+ * where we have nested braced sections, which should be
+ * treated as individual members, like {a,{b,c},d}
+ */
+function parseCommaParts(str) {
+    if (!str) {
+        return [''];
+    }
+    const parts = [];
+    const m = balanced('{', '}', str);
+    if (!m) {
+        return str.split(',');
+    }
+    const { pre, body, post } = m;
+    const p = pre.split(',');
+    p[p.length - 1] += '{' + body + '}';
+    const postParts = parseCommaParts(post);
+    if (post.length) {
+        ;
+        p[p.length - 1] += postParts.shift();
+        p.push.apply(p, postParts);
+    }
+    parts.push.apply(parts, p);
+    return parts;
+}
+function expand(str) {
+    if (!str) {
+        return [];
+    }
+    // I don't know why Bash 4.3 does this, but it does.
+    // Anything starting with {} will have the first two bytes preserved
+    // but *only* at the top level, so {},a}b will not expand to anything,
+    // but a{},b}c will be expanded to [a}c,abc].
+    // One could argue that this is a bug in Bash, but since the goal of
+    // this module is to match Bash's rules, we escape a leading {}
+    if (str.slice(0, 2) === '{}') {
+        str = '\\{\\}' + str.slice(2);
+    }
+    return expand_(escapeBraces(str), true).map(unescapeBraces);
+}
+function embrace(str) {
+    return '{' + str + '}';
+}
+function isPadded(el) {
+    return /^-?0\d/.test(el);
+}
+function lte(i, y) {
+    return i <= y;
+}
+function gte(i, y) {
+    return i >= y;
+}
+function expand_(str, isTop) {
+    /** @type {string[]} */
+    const expansions = [];
+    const m = balanced('{', '}', str);
+    if (!m)
+        return [str];
+    // no need to expand pre, since it is guaranteed to be free of brace-sets
+    const pre = m.pre;
+    const post = m.post.length ? expand_(m.post, false) : [''];
+    if (/\$$/.test(m.pre)) {
+        for (let k = 0; k < post.length; k++) {
+            const expansion = pre + '{' + m.body + '}' + post[k];
+            expansions.push(expansion);
+        }
+    }
+    else {
+        const isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
+        const isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
+        const isSequence = isNumericSequence || isAlphaSequence;
+        const isOptions = m.body.indexOf(',') >= 0;
+        if (!isSequence && !isOptions) {
+            // {a},b}
+            if (m.post.match(/,(?!,).*\}/)) {
+                str = m.pre + '{' + m.body + escClose + m.post;
+                return expand_(str);
+            }
+            return [str];
+        }
+        let n;
+        if (isSequence) {
+            n = m.body.split(/\.\./);
+        }
+        else {
+            n = parseCommaParts(m.body);
+            if (n.length === 1 && n[0] !== undefined) {
+                // x{{a,b}}y ==> x{a}y x{b}y
+                n = expand_(n[0], false).map(embrace);
+                //XXX is this necessary? Can't seem to hit it in tests.
+                /* c8 ignore start */
+                if (n.length === 1) {
+                    return post.map(p => m.pre + n[0] + p);
+                }
+                /* c8 ignore stop */
+            }
+        }
+        // at this point, n is the parts, and we know it's not a comma set
+        // with a single entry.
+        let N;
+        if (isSequence && n[0] !== undefined && n[1] !== undefined) {
+            const x = numeric(n[0]);
+            const y = numeric(n[1]);
+            const width = Math.max(n[0].length, n[1].length);
+            let incr = n.length === 3 && n[2] !== undefined ? Math.abs(numeric(n[2])) : 1;
+            let test = lte;
+            const reverse = y < x;
+            if (reverse) {
+                incr *= -1;
+                test = gte;
+            }
+            const pad = n.some(isPadded);
+            N = [];
+            for (let i = x; test(i, y); i += incr) {
+                let c;
+                if (isAlphaSequence) {
+                    c = String.fromCharCode(i);
+                    if (c === '\\') {
+                        c = '';
+                    }
+                }
+                else {
+                    c = String(i);
+                    if (pad) {
+                        const need = width - c.length;
+                        if (need > 0) {
+                            const z = new Array(need + 1).join('0');
+                            if (i < 0) {
+                                c = '-' + z + c.slice(1);
+                            }
+                            else {
+                                c = z + c;
+                            }
+                        }
+                    }
+                }
+                N.push(c);
+            }
+        }
+        else {
+            N = [];
+            for (let j = 0; j < n.length; j++) {
+                N.push.apply(N, expand_(n[j], false));
+            }
+        }
+        for (let j = 0; j < N.length; j++) {
+            for (let k = 0; k < post.length; k++) {
+                const expansion = pre + N[j] + post[k];
+                if (!isTop || isSequence || expansion) {
+                    expansions.push(expansion);
+                }
+            }
+        }
+    }
+    return expansions;
+}
+//# sourceMappingURL=index.js.map
 ;// CONCATENATED MODULE: ./node_modules/rimraf/node_modules/minimatch/dist/esm/assert-valid-pattern.js
 const MAX_PATTERN_LENGTH = 1024 * 64;
 const assertValidPattern = (pattern) => {
@@ -57674,21 +57642,35 @@ const parseClass = (glob, position) => {
 /**
  * Un-escape a string that has been escaped with {@link escape}.
  *
- * If the {@link windowsPathsNoEscape} option is used, then square-brace
- * escapes are removed, but not backslash escapes.  For example, it will turn
- * the string `'[*]'` into `*`, but it will not turn `'\\*'` into `'*'`,
- * becuase `\` is a path separator in `windowsPathsNoEscape` mode.
+ * If the {@link MinimatchOptions.windowsPathsNoEscape} option is used, then
+ * square-bracket escapes are removed, but not backslash escapes.
  *
- * When `windowsPathsNoEscape` is not set, then both brace escapes and
+ * For example, it will turn the string `'[*]'` into `*`, but it will not
+ * turn `'\\*'` into `'*'`, because `\` is a path separator in
+ * `windowsPathsNoEscape` mode.
+ *
+ * When `windowsPathsNoEscape` is not set, then both square-bracket escapes and
  * backslash escapes are removed.
  *
  * Slashes (and backslashes in `windowsPathsNoEscape` mode) cannot be escaped
  * or unescaped.
+ *
+ * When `magicalBraces` is not set, escapes of braces (`{` and `}`) will not be
+ * unescaped.
  */
-const unescape_unescape = (s, { windowsPathsNoEscape = false, } = {}) => {
+const unescape_unescape = (s, { windowsPathsNoEscape = false, magicalBraces = true, } = {}) => {
+    if (magicalBraces) {
+        return windowsPathsNoEscape
+            ? s.replace(/\[([^\/\\])\]/g, '$1')
+            : s
+                .replace(/((?!\\).|^)\[([^\/\\])\]/g, '$1$2')
+                .replace(/\\([^\/])/g, '$1');
+    }
     return windowsPathsNoEscape
-        ? s.replace(/\[([^\/\\])\]/g, '$1')
-        : s.replace(/((?!\\).|^)\[([^\/\\])\]/g, '$1$2').replace(/\\([^\/])/g, '$1');
+        ? s.replace(/\[([^\/\\{}])\]/g, '$1')
+        : s
+            .replace(/((?!\\).|^)\[([^\/\\{}])\]/g, '$1$2')
+            .replace(/\\([^\/{}])/g, '$1');
 };
 //# sourceMappingURL=unescape.js.map
 ;// CONCATENATED MODULE: ./node_modules/rimraf/node_modules/minimatch/dist/esm/ast.js
@@ -58106,7 +58088,9 @@ class AST {
         if (this.#root === this)
             this.#fillNegs();
         if (!this.type) {
-            const noEmpty = this.isStart() && this.isEnd();
+            const noEmpty = this.isStart() &&
+                this.isEnd() &&
+                !this.#parts.some(s => typeof s !== 'string');
             const src = this.#parts
                 .map(p => {
                 const [re, _, hasMagic, uflag] = typeof p === 'string'
@@ -58262,10 +58246,7 @@ class AST {
                 }
             }
             if (c === '*') {
-                if (noEmpty && glob === '*')
-                    re += starNoEmpty;
-                else
-                    re += star;
+                re += noEmpty && glob === '*' ? starNoEmpty : star;
                 hasMagic = true;
                 continue;
             }
@@ -58284,16 +58265,24 @@ class AST {
 /**
  * Escape all magic characters in a glob pattern.
  *
- * If the {@link windowsPathsNoEscape | GlobOptions.windowsPathsNoEscape}
+ * If the {@link MinimatchOptions.windowsPathsNoEscape}
  * option is used, then characters are escaped by wrapping in `[]`, because
  * a magic character wrapped in a character class can only be satisfied by
  * that exact character.  In this mode, `\` is _not_ escaped, because it is
  * not interpreted as a magic character, but instead as a path separator.
+ *
+ * If the {@link MinimatchOptions.magicalBraces} option is used,
+ * then braces (`{` and `}`) will be escaped.
  */
-const escape_escape = (s, { windowsPathsNoEscape = false, } = {}) => {
+const escape_escape = (s, { windowsPathsNoEscape = false, magicalBraces = false, } = {}) => {
     // don't need to escape +@! because we escape the parens
     // that make those magic, and escaping ! as [!] isn't valid,
     // because [!]] is a valid glob class meaning not ']'.
+    if (magicalBraces) {
+        return windowsPathsNoEscape
+            ? s.replace(/[?*()[\]{}]/g, '[$&]')
+            : s.replace(/[?*()[\]\\{}]/g, '\\$&');
+    }
     return windowsPathsNoEscape
         ? s.replace(/[?*()[\]]/g, '[$&]')
         : s.replace(/[?*()[\]\\]/g, '\\$&');
@@ -58450,7 +58439,7 @@ const braceExpand = (pattern, options = {}) => {
         // shortcut. no need to expand.
         return [pattern];
     }
-    return brace_expansion(pattern);
+    return expand(pattern);
 };
 minimatch.braceExpand = braceExpand;
 // parse a component of the expanded set.
@@ -58933,7 +58922,7 @@ class Minimatch {
             }
         }
         // resolve and reduce . and .. portions in the file as well.
-        // dont' need to do the second phase, because it's only one string[]
+        // don't need to do the second phase, because it's only one string[]
         const { optimizationLevel = 1 } = this.options;
         if (optimizationLevel >= 2) {
             file = this.levelTwoFileOptimize(file);
@@ -59186,14 +59175,25 @@ class Minimatch {
                     }
                 }
                 else if (next === undefined) {
-                    pp[i - 1] = prev + '(?:\\/|' + twoStar + ')?';
+                    pp[i - 1] = prev + '(?:\\/|\\/' + twoStar + ')?';
                 }
                 else if (next !== GLOBSTAR) {
                     pp[i - 1] = prev + '(?:\\/|\\/' + twoStar + '\\/)' + next;
                     pp[i + 1] = GLOBSTAR;
                 }
             });
-            return pp.filter(p => p !== GLOBSTAR).join('/');
+            const filtered = pp.filter(p => p !== GLOBSTAR);
+            // For partial matches, we need to make the pattern match
+            // any prefix of the full path. We do this by generating
+            // alternative patterns that match progressively longer prefixes.
+            if (this.partial && filtered.length >= 1) {
+                const prefixes = [];
+                for (let i = 1; i <= filtered.length; i++) {
+                    prefixes.push(filtered.slice(0, i).join('/'));
+                }
+                return '(?:' + prefixes.join('|') + ')';
+            }
+            return filtered.join('/');
         })
             .join('|');
         // need to wrap in parens if we had more than one thing with |,
@@ -59202,6 +59202,10 @@ class Minimatch {
         // must match entire pattern
         // ending in a * or ** will make it less strict.
         re = '^' + open + re + close + '$';
+        // In partial mode, '/' should always match as it's a valid prefix for any pattern
+        if (this.partial) {
+            re = '^(?:\\/|' + open + re.slice(1, -1) + close + ')$';
+        }
         // can match anything, as long as it's not this.
         if (this.negate)
             re = '^(?!' + re + ').+$';
@@ -65242,11 +65246,7 @@ const optArgSync = (opt = {}) => optArgT(opt);
 //# sourceMappingURL=opt-arg.js.map
 // EXTERNAL MODULE: external "util"
 var external_util_ = __nccwpck_require__(9023);
-;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/platform.js
-/* harmony default export */ const platform = (process.env.__TESTING_RIMRAF_PLATFORM__ || process.platform);
-//# sourceMappingURL=platform.js.map
 ;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/path-arg.js
-
 
 
 const pathArg = (path, opt = {}) => {
@@ -65279,7 +65279,7 @@ const pathArg = (path, opt = {}) => {
             code: 'ERR_PRESERVE_ROOT',
         });
     }
-    if (platform === 'win32') {
+    if (process.platform === 'win32') {
         const badWinChars = /[*|"<>?:]/;
         const { root } = (0,external_path_.parse)(path);
         if (badWinChars.test(path.substring(root.length))) {
@@ -65293,44 +65293,33 @@ const pathArg = (path, opt = {}) => {
 };
 /* harmony default export */ const path_arg = (pathArg);
 //# sourceMappingURL=path-arg.js.map
+;// CONCATENATED MODULE: external "fs/promises"
+const external_fs_promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("fs/promises");
 ;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/fs.js
-// promisify ourselves, because older nodes don't have fs.promises
+
 
 // sync ones just take the sync version from node
-
+// readdir forces withFileTypes: true
 
 const readdirSync = (path) => (0,external_fs_.readdirSync)(path, { withFileTypes: true });
-// unrolled for better inlining, this seems to get better performance
-// than something like:
-// const makeCb = (res, rej) => (er, ...d) => er ? rej(er) : res(...d)
-// which would be a bit cleaner.
-const chmod = (path, mode) => new Promise((res, rej) => external_fs_.chmod(path, mode, (er, ...d) => (er ? rej(er) : res(...d))));
-const mkdir = (path, options) => new Promise((res, rej) => external_fs_.mkdir(path, options, (er, made) => (er ? rej(er) : res(made))));
-const readdir = (path) => new Promise((res, rej) => external_fs_.readdir(path, { withFileTypes: true }, (er, data) => er ? rej(er) : res(data)));
-const rename = (oldPath, newPath) => new Promise((res, rej) => external_fs_.rename(oldPath, newPath, (er, ...d) => er ? rej(er) : res(...d)));
-const rm = (path, options) => new Promise((res, rej) => external_fs_.rm(path, options, (er, ...d) => (er ? rej(er) : res(...d))));
-const rmdir = (path) => new Promise((res, rej) => external_fs_.rmdir(path, (er, ...d) => (er ? rej(er) : res(...d))));
-const stat = (path) => new Promise((res, rej) => external_fs_.stat(path, (er, data) => (er ? rej(er) : res(data))));
-const lstat = (path) => new Promise((res, rej) => external_fs_.lstat(path, (er, data) => (er ? rej(er) : res(data))));
-const unlink = (path) => new Promise((res, rej) => external_fs_.unlink(path, (er, ...d) => (er ? rej(er) : res(...d))));
 const promises = {
-    chmod,
-    mkdir,
-    readdir,
-    rename,
-    rm,
-    rmdir,
-    stat,
-    lstat,
-    unlink,
+    chmod: external_fs_promises_namespaceObject.chmod,
+    mkdir: external_fs_promises_namespaceObject.mkdir,
+    readdir: (path) => external_fs_promises_namespaceObject.readdir(path, { withFileTypes: true }),
+    rename: external_fs_promises_namespaceObject.rename,
+    rm: external_fs_promises_namespaceObject.rm,
+    rmdir: external_fs_promises_namespaceObject.rmdir,
+    stat: external_fs_promises_namespaceObject.stat,
+    lstat: external_fs_promises_namespaceObject.lstat,
+    unlink: external_fs_promises_namespaceObject.unlink,
 };
 //# sourceMappingURL=fs.js.map
 ;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/readdir-or-error.js
 // returns an array of entries if readdir() works,
 // or the error that readdir() raised if not.
 
-const { readdir: readdir_or_error_readdir } = promises;
-const readdirOrError = (path) => readdir_or_error_readdir(path).catch(er => er);
+const { readdir } = promises;
+const readdirOrError = (path) => readdir(path).catch(er => er);
 const readdirOrErrorSync = (path) => {
     try {
         return readdirSync(path);
@@ -65340,20 +65329,29 @@ const readdirOrErrorSync = (path) => {
     }
 };
 //# sourceMappingURL=readdir-or-error.js.map
+;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/error.js
+const isRecord = (o) => !!o && typeof o === 'object';
+const hasString = (o, key) => key in o && typeof o[key] === 'string';
+const isFsError = (o) => isRecord(o) && hasString(o, 'code') && hasString(o, 'path');
+const errorCode = (er) => isRecord(er) && hasString(er, 'code') ? er.code : null;
+//# sourceMappingURL=error.js.map
 ;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/ignore-enoent.js
-const ignoreENOENT = async (p) => p.catch(er => {
-    if (er.code !== 'ENOENT') {
-        throw er;
+
+const ignoreENOENT = async (p, rethrow) => p.catch(er => {
+    if (errorCode(er) === 'ENOENT') {
+        return;
     }
+    throw rethrow ?? er;
 });
-const ignoreENOENTSync = (fn) => {
+const ignoreENOENTSync = (fn, rethrow) => {
     try {
         return fn();
     }
     catch (er) {
-        if (er?.code !== 'ENOENT') {
-            throw er;
+        if (errorCode(er) === 'ENOENT') {
+            return;
         }
+        throw rethrow ?? er;
     }
 };
 //# sourceMappingURL=ignore-enoent.js.map
@@ -65364,50 +65362,32 @@ const ignoreENOENTSync = (fn) => {
 // because sunos will let root unlink a directory, and some
 // SUPER weird breakage happens as a result.
 
-const { lstat: rimraf_posix_lstat, rmdir: rimraf_posix_rmdir, unlink: rimraf_posix_unlink } = promises;
 
 
 
+
+const { lstat, rmdir, unlink } = promises;
 const rimrafPosix = async (path, opt) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
-    try {
-        return await rimrafPosixDir(path, opt, await rimraf_posix_lstat(path));
-    }
-    catch (er) {
-        if (er?.code === 'ENOENT')
-            return true;
-        throw er;
-    }
+    opt?.signal?.throwIfAborted();
+    return ((await ignoreENOENT(lstat(path).then(stat => rimrafPosixDir(path, opt, stat)))) ?? true);
 };
 const rimrafPosixSync = (path, opt) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
-    try {
-        return rimrafPosixDirSync(path, opt, (0,external_fs_.lstatSync)(path));
-    }
-    catch (er) {
-        if (er?.code === 'ENOENT')
-            return true;
-        throw er;
-    }
+    opt?.signal?.throwIfAborted();
+    return (ignoreENOENTSync(() => rimrafPosixDirSync(path, opt, (0,external_fs_.lstatSync)(path))) ??
+        true);
 };
 const rimrafPosixDir = async (path, opt, ent) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
+    opt?.signal?.throwIfAborted();
     const entries = ent.isDirectory() ? await readdirOrError(path) : null;
     if (!Array.isArray(entries)) {
         // this can only happen if lstat/readdir lied, or if the dir was
         // swapped out with a file at just the right moment.
         /* c8 ignore start */
         if (entries) {
-            if (entries.code === 'ENOENT') {
+            if (errorCode(entries) === 'ENOENT') {
                 return true;
             }
-            if (entries.code !== 'ENOTDIR') {
+            if (errorCode(entries) !== 'ENOTDIR') {
                 throw entries;
             }
         }
@@ -65415,10 +65395,10 @@ const rimrafPosixDir = async (path, opt, ent) => {
         if (opt.filter && !(await opt.filter(path, ent))) {
             return false;
         }
-        await ignoreENOENT(rimraf_posix_unlink(path));
+        await ignoreENOENT(unlink(path));
         return true;
     }
-    const removedAll = (await Promise.all(entries.map(ent => rimrafPosixDir((0,external_path_.resolve)(path, ent.name), opt, ent)))).reduce((a, b) => a && b, true);
+    const removedAll = (await Promise.all(entries.map(ent => rimrafPosixDir((0,external_path_.resolve)(path, ent.name), opt, ent)))).every(v => v === true);
     if (!removedAll) {
         return false;
     }
@@ -65431,23 +65411,21 @@ const rimrafPosixDir = async (path, opt, ent) => {
     if (opt.filter && !(await opt.filter(path, ent))) {
         return false;
     }
-    await ignoreENOENT(rimraf_posix_rmdir(path));
+    await ignoreENOENT(rmdir(path));
     return true;
 };
 const rimrafPosixDirSync = (path, opt, ent) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
+    opt?.signal?.throwIfAborted();
     const entries = ent.isDirectory() ? readdirOrErrorSync(path) : null;
     if (!Array.isArray(entries)) {
         // this can only happen if lstat/readdir lied, or if the dir was
         // swapped out with a file at just the right moment.
         /* c8 ignore start */
         if (entries) {
-            if (entries.code === 'ENOENT') {
+            if (errorCode(entries) === 'ENOENT') {
                 return true;
             }
-            if (entries.code !== 'ENOTDIR') {
+            if (errorCode(entries) !== 'ENOTDIR') {
                 throw entries;
             }
         }
@@ -65478,60 +65456,44 @@ const rimrafPosixDirSync = (path, opt, ent) => {
 //# sourceMappingURL=rimraf-posix.js.map
 ;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/fix-eperm.js
 
-const { chmod: fix_eperm_chmod } = promises;
+
+
+const { chmod } = promises;
 const fixEPERM = (fn) => async (path) => {
     try {
-        return await fn(path);
+        return void (await ignoreENOENT(fn(path)));
     }
     catch (er) {
-        const fer = er;
-        if (fer?.code === 'ENOENT') {
-            return;
-        }
-        if (fer?.code === 'EPERM') {
-            try {
-                await fix_eperm_chmod(path, 0o666);
+        if (errorCode(er) === 'EPERM') {
+            if (!(await ignoreENOENT(chmod(path, 0o666).then(() => true), er))) {
+                return;
             }
-            catch (er2) {
-                const fer2 = er2;
-                if (fer2?.code === 'ENOENT') {
-                    return;
-                }
-                throw er;
-            }
-            return await fn(path);
+            return void (await fn(path));
         }
         throw er;
     }
 };
 const fixEPERMSync = (fn) => (path) => {
     try {
-        return fn(path);
+        return void ignoreENOENTSync(() => fn(path));
     }
     catch (er) {
-        const fer = er;
-        if (fer?.code === 'ENOENT') {
-            return;
-        }
-        if (fer?.code === 'EPERM') {
-            try {
-                (0,external_fs_.chmodSync)(path, 0o666);
+        if (errorCode(er) === 'EPERM') {
+            if (!ignoreENOENTSync(() => ((0,external_fs_.chmodSync)(path, 0o666), true), er)) {
+                return;
             }
-            catch (er2) {
-                const fer2 = er2;
-                if (fer2?.code === 'ENOENT') {
-                    return;
-                }
-                throw er;
-            }
-            return fn(path);
+            return void fn(path);
         }
         throw er;
     }
 };
 //# sourceMappingURL=fix-eperm.js.map
+;// CONCATENATED MODULE: external "timers/promises"
+const external_timers_promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("timers/promises");
 ;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/retry-busy.js
 // note: max backoff is the maximum that any *single* backoff will do
+
+
 const MAXBACKOFF = 200;
 const RATE = 1.2;
 const MAXRETRIES = 10;
@@ -65547,16 +65509,12 @@ const retryBusy = (fn) => {
                 return await fn(path);
             }
             catch (er) {
-                const fer = er;
-                if (fer?.path === path && fer?.code && codes.has(fer.code)) {
+                if (isFsError(er) && er.path === path && codes.has(er.code)) {
                     backoff = Math.ceil(backoff * rate);
                     total = backoff + total;
                     if (total < mbo) {
-                        return new Promise((res, rej) => {
-                            setTimeout(() => {
-                                method(path, opt, backoff, total).then(res, rej);
-                            }, backoff);
-                        });
+                        await (0,external_timers_promises_namespaceObject.setTimeout)(backoff);
+                        return method(path, opt, backoff, total);
                     }
                     if (retries < max) {
                         retries++;
@@ -65579,10 +65537,9 @@ const retryBusySync = (fn) => {
                 return fn(path);
             }
             catch (er) {
-                const fer = er;
-                if (fer?.path === path &&
-                    fer?.code &&
-                    codes.has(fer.code) &&
+                if (isFsError(er) &&
+                    er.path === path &&
+                    codes.has(er.code) &&
                     retries < max) {
                     retries++;
                     continue;
@@ -65610,17 +65567,16 @@ var external_os_ = __nccwpck_require__(857);
 
 
 
-
-const { stat: default_tmp_stat } = promises;
+const { stat } = promises;
 const isDirSync = (path) => {
     try {
         return (0,external_fs_.statSync)(path).isDirectory();
     }
-    catch (er) {
+    catch {
         return false;
     }
 };
-const isDir = (path) => default_tmp_stat(path).then(st => st.isDirectory(), () => false);
+const isDir = (path) => stat(path).then(st => st.isDirectory(), () => false);
 const win32DefaultTmp = async (path) => {
     const { root } = (0,external_path_.parse)(path);
     const tmp = (0,external_os_.tmpdir)();
@@ -65647,10 +65603,11 @@ const win32DefaultTmpSync = (path) => {
     }
     return root;
 };
+// eslint-disable-next-line @typescript-eslint/require-await
 const posixDefaultTmp = async () => (0,external_os_.tmpdir)();
 const posixDefaultTmpSync = () => (0,external_os_.tmpdir)();
-const defaultTmp = platform === 'win32' ? win32DefaultTmp : posixDefaultTmp;
-const defaultTmpSync = platform === 'win32' ? win32DefaultTmpSync : posixDefaultTmpSync;
+const defaultTmp = process.platform === 'win32' ? win32DefaultTmp : posixDefaultTmp;
+const defaultTmpSync = process.platform === 'win32' ? win32DefaultTmpSync : posixDefaultTmpSync;
 //# sourceMappingURL=default-tmp.js.map
 ;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/rimraf-move-remove.js
 // https://youtu.be/uhRWMGBjlO8?t=537
@@ -65669,63 +65626,20 @@ const defaultTmpSync = platform === 'win32' ? win32DefaultTmpSync : posixDefault
 
 
 
-const { lstat: rimraf_move_remove_lstat, rename: rimraf_move_remove_rename, unlink: rimraf_move_remove_unlink, rmdir: rimraf_move_remove_rmdir, chmod: rimraf_move_remove_chmod } = promises;
 
+
+
+const { lstat: rimraf_move_remove_lstat, rename, unlink: rimraf_move_remove_unlink, rmdir: rimraf_move_remove_rmdir } = promises;
 // crypto.randomBytes is much slower, and Math.random() is enough here
 const uniqueFilename = (path) => `.${(0,external_path_.basename)(path)}.${Math.random()}`;
-const unlinkFixEPERM = async (path) => rimraf_move_remove_unlink(path).catch((er) => {
-    if (er.code === 'EPERM') {
-        return rimraf_move_remove_chmod(path, 0o666).then(() => rimraf_move_remove_unlink(path), er2 => {
-            if (er2.code === 'ENOENT') {
-                return;
-            }
-            throw er;
-        });
-    }
-    else if (er.code === 'ENOENT') {
-        return;
-    }
-    throw er;
-});
-const unlinkFixEPERMSync = (path) => {
-    try {
-        (0,external_fs_.unlinkSync)(path);
-    }
-    catch (er) {
-        if (er?.code === 'EPERM') {
-            try {
-                return (0,external_fs_.chmodSync)(path, 0o666);
-            }
-            catch (er2) {
-                if (er2?.code === 'ENOENT') {
-                    return;
-                }
-                throw er;
-            }
-        }
-        else if (er?.code === 'ENOENT') {
-            return;
-        }
-        throw er;
-    }
-};
+const unlinkFixEPERM = fixEPERM(rimraf_move_remove_unlink);
+const unlinkFixEPERMSync = fixEPERMSync(external_fs_.unlinkSync);
 const rimrafMoveRemove = async (path, opt) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
-    try {
-        return await rimrafMoveRemoveDir(path, opt, await rimraf_move_remove_lstat(path));
-    }
-    catch (er) {
-        if (er?.code === 'ENOENT')
-            return true;
-        throw er;
-    }
+    opt?.signal?.throwIfAborted();
+    return ((await ignoreENOENT(rimraf_move_remove_lstat(path).then(stat => rimrafMoveRemoveDir(path, opt, stat)))) ?? true);
 };
 const rimrafMoveRemoveDir = async (path, opt, ent) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
+    opt?.signal?.throwIfAborted();
     if (!opt.tmp) {
         return rimrafMoveRemoveDir(path, { ...opt, tmp: await defaultTmp(path) }, ent);
     }
@@ -65738,10 +65652,10 @@ const rimrafMoveRemoveDir = async (path, opt, ent) => {
         // swapped out with a file at just the right moment.
         /* c8 ignore start */
         if (entries) {
-            if (entries.code === 'ENOENT') {
+            if (errorCode(entries) === 'ENOENT') {
                 return true;
             }
-            if (entries.code !== 'ENOTDIR') {
+            if (errorCode(entries) !== 'ENOTDIR') {
                 throw entries;
             }
         }
@@ -65752,7 +65666,7 @@ const rimrafMoveRemoveDir = async (path, opt, ent) => {
         await ignoreENOENT(tmpUnlink(path, opt.tmp, unlinkFixEPERM));
         return true;
     }
-    const removedAll = (await Promise.all(entries.map(ent => rimrafMoveRemoveDir((0,external_path_.resolve)(path, ent.name), opt, ent)))).reduce((a, b) => a && b, true);
+    const removedAll = (await Promise.all(entries.map(ent => rimrafMoveRemoveDir((0,external_path_.resolve)(path, ent.name), opt, ent)))).every(v => v === true);
     if (!removedAll) {
         return false;
     }
@@ -65770,26 +65684,15 @@ const rimrafMoveRemoveDir = async (path, opt, ent) => {
 };
 const tmpUnlink = async (path, tmp, rm) => {
     const tmpFile = (0,external_path_.resolve)(tmp, uniqueFilename(path));
-    await rimraf_move_remove_rename(path, tmpFile);
+    await rename(path, tmpFile);
     return await rm(tmpFile);
 };
 const rimrafMoveRemoveSync = (path, opt) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
-    try {
-        return rimrafMoveRemoveDirSync(path, opt, (0,external_fs_.lstatSync)(path));
-    }
-    catch (er) {
-        if (er?.code === 'ENOENT')
-            return true;
-        throw er;
-    }
+    opt?.signal?.throwIfAborted();
+    return (ignoreENOENTSync(() => rimrafMoveRemoveDirSync(path, opt, (0,external_fs_.lstatSync)(path))) ?? true);
 };
 const rimrafMoveRemoveDirSync = (path, opt, ent) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
+    opt?.signal?.throwIfAborted();
     if (!opt.tmp) {
         return rimrafMoveRemoveDirSync(path, { ...opt, tmp: defaultTmpSync(path) }, ent);
     }
@@ -65803,10 +65706,10 @@ const rimrafMoveRemoveDirSync = (path, opt, ent) => {
         // swapped out with a file at just the right moment.
         /* c8 ignore start */
         if (entries) {
-            if (entries.code === 'ENOENT') {
+            if (errorCode(entries) === 'ENOENT') {
                 return true;
             }
-            if (entries.code !== 'ENOTDIR') {
+            if (errorCode(entries) !== 'ENOTDIR') {
                 throw entries;
             }
         }
@@ -65857,42 +65760,41 @@ const tmpUnlinkSync = (path, tmp, rmSync) => {
 
 
 
+
 const { unlink: rimraf_windows_unlink, rmdir: rimraf_windows_rmdir, lstat: rimraf_windows_lstat } = promises;
 const rimrafWindowsFile = retryBusy(fixEPERM(rimraf_windows_unlink));
 const rimrafWindowsFileSync = retryBusySync(fixEPERMSync(external_fs_.unlinkSync));
 const rimrafWindowsDirRetry = retryBusy(fixEPERM(rimraf_windows_rmdir));
 const rimrafWindowsDirRetrySync = retryBusySync(fixEPERMSync(external_fs_.rmdirSync));
-const rimrafWindowsDirMoveRemoveFallback = async (path, opt) => {
-    /* c8 ignore start */
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
-    /* c8 ignore stop */
-    // already filtered, remove from options so we don't call unnecessarily
-    const { filter, ...options } = opt;
+const rimrafWindowsDirMoveRemoveFallback = async (path, 
+// already filtered, remove from options so we don't call unnecessarily
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+{ filter, ...opt }) => {
+    /* c8 ignore next */
+    opt?.signal?.throwIfAborted();
     try {
-        return await rimrafWindowsDirRetry(path, options);
+        await rimrafWindowsDirRetry(path, opt);
+        return true;
     }
     catch (er) {
-        if (er?.code === 'ENOTEMPTY') {
-            return await rimrafMoveRemove(path, options);
+        if (errorCode(er) === 'ENOTEMPTY') {
+            return rimrafMoveRemove(path, opt);
         }
         throw er;
     }
 };
-const rimrafWindowsDirMoveRemoveFallbackSync = (path, opt) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
-    // already filtered, remove from options so we don't call unnecessarily
-    const { filter, ...options } = opt;
+const rimrafWindowsDirMoveRemoveFallbackSync = (path, 
+// already filtered, remove from options so we don't call unnecessarily
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+{ filter, ...opt }) => {
+    opt?.signal?.throwIfAborted();
     try {
-        return rimrafWindowsDirRetrySync(path, options);
+        rimrafWindowsDirRetrySync(path, opt);
+        return true;
     }
     catch (er) {
-        const fer = er;
-        if (fer?.code === 'ENOTEMPTY') {
-            return rimrafMoveRemoveSync(path, options);
+        if (errorCode(er) === 'ENOTEMPTY') {
+            return rimrafMoveRemoveSync(path, opt);
         }
         throw er;
     }
@@ -65901,45 +65803,25 @@ const START = Symbol('start');
 const CHILD = Symbol('child');
 const FINISH = Symbol('finish');
 const rimrafWindows = async (path, opt) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
-    try {
-        return await rimrafWindowsDir(path, opt, await rimraf_windows_lstat(path), START);
-    }
-    catch (er) {
-        if (er?.code === 'ENOENT')
-            return true;
-        throw er;
-    }
+    opt?.signal?.throwIfAborted();
+    return ((await ignoreENOENT(rimraf_windows_lstat(path).then(stat => rimrafWindowsDir(path, opt, stat, START)))) ?? true);
 };
 const rimrafWindowsSync = (path, opt) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
-    try {
-        return rimrafWindowsDirSync(path, opt, (0,external_fs_.lstatSync)(path), START);
-    }
-    catch (er) {
-        if (er?.code === 'ENOENT')
-            return true;
-        throw er;
-    }
+    opt?.signal?.throwIfAborted();
+    return (ignoreENOENTSync(() => rimrafWindowsDirSync(path, opt, (0,external_fs_.lstatSync)(path), START)) ?? true);
 };
 const rimrafWindowsDir = async (path, opt, ent, state = START) => {
-    if (opt?.signal?.aborted) {
-        throw opt.signal.reason;
-    }
+    opt?.signal?.throwIfAborted();
     const entries = ent.isDirectory() ? await readdirOrError(path) : null;
     if (!Array.isArray(entries)) {
         // this can only happen if lstat/readdir lied, or if the dir was
         // swapped out with a file at just the right moment.
         /* c8 ignore start */
         if (entries) {
-            if (entries.code === 'ENOENT') {
+            if (errorCode(entries) === 'ENOENT') {
                 return true;
             }
-            if (entries.code !== 'ENOTDIR') {
+            if (errorCode(entries) !== 'ENOTDIR') {
                 throw entries;
             }
         }
@@ -65952,7 +65834,7 @@ const rimrafWindowsDir = async (path, opt, ent, state = START) => {
         return true;
     }
     const s = state === START ? CHILD : state;
-    const removedAll = (await Promise.all(entries.map(ent => rimrafWindowsDir((0,external_path_.resolve)(path, ent.name), opt, ent, s)))).reduce((a, b) => a && b, true);
+    const removedAll = (await Promise.all(entries.map(ent => rimrafWindowsDir((0,external_path_.resolve)(path, ent.name), opt, ent, s)))).every(v => v === true);
     if (state === START) {
         return rimrafWindowsDir(path, opt, ent, FINISH);
     }
@@ -65977,10 +65859,10 @@ const rimrafWindowsDirSync = (path, opt, ent, state = START) => {
         // swapped out with a file at just the right moment.
         /* c8 ignore start */
         if (entries) {
-            if (entries.code === 'ENOENT') {
+            if (errorCode(entries) === 'ENOENT') {
                 return true;
             }
-            if (entries.code !== 'ENOTDIR') {
+            if (errorCode(entries) !== 'ENOTDIR') {
                 throw entries;
             }
         }
@@ -66011,9 +65893,7 @@ const rimrafWindowsDirSync = (path, opt, ent, state = START) => {
         if (opt.filter && !opt.filter(path, ent)) {
             return false;
         }
-        ignoreENOENTSync(() => {
-            rimrafWindowsDirMoveRemoveFallbackSync(path, opt);
-        });
+        ignoreENOENTSync(() => rimrafWindowsDirMoveRemoveFallbackSync(path, opt));
     }
     return true;
 };
@@ -66021,15 +65901,14 @@ const rimrafWindowsDirSync = (path, opt, ent, state = START) => {
 ;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/rimraf-manual.js
 
 
-
-const rimrafManual = platform === 'win32' ? rimrafWindows : rimrafPosix;
-const rimrafManualSync = platform === 'win32' ? rimrafWindowsSync : rimrafPosixSync;
+const rimrafManual = process.platform === 'win32' ? rimrafWindows : rimrafPosix;
+const rimrafManualSync = process.platform === 'win32' ? rimrafWindowsSync : rimrafPosixSync;
 //# sourceMappingURL=rimraf-manual.js.map
 ;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/rimraf-native.js
 
-const { rm: rimraf_native_rm } = promises;
+const { rm } = promises;
 const rimrafNative = async (path, opt) => {
-    await rimraf_native_rm(path, {
+    await rm(path, {
         ...opt,
         force: true,
         recursive: true,
@@ -66046,19 +65925,18 @@ const rimrafNativeSync = (path, opt) => {
 };
 //# sourceMappingURL=rimraf-native.js.map
 ;// CONCATENATED MODULE: ./node_modules/rimraf/dist/esm/use-native.js
-
-const version = process.env.__TESTING_RIMRAF_NODE_VERSION__ || process.version;
-const versArr = version.replace(/^v/, '').split('.');
-/* c8 ignore start */
-const [major = 0, minor = 0] = versArr.map(v => parseInt(v, 10));
-/* c8 ignore stop */
+/* c8 ignore next */
+const [major = 0, minor = 0] = process.version
+    .replace(/^v/, '')
+    .split('.')
+    .map(v => parseInt(v, 10));
 const hasNative = major > 14 || (major === 14 && minor >= 14);
 // we do NOT use native by default on Windows, because Node's native
 // rm implementation is less advanced.  Change this code if that changes.
-const useNative = !hasNative || platform === 'win32' ?
+const useNative = !hasNative || process.platform === 'win32' ?
     () => false
     : opt => !opt?.signal && !opt?.filter;
-const useNativeSync = !hasNative || platform === 'win32' ?
+const useNativeSync = !hasNative || process.platform === 'win32' ?
     () => false
     : opt => !opt?.signal && !opt?.filter;
 //# sourceMappingURL=use-native.js.map
@@ -71487,10 +71365,10 @@ function getValues(context, operator, key, modifier) {
 }
 function parseUrl(template) {
   return {
-    expand: expand.bind(null, template)
+    expand: dist_bundle_expand.bind(null, template)
   };
 }
-function expand(template, context) {
+function dist_bundle_expand(template, context) {
   var operators = ["+", "#", ".", "/", ";", "?", "&"];
   template = template.replace(
     /\{([^\{\}]+)\}|([^\{\}]+)/g,
@@ -75481,7 +75359,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:adaa0910a211fcad392a98eaa19b7b814b58e4e2678c9e60a21489ee2757602f1ee4187bb9fc8f3244c2bae816754063ea6ff0dccf7cb84cedc89072b65218bc!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:2ec09b646f01d7943a9f68f690954fa3ec5e12f0b3513de8f4af3c4040900712335ed6de4666143fda82f7c0da47443c14a3bfe9f43443e3b3de019ee64437ad!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
