@@ -68814,7 +68814,7 @@ var init_StatusSummary = __esm({
           const behindReg = /behind (\d+)/;
           const currentReg = /^(.+?(?=(?:\.{3}|\s|$)))/;
           const trackingReg = /\.{3}(\S*)/;
-          const onEmptyBranchReg = /\son\s([\S]+)$/;
+          const onEmptyBranchReg = /\son\s(\S+?)(?=\.{3}|$)/;
           let regexResult = aheadReg.exec(line);
           result.ahead = regexResult && +regexResult[1] || 0;
           regexResult = behindReg.exec(line);
@@ -68824,7 +68824,9 @@ var init_StatusSummary = __esm({
           regexResult = trackingReg.exec(line);
           result.tracking = filterType(regexResult?.[1], filterString, null);
           regexResult = onEmptyBranchReg.exec(line);
-          result.current = filterType(regexResult?.[1], filterString, result.current);
+          if (regexResult) {
+            result.current = filterType(regexResult?.[1], filterString, result.current);
+          }
           result.detached = /\(no branch\)/.test(line);
         }
       ]
@@ -75580,7 +75582,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:5550828b87a31ce3218d44967a6b3ad532adf38ce99af15912e1fbbd237e56c7eee35ddc81e18215a854e6897459d6ea9460a48cb7fffa60fb2089f45be966f8!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:52a47d375b430bb9e23f9d7312e1fff3c45a89bee0e57329820688f377e0d58c90a20543ec4af69fbd8f963ed8ef78d397833b6fa3ce58922b2c6a29a6afc4ec!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
