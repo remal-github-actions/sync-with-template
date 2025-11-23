@@ -132,7 +132,7 @@ jobs:
       env:
         PUSH_BACK_TOKEN: ${{secrets.PUSH_BACK_TOKEN}}
       if: ${{github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && env.PUSH_BACK_TOKEN}}
-      uses: remal-github-actions/push-back@v1
+      uses: remal-github-actions/push-back@v2
       with:
         githubToken: ${{env.PUSH_BACK_TOKEN}}
         message: '[push-back] Push-back updated files during build'
