@@ -17,6 +17,7 @@ includes:
 - check-dependency-engines.*js
 - update-node-version-in-files.*js
 - tsconfig-generate-app.*js
+- .releaseignore
 excludes:
 - .github/workflows/*template*-cleanup.*
 - .github/*template*-cleanup/**

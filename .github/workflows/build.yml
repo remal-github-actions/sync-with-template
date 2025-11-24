@@ -141,7 +141,60 @@ jobs:
       if: ${{github.event_name == 'push' && github.ref == 'refs/heads/main'}}
       uses: remal-github-actions/read-nodejs-package-version@v1
 
+    - name: Remove files listed in .releaseignore
+      if: ${{github.event_name == 'push' && github.ref == 'refs/heads/main'}}
+      id: releaseignore
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const fs = require('fs')
+          const path = require('path')
+
+          const cwdPath = path.resolve(process.cwd())
+
+          const releaseIgnorePath = '.releaseignore'
+          const releaseIgnoreFullPath = path.resolve(cwdPath, releaseIgnorePath)
+          if (!fs.existsSync(releaseIgnoreFullPath)) {
+            core.info(`${releaseIgnorePath} file does not exist, skipping removal of files.`)
+            core.setOutput('skipped', 'true')
+            return
+          }
+
+          let patternsToIgnore = fs.readFileSync(releaseIgnoreFullPath, 'utf-8')
+            .split('\n')
+            .map(line => line.replace(/#.*/, '').trim())
+            .filter(line => line.length)
+            .join('\n')
+          if (!patternsToIgnore.length) {
+            core.info(`${releaseIgnorePath} file does not have patterns, skipping removal of files.`)
+            core.setOutput('skipped', 'true')
+            return
+          }
+
+          const gitDirPath = path.resolve(cwdPath, '.git')
+
+          const globber = await glob.create(patternsToIgnore)
+          const files = await globber.glob()
+          files
+            .map(file => path.resolve(cwdPath, file))
+            .filter(file => file != cwdPath)
+            .filter(file => file != gitDirPath && !file.startsWith(gitDirPath + path.sep))
+            .forEach(file => {
+              core.debug(`Removing: ${file}`)
+              fs.rmSync(file, { recursive: true, force: true })
+            })
+
+    - name: Prepare release commit
+      if: ${{github.event_name == 'push' && github.ref == 'refs/heads/main' && !steps.releaseignore.outputs.skipped}}
+      run: |
+        RELEASE_BRANCH="release/v${{steps.readVersion.outputs.majorVersion}}"
+        git switch --force-create "$RELEASE_BRANCH"
+        git add --all
+        git commit -m "[skip-ci] Release v${{steps.readVersion.outputs.majorVersion}}" || true
+        git push --force origin "$RELEASE_BRANCH"
+
     - name: Create tag
+      if: ${{github.event_name == 'push' && github.ref == 'refs/heads/main'}}
       uses: remal-github-actions/create-tag@v2
       with:
         tagName: 'v${{steps.readVersion.outputs.majorVersion}}'
