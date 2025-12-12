@@ -79,7 +79,7 @@ jobs:
 
     - name: Restore dependencies cache
       id: restore-dependencies-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         key: ${{steps.cache-params.outputs.key}}
         path: ${{steps.cache-params.outputs.paths}}
@@ -97,7 +97,7 @@ jobs:
 
     - name: Save dependencies cache
       if: ${{steps.restore-dependencies-cache.outputs.cache-hit != 'true'}}
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       with:
         key: ${{steps.cache-params.outputs.key}}
         path: ${{steps.cache-params.outputs.paths}}
