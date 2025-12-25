@@ -1840,10 +1840,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node20@npm:1.0.0":
-  version: 1.0.0
-  resolution: "@tsconfig/node20@npm:1.0.0"
-  checksum: 10c0/596310c92deb1c3b999abdd25473f2d9fb338a16ddd51e2592a37a5ad7cb8817c19861d05eb3cca990d5da5b5f5d8f2e370c6600a049f0645bf1b7d021336f83
+"@tsconfig/node20@npm:20.1.8":
+  version: 20.1.8
+  resolution: "@tsconfig/node20@npm:20.1.8"
+  checksum: 10c0/5a9fcc0234e639c26f36f01d5912a59c47964361e9b9a8981a10806553799441f929474aed71cdec0ce5464ad1d757698df1651ac94cd55bb6bc01601a6003ea
   languageName: node
   linkType: hard
 
@@ -8870,7 +8870,7 @@ __metadata:
     "@octokit/plugin-retry": "npm:8.0.3"
     "@octokit/plugin-throttling": "npm:11.0.3"
     "@octokit/rest": "npm:22.0.1"
-    "@tsconfig/node20": "npm:1.0.0"
+    "@tsconfig/node20": "npm:20.1.8"
     "@types/console-log-level": "npm:1.4.5"
     "@types/jest": "npm:30.0.0"
     "@types/node": "npm:20.19.27"
