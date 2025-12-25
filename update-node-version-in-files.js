@@ -34,16 +34,12 @@ function writeJsonFile(path, json) {
     json.engines = json.engines || {}
     json.engines.node = `>=${nodeVersion}`
 
-    for (let currentNodeVersion = 1; currentNodeVersion <= nodeVersion + 20; currentNodeVersion++) {
-        if (currentNodeVersion === nodeVersion) {
-            if (json.devDependencies[`@tsconfig/node${currentNodeVersion}`] == null) {
-                json.devDependencies[`@tsconfig/node${currentNodeVersion}`] = '1.0.0'
-            }
-        } else {
-            delete json.devDependencies[`@tsconfig/node${currentNodeVersion}`]
-        }
+    if (json.devDependencies[`@tsconfig/node${nodeVersion}`] == null) {
+        console.log(`Adding @tsconfig/node${nodeVersion} dependency`)
+        json.devDependencies[`@tsconfig/node${nodeVersion}`] = '1.0.0'
     }
     if (json.devDependencies['@types/node'] == null) {
+        console.log(`Adding @types/node dependency`)
         json.devDependencies['@types/node'] = `${nodeVersion}.0.0`
     }
 
@@ -56,13 +52,16 @@ function writeJsonFile(path, json) {
 
         Object.entries(dependencies).forEach(([dependency, version]) => {
             if (dependency.startsWith('@tsconfig/node') && dependency !== `@tsconfig/node${nodeVersion}`) {
+                console.log(`Removing ${dependency} dependency`)
                 delete dependencies[dependency]
             }
         })
 
         Object.entries(dependencies).forEach(([dependency, version]) => {
             if (dependency === '@types/node' && !version.startsWith(`${nodeVersion}.`)) {
-                dependencies[dependency] = `${nodeVersion}.0.0`
+                const newVersion = `${nodeVersion}.0.0`
+                console.log(`Setting version of ${dependency} dependency to ${newVersion}`)
+                dependencies[dependency] = newVersion
             }
         })
     })
