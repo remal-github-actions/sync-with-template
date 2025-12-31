@@ -24,14 +24,9 @@
       enabled: false,
     },
     {
-      matchCategories: ["js"],
-      matchPackageNames: ["@types/node"],
-      extends: ["github>remal/renovate-config:disable-major-updates"],
-    },
-    {
-      matchCategories: ["js"],
-      matchPackageNames: ["@tsconfig/node**"],
-      extends: ["github>remal/renovate-config:disable-replacements"],
+      matchPackageNames: ["@types/node", "@tsconfig/node**"],
+      matchUpdateTypes: ["major", "replacement"],
+      enabled: false,
     },
     {
       matchCategories: ["js"],
