@@ -24,6 +24,7 @@
       enabled: false,
     },
     {
+      matchDatasources: ["npm"],
       matchPackageNames: ["@types/node", "@tsconfig/node**"],
       matchUpdateTypes: ["major", "replacement"],
       enabled: false,
