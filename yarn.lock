@@ -76,7 +76,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@actions/io@npm:2.0.0, @actions/io@npm:^2.0.0":
+"@actions/io@npm:3.0.2":
+  version: 3.0.2
+  resolution: "@actions/io@npm:3.0.2"
+  checksum: 10c0/25fae323886544f965e90ab9655e3fb60816eb379c78418c4b06a5dc9da27810eb5b0bd0629146dbd5482a03e3c60a5b8713223e4f789abede23df643ddcae8c
+  languageName: node
+  linkType: hard
+
+"@actions/io@npm:^2.0.0":
   version: 2.0.0
   resolution: "@actions/io@npm:2.0.0"
   checksum: 10c0/b66170cbce7e19b9560f445ebbe0af2d031857efbe759020708745384d7a94b738dc09df2636e0c3049a9172c7b293d09f8a882bf5c25cc86bd19844cef61c41
@@ -8889,7 +8896,7 @@ __metadata:
     "@actions/core": "npm:2.0.3"
     "@actions/github": "npm:7.0.0"
     "@actions/glob": "npm:0.5.1"
-    "@actions/io": "npm:2.0.0"
+    "@actions/io": "npm:3.0.2"
     "@octokit/openapi-types": "npm:27.0.0"
     "@octokit/plugin-retry": "npm:8.0.3"
     "@octokit/plugin-throttling": "npm:11.0.3"
