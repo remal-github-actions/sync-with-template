@@ -46,13 +46,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@actions/glob@npm:0.6.0":
-  version: 0.6.0
-  resolution: "@actions/glob@npm:0.6.0"
+"@actions/glob@npm:0.6.1":
+  version: 0.6.1
+  resolution: "@actions/glob@npm:0.6.1"
   dependencies:
     "@actions/core": "npm:^3.0.0"
     minimatch: "npm:^3.0.4"
-  checksum: 10c0/a8f400ca8136e8cbc85f5de6cf229ab84c32be387d8a737a01ad0f5a06bcbfabb0e49586f7899be73bbeeb8c04af24d06b033f19bc5b18b122a5d70a4ab8e314
+  checksum: 10c0/754832b67bb269be42a450bcdd50a214f9b77dc69f1e62934433537ae7571bea2ab41a80530dce3d9d0b24eae6fa32a37edcc2fff0bdb44199643026ba3c7fd6
   languageName: node
   linkType: hard
 
@@ -8888,7 +8888,7 @@ __metadata:
   dependencies:
     "@actions/core": "npm:3.0.0"
     "@actions/github": "npm:7.0.0"
-    "@actions/glob": "npm:0.6.0"
+    "@actions/glob": "npm:0.6.1"
     "@actions/io": "npm:3.0.2"
     "@octokit/openapi-types": "npm:27.0.0"
     "@octokit/plugin-retry": "npm:8.0.3"
