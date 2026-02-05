@@ -84657,6 +84657,7 @@ const openPattern = /\\{/g;
 const closePattern = /\\}/g;
 const commaPattern = /\\,/g;
 const periodPattern = /\\./g;
+const EXPANSION_MAX = 100_000;
 function numeric(str) {
     return !isNaN(str) ? parseInt(str, 10) : str.charCodeAt(0);
 }
@@ -84702,10 +84703,11 @@ function parseCommaParts(str) {
     parts.push.apply(parts, p);
     return parts;
 }
-function expand(str) {
+function expand(str, options = {}) {
     if (!str) {
         return [];
     }
+    const { max = EXPANSION_MAX } = options;
     // I don't know why Bash 4.3 does this, but it does.
     // Anything starting with {} will have the first two bytes preserved
     // but *only* at the top level, so {},a}b will not expand to anything,
@@ -84715,7 +84717,7 @@ function expand(str) {
     if (str.slice(0, 2) === '{}') {
         str = '\\{\\}' + str.slice(2);
     }
-    return expand_(escapeBraces(str), true).map(unescapeBraces);
+    return expand_(escapeBraces(str), max, true).map(unescapeBraces);
 }
 function embrace(str) {
     return '{' + str + '}';
@@ -84729,7 +84731,7 @@ function lte(i, y) {
 function gte(i, y) {
     return i >= y;
 }
-function expand_(str, isTop) {
+function expand_(str, max, isTop) {
     /** @type {string[]} */
     const expansions = [];
     const m = balanced('{', '}', str);
@@ -84737,9 +84739,9 @@ function expand_(str, isTop) {
         return [str];
     // no need to expand pre, since it is guaranteed to be free of brace-sets
     const pre = m.pre;
-    const post = m.post.length ? expand_(m.post, false) : [''];
+    const post = m.post.length ? expand_(m.post, max, false) : [''];
     if (/\$$/.test(m.pre)) {
-        for (let k = 0; k < post.length; k++) {
+        for (let k = 0; k < post.length && k < max; k++) {
             const expansion = pre + '{' + m.body + '}' + post[k];
             expansions.push(expansion);
         }
@@ -84753,7 +84755,7 @@ function expand_(str, isTop) {
             // {a},b}
             if (m.post.match(/,(?!,).*\}/)) {
                 str = m.pre + '{' + m.body + escClose + m.post;
-                return expand_(str);
+                return expand_(str, max, true);
             }
             return [str];
         }
@@ -84765,7 +84767,7 @@ function expand_(str, isTop) {
             n = parseCommaParts(m.body);
             if (n.length === 1 && n[0] !== undefined) {
                 // x{{a,b}}y ==> x{a}y x{b}y
-                n = expand_(n[0], false).map(embrace);
+                n = expand_(n[0], max, false).map(embrace);
                 //XXX is this necessary? Can't seem to hit it in tests.
                 /* c8 ignore start */
                 if (n.length === 1) {
@@ -84819,11 +84821,11 @@ function expand_(str, isTop) {
         else {
             N = [];
             for (let j = 0; j < n.length; j++) {
-                N.push.apply(N, expand_(n[j], false));
+                N.push.apply(N, expand_(n[j], max, false));
             }
         }
         for (let j = 0; j < N.length; j++) {
-            for (let k = 0; k < post.length; k++) {
+            for (let k = 0; k < post.length && expansions.length < max; k++) {
                 const expansion = pre + N[j] + post[k];
                 if (!isTop || isSequence || expansion) {
                     expansions.push(expansion);
@@ -102934,7 +102936,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:609bb64451a69f90e48800b6a4cd1626b054b6e95f3f27f0fc1aaa9075f8dc83cd96d29e31ad796929cbe9de67b8e1294779a4d1d661b6cd6b64d67f5e3444c1!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:e1f3e32be2617916beacbd76e39e09b956588d1dd5b535fa1059e83f86eb052d9f08b041276e901587805d0c02745aa6e675399a457e46115aa8efb03c06a976!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
