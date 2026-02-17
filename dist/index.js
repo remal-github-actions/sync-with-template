@@ -40539,6 +40539,7 @@ exports["default"] = def;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const code_1 = __nccwpck_require__(8484);
+const util_1 = __nccwpck_require__(4464);
 const codegen_1 = __nccwpck_require__(1436);
 const error = {
     message: ({ schemaCode }) => (0, codegen_1.str) `must match pattern "${schemaCode}"`,
@@ -40551,11 +40552,19 @@ const def = {
     $data: true,
     error,
     code(cxt) {
-        const { data, $data, schema, schemaCode, it } = cxt;
-        // TODO regexp should be wrapped in try/catchs
+        const { gen, data, $data, schema, schemaCode, it } = cxt;
         const u = it.opts.unicodeRegExp ? "u" : "";
-        const regExp = $data ? (0, codegen_1._) `(new RegExp(${schemaCode}, ${u}))` : (0, code_1.usePattern)(cxt, schema);
-        cxt.fail$data((0, codegen_1._) `!${regExp}.test(${data})`);
+        if ($data) {
+            const { regExp } = it.opts.code;
+            const regExpCode = regExp.code === "new RegExp" ? (0, codegen_1._) `new RegExp` : (0, util_1.useFunc)(gen, regExp);
+            const valid = gen.let("valid");
+            gen.try(() => gen.assign(valid, (0, codegen_1._) `${regExpCode}(${schemaCode}, ${u}).test(${data})`), () => gen.assign(valid, false));
+            cxt.fail$data((0, codegen_1._) `!${valid}`);
+        }
+        else {
+            const regExp = (0, code_1.usePattern)(cxt, schema);
+            cxt.fail$data((0, codegen_1._) `!${regExp}.test(${data})`);
+        }
     },
 };
 exports["default"] = def;
@@ -102932,7 +102941,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:0bfb8d9f887d0fb9b866461a22edfd45a518cf308e0ceb54188465ace54a0b5fd390b422126e92fc93c644fb4fdc0b058a5f7971f0bfb10d0f80c55b248b15c0!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:7e166cfb5ccb4135c422c290fd5a695edb6fc1433399fdedf4ffff9f6a0e606c6bdc654b0c84ce64606f4bb7fa5fed0ed10136c3096a108a71c706e06e6c2a82!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
