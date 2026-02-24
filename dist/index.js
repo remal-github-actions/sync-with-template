@@ -89710,7 +89710,7 @@ function abortPlugin(signal) {
 }
 
 // src/lib/plugins/block-unsafe-operations-plugin.ts
-var CLONE_OPTIONS = /^\0*(-|--|--no-)[\0\dlsqvnobucj]+/;
+var CLONE_OPTIONS = /^\0*(-|--|--no-)[\0\dlsqvnobucj]+\b/;
 function isConfigSwitch(arg) {
   return typeof arg === "string" && arg.trim().toLowerCase() === "-c";
 }
@@ -95012,7 +95012,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:1150823dcc5fb6e8313d5ea607fe71704534cb1cd7319b743bc2e7a70f18053cffff9898af4aced8415c1253a9d0abe6083bbc07e54c86884dc0cb7911e83a58!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:b83260a17bf08aa06dcd89585a4651b8476c656ba2e3fc5a90d437f17d6caf9a38c33f402f30ae38ddf8957b78122808b79ca98e632c1fe129b901b25fa21f60!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
