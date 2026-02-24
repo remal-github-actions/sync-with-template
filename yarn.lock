@@ -8523,14 +8523,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"simple-git@npm:3.31.1":
-  version: 3.31.1
-  resolution: "simple-git@npm:3.31.1"
+"simple-git@npm:3.32.0":
+  version: 3.32.0
+  resolution: "simple-git@npm:3.32.0"
   dependencies:
     "@kwsites/file-exists": "npm:^1.1.1"
     "@kwsites/promise-deferred": "npm:^1.1.1"
     debug: "npm:^4.4.0"
-  checksum: 10c0/8082ef7b3356e0ab01726aa6f614d2e04b6bcf0edf0949e184c49eeb546cb2c903347614a054c7da77021ddd869d52d952d9dab008c6986f614a1d91f16d0041
+  checksum: 10c0/863e5a23900d4cfdc059fcd654bd79bd383cda01dab42e8fdb8806f689f1480f95193cae9c41330c55fc6c1962fd5ff873bfe631aeb8a3a09d1d8d3da14ab59c
   languageName: node
   linkType: hard
 
@@ -8939,7 +8939,7 @@ __metadata:
     picomatch: "npm:4.0.3"
     rimraf: "npm:6.1.3"
     semver: "npm:7.7.4"
-    simple-git: "npm:3.31.1"
+    simple-git: "npm:3.32.0"
     tmp: "npm:0.2.5"
     ts-jest: "npm:29.4.6"
     typescript: "npm:5.9.3"
