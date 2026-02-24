@@ -89265,7 +89265,7 @@ var require_git = __commonJS({
     var { GitExecutor: GitExecutor2 } = (init_git_executor(), __toCommonJS(git_executor_exports));
     var { SimpleGitApi: SimpleGitApi2 } = (init_simple_git_api(), __toCommonJS(simple_git_api_exports));
     var { Scheduler: Scheduler2 } = (init_scheduler(), __toCommonJS(scheduler_exports));
-    var { configurationErrorTask: configurationErrorTask2 } = (init_task(), __toCommonJS(task_exports));
+    var { adhocExecTask: adhocExecTask2, configurationErrorTask: configurationErrorTask2 } = (init_task(), __toCommonJS(task_exports));
     var {
       asArray: asArray2,
       filterArray: filterArray2,
@@ -89391,10 +89391,13 @@ var require_git = __commonJS({
       );
     };
     Git2.prototype.silent = function(silence) {
-      console.warn(
-        "simple-git deprecation notice: git.silent: logging should be configured using the `debug` library / `DEBUG` environment variable, this will be an error in version 3"
+      return this._runTask(
+        adhocExecTask2(
+          () => console.warn(
+            "simple-git deprecation notice: git.silent: logging should be configured using the `debug` library / `DEBUG` environment variable, this method will be removed."
+          )
+        )
       );
-      return this;
     };
     Git2.prototype.tags = function(options, then) {
       return this._runTask(
@@ -89620,7 +89623,13 @@ var require_git = __commonJS({
       return this._runTask(task);
     };
     Git2.prototype.clearQueue = function() {
-      return this;
+      return this._runTask(
+        adhocExecTask2(
+          () => console.warn(
+            "simple-git deprecation notice: clearQueue() is deprecated and will be removed, switch to using the abortPlugin instead."
+          )
+        )
+      );
     };
     Git2.prototype.checkIgnore = function(pathnames, then) {
       return this._runTask(
@@ -89701,8 +89710,12 @@ function abortPlugin(signal) {
 }
 
 // src/lib/plugins/block-unsafe-operations-plugin.ts
+var CLONE_OPTIONS = /^\0*(-|--|--no-)[\0\dlsqvnobucj]+/;
 function isConfigSwitch(arg) {
   return typeof arg === "string" && arg.trim().toLowerCase() === "-c";
+}
+function isCloneSwitch(char, arg) {
+  return Boolean(typeof arg === "string" && CLONE_OPTIONS.test(arg) && arg.includes(char));
 }
 function preventProtocolOverride(arg, next) {
   if (!isConfigSwitch(arg)) {
@@ -89725,7 +89738,7 @@ function preventUploadPack(arg, method) {
       `Use of --upload-pack or --receive-pack is not permitted without enabling allowUnsafePack`
     );
   }
-  if (method === "clone" && /^\s*-u\b/.test(arg)) {
+  if (method === "clone" && isCloneSwitch("u", arg)) {
     throw new GitPluginError(
       void 0,
       "unsafe",
@@ -94999,7 +95012,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:fd7396bba6b448c95880f6747cb5e470fef0a89a57cfa28c7950c2d7db655388059eb216e3a857419421c7ce839ddef34c3c58fbe556b621fe4c24f5847854d8!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:1150823dcc5fb6e8313d5ea607fe71704534cb1cd7319b743bc2e7a70f18053cffff9898af4aced8415c1253a9d0abe6083bbc07e54c86884dc0cb7911e83a58!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
