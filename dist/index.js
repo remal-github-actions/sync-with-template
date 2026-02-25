@@ -89710,12 +89710,15 @@ function abortPlugin(signal) {
 }
 
 // src/lib/plugins/block-unsafe-operations-plugin.ts
-var CLONE_OPTIONS = /^\0*(-|--|--no-)[\0\dlsqvnobucj]+\b/;
 function isConfigSwitch(arg) {
   return typeof arg === "string" && arg.trim().toLowerCase() === "-c";
 }
 function isCloneSwitch(char, arg) {
-  return Boolean(typeof arg === "string" && CLONE_OPTIONS.test(arg) && arg.includes(char));
+  if (typeof arg !== "string" || !arg.includes(char)) {
+    return false;
+  }
+  const token = arg.replace(/\0g/, "").replace(/^(--no)?-{1,2}/, "");
+  return /^[\dlsqvnobucj]+\b/.test(token);
 }
 function preventProtocolOverride(arg, next) {
   if (!isConfigSwitch(arg)) {
@@ -95012,7 +95015,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:b83260a17bf08aa06dcd89585a4651b8476c656ba2e3fc5a90d437f17d6caf9a38c33f402f30ae38ddf8957b78122808b79ca98e632c1fe129b901b25fa21f60!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:aecaea38321645e49a4e8d27cb8ca64009d82d13d44eb302aed71fbf53ae08c0abac0730cad88891f6f68ecf26d6cdae1aeb6265d45d1bb0041acd07993ce938!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
