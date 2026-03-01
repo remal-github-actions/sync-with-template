@@ -89724,7 +89724,7 @@ function preventProtocolOverride(arg, next) {
   if (!isConfigSwitch(arg)) {
     return;
   }
-  if (!/^\s*protocol(.[a-z]+)?.allow/.test(next)) {
+  if (!/^\s*protocol(.[a-z]+)?.allow/i.test(next)) {
     return;
   }
   throw new GitPluginError(
@@ -95015,7 +95015,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:aecaea38321645e49a4e8d27cb8ca64009d82d13d44eb302aed71fbf53ae08c0abac0730cad88891f6f68ecf26d6cdae1aeb6265d45d1bb0041acd07993ce938!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:58d633c594fecdbe9d6390e80644cb5e543d2c719f3018839442ed862b5a4297499850a42afed3b9cc20052fa41d4958e04a953045b7dce3b0da6d650fbde7d3!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
