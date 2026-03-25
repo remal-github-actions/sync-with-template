@@ -1978,6 +1978,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/picomatch@npm:4.0.2":
+  version: 4.0.2
+  resolution: "@types/picomatch@npm:4.0.2"
+  checksum: 10c0/0f46198c2d1beb5061816745355888e94a80a449a49af1ef69723f50e850c678b50cff299bd461f71e8009d46705e7cdeda8c8ffa23815b2e942c83877f855b9
+  languageName: node
+  linkType: hard
+
 "@types/semver@npm:7.7.1":
   version: 7.7.1
   resolution: "@types/semver@npm:7.7.1"
@@ -7893,17 +7900,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"picomatch@npm:4.0.4, picomatch@npm:^4.0.2, picomatch@npm:^4.0.3":
+  version: 4.0.4
+  resolution: "picomatch@npm:4.0.4"
+  checksum: 10c0/e2c6023372cc7b5764719a5ffb9da0f8e781212fa7ca4bd0562db929df8e117460f00dff3cb7509dacfc06b86de924b247f504d0ce1806a37fac4633081466b0
+  languageName: node
+  linkType: hard
+
 "picomatch@npm:^2.0.4, picomatch@npm:^2.3.1":
   version: 2.3.1
   resolution: "picomatch@npm:2.3.1"
   checksum: 10c0/26c02b8d06f03206fc2ab8d16f19960f2ff9e81a658f831ecb656d8f17d9edc799e8364b1f4a7873e89d9702dff96204be0fa26fe4181f6843f040f819dac4be
-  languageName: node
-  linkType: hard
-
-"picomatch@npm:^4.0.2, picomatch@npm:^4.0.3":
-  version: 4.0.4
-  resolution: "picomatch@npm:4.0.4"
-  checksum: 10c0/e2c6023372cc7b5764719a5ffb9da0f8e781212fa7ca4bd0562db929df8e117460f00dff3cb7509dacfc06b86de924b247f504d0ce1806a37fac4633081466b0
   languageName: node
   linkType: hard
 
@@ -8930,6 +8937,7 @@ __metadata:
     "@types/console-log-level": "npm:1.4.5"
     "@types/jest": "npm:30.0.0"
     "@types/node": "npm:20.19.37"
+    "@types/picomatch": "npm:4.0.2"
     "@types/semver": "npm:7.7.1"
     "@types/tmp": "npm:0.2.6"
     "@vercel/ncc": "npm:0.38.4"
@@ -8948,6 +8956,7 @@ __metadata:
     jest-extended: "npm:7.0.0"
     json-schema-to-typescript: "npm:15.0.4"
     json5: "npm:2.2.3"
+    picomatch: "npm:4.0.4"
     rimraf: "npm:6.1.3"
     semver: "npm:7.7.4"
     simple-git: "npm:3.33.0"
