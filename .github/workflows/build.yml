@@ -155,7 +155,7 @@ jobs:
     - name: Remove files listed in .releaseignore
       if: ${{github.event_name == 'push' && github.ref == 'refs/heads/main'}}
       id: releaseignore
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         script: |
           const fs = require('fs')
