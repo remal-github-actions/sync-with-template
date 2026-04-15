@@ -85765,8 +85765,6 @@ const rimraf = Object.assign(rimraf_, {
 });
 rimraf.rimraf = rimraf;
 //# sourceMappingURL=index.js.map
-// EXTERNAL MODULE: external "node:buffer"
-var external_node_buffer_ = __nccwpck_require__(4573);
 // EXTERNAL MODULE: ./node_modules/@kwsites/file-exists/dist/index.js
 var dist = __nccwpck_require__(7117);
 ;// CONCATENATED MODULE: ./node_modules/@simple-git/args-pathspec/dist/index.mjs
@@ -85790,12 +85788,12 @@ var debug_src = __nccwpck_require__(1567);
 var promise_deferred_dist = __nccwpck_require__(9997);
 ;// CONCATENATED MODULE: ./node_modules/@simple-git/argv-parser/dist/index.mjs
 
-function* w(e, t) {
+function* dist_U(e, t) {
   const n = t === "global";
   for (const o of e)
     o.isGlobal === n && (yield o);
 }
-const dist_x = /* @__PURE__ */ new Set([
+const dist_k = /* @__PURE__ */ new Set([
   "--add",
   "--edit",
   "--remove-section",
@@ -85813,24 +85811,24 @@ const dist_x = /* @__PURE__ */ new Set([
   "--get-urlmatch",
   "--list",
   "-l"
-]), dist_k = /* @__PURE__ */ new Set([
+]), dist_P = /* @__PURE__ */ new Set([
   "edit",
   "remove-section",
   "rename-section",
   "set",
   "unset"
-]), y = /* @__PURE__ */ new Set(["get", "get-color", "get-colorbool", "list"]);
-function dist_C(e, t) {
-  for (const { name: o } of w(e, "task")) {
-    if (dist_x.has(o))
-      return f(!0, t);
+]), E = /* @__PURE__ */ new Set(["get", "get-color", "get-colorbool", "list"]);
+function dist_F(e, t) {
+  for (const { name: o } of dist_U(e, "task")) {
+    if (dist_k.has(o))
+      return p(!0, t);
     if (S.has(o))
-      return f(!1, t);
+      return p(!1, t);
   }
   const n = t.at(0)?.toLowerCase();
-  return n === void 0 ? null : dist_k.has(n) ? f(!0, t.slice(1)) : y.has(n) ? f(!1, t.slice(1)) : t.length === 1 ? f(!1, t) : f(!0, t);
+  return n === void 0 ? null : dist_P.has(n) ? p(!0, t.slice(1)) : E.has(n) ? p(!1, t.slice(1)) : t.length === 1 ? p(!1, t) : p(!0, t);
 }
-function f(e = !1, t = []) {
+function p(e = !1, t = []) {
   const n = t.at(0)?.toLowerCase();
   return n === void 0 ? null : {
     isWrite: e,
@@ -85839,18 +85837,18 @@ function f(e = !1, t = []) {
     value: t.at(1)
   };
 }
-function dist_N(e, t) {
+function dist_A(e, t) {
   return t.isWrite && t.value !== void 0 ? { key: t.key, value: t.value, scope: e } : { key: t.key, scope: e };
 }
-function dist_P(e) {
+function dist_M(e) {
   const t = e?.indexOf("=") || -1;
   return !e || t < 0 ? null : {
     key: e.slice(0, t).trim().toLowerCase(),
     value: e.slice(t + 1)
   };
 }
-function dist_U(e) {
-  for (const { name: t } of w(e, "task"))
+function dist_N(e) {
+  for (const { name: t } of dist_U(e, "task"))
     switch (t) {
       case "--global":
         return "global";
@@ -85866,44 +85864,44 @@ function dist_U(e) {
     }
   return "local";
 }
-function dist_A({ name: e }) {
+function dist_G({ name: e }) {
   if (e === "-c" || e === "--config")
     return "inline";
   if (e === "--config-env")
     return "env";
 }
-function* dist_F(e) {
+function* dist_O(e) {
   for (const t of e) {
-    const n = dist_A(t), o = n && dist_P(t.value);
+    const n = dist_G(t), o = n && dist_M(t.value);
     o && (yield {
       ...o,
       scope: n
     });
   }
 }
-function dist_M(e, t, n) {
+function dist_L(e, t, n) {
   const o = {
     read: [],
-    write: [...dist_F(t)]
+    write: [...dist_O(t)]
   };
-  return e === "config" && dist_G(
+  return e === "config" && $(
     o,
-    dist_U(t),
-    dist_C(t, n)
+    dist_N(t),
+    dist_F(t, n)
   ), o;
 }
-function dist_G(e, t, n) {
+function $(e, t, n) {
   if (n === null)
     return;
-  const o = dist_N(t, n);
+  const o = dist_A(t, n);
   n.isWrite ? e.write.push(o) : e.read.push(o);
 }
-const dist_v = {
+const dist_x = {
   short: /* @__PURE__ */ new Map([
     ["c", !0]
     //  -c <k=v>    set config key for this invocation
   ])
-}, dist_O = {
+}, dist_D = {
   short: new Map([
     ["C", !0],
     //  -C <path>   change working directory
@@ -85915,7 +85913,7 @@ const dist_v = {
     // -p          paginate
     ["v", !1],
     // -v          version
-    ...dist_v.short.entries()
+    ...dist_x.short.entries()
   ]),
   long: /* @__PURE__ */ new Set([
     "attr-source",
@@ -85927,7 +85925,7 @@ const dist_v = {
     "super-prefix",
     "work-tree"
   ])
-}, E = {
+}, dist_R = {
   clone: {
     short: /* @__PURE__ */ new Map([
       ["b", !0],
@@ -85947,7 +85945,7 @@ const dist_v = {
       ["u", !0]
       // -u <upload-pack>
     ]),
-    long: /* @__PURE__ */ new Set(["branch", "config", "jobs", "origin", "upload-pack", "u"])
+    long: /* @__PURE__ */ new Set(["branch", "config", "jobs", "origin", "upload-pack", "u", "template"])
   },
   commit: {
     short: /* @__PURE__ */ new Map([
@@ -85979,6 +85977,10 @@ const dist_v = {
     short: /* @__PURE__ */ new Map(),
     long: /* @__PURE__ */ new Set(["upload-pack"])
   },
+  init: {
+    short: /* @__PURE__ */ new Map(),
+    long: /* @__PURE__ */ new Set(["template"])
+  },
   pull: {
     short: /* @__PURE__ */ new Map(),
     long: /* @__PURE__ */ new Set(["upload-pack"])
@@ -85987,15 +85989,15 @@ const dist_v = {
     short: /* @__PURE__ */ new Map(),
     long: /* @__PURE__ */ new Set(["exec", "receive-pack"])
   }
-}, dist_I = { short: /* @__PURE__ */ new Map(), long: /* @__PURE__ */ new Set() };
-function dist_L(e) {
-  const t = E[e ?? ""] ?? dist_I;
+}, dist_T = { short: /* @__PURE__ */ new Map(), long: /* @__PURE__ */ new Set() };
+function dist_I(e) {
+  const t = dist_R[e ?? ""] ?? dist_T;
   return {
-    short: new Map([...dist_v.short.entries(), ...t.short.entries()]),
+    short: new Map([...dist_x.short.entries(), ...t.short.entries()]),
     long: t.long
   };
 }
-function b(e, t = dist_O) {
+function b(e, t = dist_D) {
   if (e.startsWith("--")) {
     const n = e.indexOf("=");
     if (n > 2)
@@ -86007,143 +86009,240 @@ function b(e, t = dist_O) {
     const n = e.charAt(1), o = t.short.get(n);
     return [{ name: e, needsNext: o === !0 }];
   }
-  return dist_R(e, t.short);
+  return dist_W(e, t.short);
 }
-function dist_R(e, t) {
+function dist_W(e, t) {
   const n = e.slice(1).split(""), o = [];
-  for (let a = 0; a < n.length; a++) {
-    const s = n[a], r = t.get(s);
-    if (r === void 0)
+  for (let s = 0; s < n.length; s++) {
+    const r = n[s], l = t.get(r);
+    if (l === void 0)
       return [{ name: e, needsNext: !1 }];
-    if (r) {
-      const l = n.slice(a + 1).join("");
-      if (l && ![...l].every((h) => t.has(h)))
-        return o.push({ name: `-${s}`, value: l, needsNext: !1 }), o;
+    if (l) {
+      const a = n.slice(s + 1).join("");
+      if (a && ![...a].every((w) => t.has(w)))
+        return o.push({ name: `-${r}`, value: a, needsNext: !1 }), o;
     }
-    o.push({ name: `-${s}`, needsNext: r });
+    o.push({ name: `-${r}`, needsNext: l });
   }
   return o;
 }
-function dist_W(e, t = []) {
+function dist_j(e, t = []) {
   let n = 0;
   for (; n < e.length; ) {
     const o = String(e[n]);
     if (!o.startsWith("-") || o.length < 2) break;
-    const a = b(o);
-    let s = n + 1;
-    for (const r of a) {
-      const l = {
-        name: r.name,
-        value: r.value,
+    const s = b(o);
+    let r = n + 1;
+    for (const l of s) {
+      const a = {
+        name: l.name,
+        value: l.value,
         absorbedNext: !1,
         isGlobal: !0
       };
-      r.needsNext && l.value === void 0 && s < e.length && (l.value = String(e[s]), l.absorbedNext = !0, s++), t.push(l);
+      l.needsNext && a.value === void 0 && r < e.length && (a.value = String(e[r]), a.absorbedNext = !0, r++), t.push(a);
     }
-    n = s;
+    n = r;
   }
   return { flags: t, taskIndex: n };
 }
-function dist_(e, t, n = []) {
-  const o = dist_L(t), a = [], s = [];
-  let r = 0;
-  for (; r < e.length; ) {
-    const l = e[r];
-    if (dist_r(l)) {
-      s.push(...dist_o(l)), r++;
+function dist_B(e, t, n = []) {
+  const o = dist_I(t), s = [], r = [];
+  let l = 0;
+  for (; l < e.length; ) {
+    const a = e[l];
+    if (dist_r(a)) {
+      r.push(...dist_o(a)), l++;
       continue;
     }
-    const u = String(l);
-    if (u === "--") {
-      for (let c = r + 1; c < e.length; c++) {
-        const i = e[c];
-        dist_r(i) ? s.push(...dist_o(i)) : s.push(String(i));
+    const f = String(a);
+    if (f === "--") {
+      for (let g = l + 1; g < e.length; g++) {
+        const u = e[g];
+        dist_r(u) ? r.push(...dist_o(u)) : r.push(String(u));
       }
       break;
     }
-    if (!u.startsWith("-") || u.length < 2) {
-      a.push(u), r++;
+    if (!f.startsWith("-") || f.length < 2) {
+      s.push(f), l++;
       continue;
     }
-    const h = b(u, o);
-    let d = r + 1;
-    for (const c of h) {
-      const i = {
-        name: c.name,
-        value: c.value,
+    const w = b(f, o);
+    let d = l + 1;
+    for (const g of w) {
+      const u = {
+        name: g.name,
+        value: g.value,
         absorbedNext: !1,
         isGlobal: !1
       };
-      c.needsNext && i.value === void 0 && d < e.length && !dist_r(e[d]) && (i.value = String(e[d]), i.absorbedNext = !0, d++), n.push(i);
+      g.needsNext && u.value === void 0 && d < e.length && !dist_r(e[d]) && (u.value = String(e[d]), u.absorbedNext = !0, d++), n.push(u);
     }
-    r = d;
+    l = d;
   }
-  return { flags: n, positionals: a, pathspecs: s };
+  return { flags: n, positionals: s, pathspecs: r };
 }
-function* dist_T({ write: e }) {
+function* dist_V({
+  write: e
+}) {
   for (const t of e)
-    for (const n of $) {
+    for (const n of dist_q) {
       const o = n(t.key);
       o && (yield o);
     }
 }
-function g(e, t, n = String(e)) {
-  const o = typeof e == "string" ? new RegExp(`\\s*${e}`, "i") : e;
-  return function(s) {
-    if (o.test(s))
+function dist_c(e, t, n = String(e)) {
+  const o = typeof e == "string" ? new RegExp(`\\s*${e.toLowerCase()}`) : e;
+  return function(r) {
+    if (o.test(r))
       return {
         category: t,
         message: `Configuring ${n} is not permitted without enabling ${t}`
       };
   };
 }
-const $ = [
-  g(
-    /^\s*protocol(.[a-z]+)?.allow/i,
-    "allowUnsafeProtocolOverride",
-    "protocol.allow"
-  ),
-  g("core.sshCommand", "allowUnsafeSshCommand"),
-  g("core.fsmonitor", "allowUnsafeFsMonitor"),
-  g("core.gitProxy", "allowUnsafeGitProxy"),
-  g("core.hooksPath", "allowUnsafeHooksPath"),
-  g("diff.external", "allowUnsafeDiffExternal")
-];
-function* dist_j(e, t) {
-  for (const n of t)
-    /^--(upload|receive)-pack/.test(n.name) && (yield {
-      category: "allowUnsafePack",
-      message: "Use of --upload-pack or --receive-pack is not permitted without enabling allowUnsafePack"
-    }), e === "clone" && (/^-\w*u/.test(n.name) || n.name === "--u") && (yield {
-      category: "allowUnsafePack",
-      message: "Use of clone with option -u is not permitted without enabling allowUnsafePack"
-    }), e === "push" && /^--exec/.test(n.name) && (yield {
-      category: "allowUnsafePack",
-      message: "Use of push with option --exec is not permitted without enabling allowUnsafePack"
-    });
+function i(e, t) {
+  const n = new RegExp(`\\s*${e.toLowerCase().replace(/\./g, "(..+)?.")}`);
+  return dist_c(n, t, e);
 }
-function dist_B(e, t, n) {
-  const o = [
-    ...dist_j(e, t),
-    ...dist_T(n)
+const dist_q = [
+  dist_c("alias", "allowUnsafeAlias"),
+  dist_c("core.askPass", "allowUnsafeAskPass"),
+  dist_c("core.editor", "allowUnsafeEditor"),
+  dist_c("core.fsmonitor", "allowUnsafeFsMonitor"),
+  dist_c("core.gitProxy", "allowUnsafeGitProxy"),
+  dist_c("core.hooksPath", "allowUnsafeHooksPath"),
+  dist_c("core.pager", "allowUnsafePager"),
+  dist_c("core.sshCommand", "allowUnsafeSshCommand"),
+  i("credential.helper", "allowUnsafeCredentialHelper"),
+  i("diff.command", "allowUnsafeDiffExternal"),
+  dist_c("diff.external", "allowUnsafeDiffExternal"),
+  i("diff.textconv", "allowUnsafeDiffTextConv"),
+  i("filter.clean", "allowUnsafeFilter"),
+  i("filter.smudge", "allowUnsafeFilter"),
+  i("gpg.program", "allowUnsafeGpgProgram"),
+  dist_c("init.templateDir", "allowUnsafeTemplateDir"),
+  i("merge.driver", "allowUnsafeMergeDriver"),
+  i("mergetool.path", "allowUnsafeMergeDriver"),
+  i("mergetool.cmd", "allowUnsafeMergeDriver"),
+  i("protocol.allow", "allowUnsafeProtocolOverride"),
+  i("remote.receivepack", "allowUnsafePack"),
+  i("remote.uploadpack", "allowUnsafePack"),
+  dist_c("sequence.editor", "allowUnsafeEditor")
+];
+function* dist_K(e, t) {
+  for (const n of t)
+    for (const o of dist_H) {
+      const s = o(e, n.name);
+      s && (yield s);
+    }
+}
+function h(e, t, n, o = String(t)) {
+  const s = typeof t == "string" ? new RegExp(`\\s*${t.toLowerCase()}`) : t, r = `Use of ${e ? `${e} with option ` : ""}${o} is not permitted without enabling ${n}`;
+  return function(a, f) {
+    if ((!e || a === e) && s.test(f))
+      return {
+        category: n,
+        message: r
+      };
+  };
+}
+const dist_H = [
+  h(
+    null,
+    /--(upload|receive)-pack/,
+    "allowUnsafePack",
+    "--upload-pack or --receive-pack"
+  ),
+  h("clone", /^-\w*u/, "allowUnsafePack"),
+  h("clone", "--u", "allowUnsafePack"),
+  h("push", "--exec", "allowUnsafePack"),
+  h(null, "--template", "allowUnsafeTemplateDir")
+];
+function dist_C(e, t, n) {
+  return [...dist_K(e, t), ...dist_V(n)];
+}
+function dist_Y(...e) {
+  const { flags: t, taskIndex: n } = dist_j(e), o = n < e.length ? String(e[n]).toLowerCase() : null, s = o !== null ? e.slice(n + 1) : [], { positionals: r, pathspecs: l } = dist_B(s, o, t), a = dist_L(o, t, r);
+  return {
+    task: o,
+    flags: t.map(J),
+    paths: l,
+    config: a,
+    vulnerabilities: z(dist_C(o, t, a))
+  };
+}
+function z(e) {
+  return Object.defineProperty(e, "vulnerabilities", {
+    value: e
+  });
+}
+function J({ value: e, name: t }) {
+  return e !== void 0 ? { name: t, value: e } : { name: t };
+}
+const y = {
+  editor: "allowUnsafeEditor",
+  git_askpass: "allowUnsafeAskPass",
+  git_config_global: "allowUnsafeConfigPaths",
+  git_config_system: "allowUnsafeConfigPaths",
+  git_config_count: "allowUnsafeConfigEnvCount",
+  git_config: "allowUnsafeConfigPaths",
+  git_editor: "allowUnsafeEditor",
+  git_exec_path: "allowUnsafeConfigPaths",
+  git_external_diff: "allowUnsafeDiffExternal",
+  git_pager: "allowUnsafePager",
+  git_proxy_command: "allowUnsafeGitProxy",
+  git_template_dir: "allowUnsafeTemplateDir",
+  git_sequence_editor: "allowUnsafeEditor",
+  git_ssh: "allowUnsafeSshCommand",
+  git_ssh_command: "allowUnsafeSshCommand",
+  pager: "allowUnsafePager",
+  prefix: "allowUnsafeConfigPaths",
+  ssh_askpass: "allowUnsafeAskPass"
+};
+function* dist_Q(e) {
+  const t = parseInt(e.git_config_count ?? "0", 10);
+  for (let n = 0; n < t; n++) {
+    const o = e[`git_config_key_${n}`], s = e[`git_config_value_${n}`];
+    o !== void 0 && (yield { key: o.toLowerCase().trim(), value: s, scope: "env" });
+  }
+}
+function* dist_X(e) {
+  for (const t of Object.keys(e))
+    if (dist_(t)) {
+      const n = y[t];
+      yield {
+        category: n,
+        message: `Use of "${t.toUpperCase()}" is not permitted without enabling ${n}`
+      };
+    }
+}
+function dist_(e) {
+  return Object.hasOwn(y, e);
+}
+function Z(e) {
+  const t = {};
+  for (const [n, o] of Object.entries(e)) {
+    const s = n.toLowerCase().trim();
+    (dist_(s) || s.startsWith("git")) && (t[s] = String(o));
+  }
+  return t;
+}
+function ee(e) {
+  const t = Z(e), n = {
+    read: [],
+    write: [...dist_Q(t)]
+  }, o = [
+    ...dist_X(t),
+    ...dist_C(null, [], n)
   ];
   return {
-    categories: o.reduce((s, r) => s.add(r.category), /* @__PURE__ */ new Set()),
+    config: n,
     vulnerabilities: o
   };
 }
-function dist_V(...e) {
-  const { flags: t, taskIndex: n } = dist_W(e), o = n < e.length ? String(e[n]).toLowerCase() : null, a = o !== null ? e.slice(n + 1) : [], { positionals: s, pathspecs: r } = dist_(a, o, t), l = dist_M(o, t, s);
-  return {
-    task: o,
-    flags: t.map(dist_D),
-    paths: r,
-    config: l,
-    vulnerabilities: dist_B(o, t, l)
-  };
-}
-function dist_D({ value: e, name: t }) {
-  return e !== void 0 ? { name: t, value: e } : { name: t };
+function dist_ne(e, t) {
+  return [...dist_Y(...e).vulnerabilities, ...ee(t).vulnerabilities];
 }
 
 //# sourceMappingURL=index.mjs.map
@@ -86218,7 +86317,6 @@ var init_task_configuration_error = __esm({
 });
 
 // src/lib/utils/util.ts
-
 
 function asFunction(source) {
   if (typeof source !== "function") {
@@ -86317,7 +86415,7 @@ function prefixedArray(input, prefix) {
   return output;
 }
 function bufferToString(input) {
-  return (Array.isArray(input) ? external_node_buffer_.Buffer.concat(input) : input).toString("utf-8");
+  return (Array.isArray(input) ? Buffer.concat(input) : input).toString("utf-8");
 }
 function pick(source, properties) {
   const out = {};
@@ -87446,11 +87544,10 @@ var init_git_executor_chain = __esm({
       }
       async attemptRemoteTask(task, logger) {
         const binary = this._plugins.exec("spawn.binary", "", pluginContext(task, task.commands));
-        const args = this._plugins.exec(
-          "spawn.args",
-          [...task.commands],
-          pluginContext(task, task.commands)
-        );
+        const args = this._plugins.exec("spawn.args", [...task.commands], {
+          ...pluginContext(task, task.commands),
+          env: { ...this.env }
+        });
         const raw = await this.gitResponse(
           task,
           binary,
@@ -90395,9 +90492,8 @@ function abortPlugin(signal) {
 function blockUnsafeOperationsPlugin(options = {}) {
   return {
     type: "spawn.args",
-    action(args) {
-      const parsed = dist_V(...args);
-      for (const vulnerability of parsed.vulnerabilities.vulnerabilities) {
+    action(args, { env }) {
+      for (const vulnerability of dist_ne(args, env)) {
         if (options[vulnerability.category] !== true) {
           throw new GitPluginError(void 0, "unsafe", vulnerability.message);
         }
@@ -95649,7 +95745,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:dbd53f698694e006156b178a460b8dc4eb97bb6ec531884bf8a9a8b1370fc95039690f51e712f93cc1a9a0e7f54b07eba579f45e959bb35e34a89ac0311cad4e!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:ad3e49ea6a20f5072511cafd2dc6348b0ab91b0d0f41803388c4b13fb9a48eec8e9f8ace175901522fc1cb2ac83e369e0c738fec72acf1cc26c26ae28ae28a1f!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
