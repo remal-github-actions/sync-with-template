@@ -46,13 +46,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@actions/glob@npm:0.6.1":
-  version: 0.6.1
-  resolution: "@actions/glob@npm:0.6.1"
+"@actions/glob@npm:0.7.0":
+  version: 0.7.0
+  resolution: "@actions/glob@npm:0.7.0"
   dependencies:
     "@actions/core": "npm:^3.0.0"
-    minimatch: "npm:^3.0.4"
-  checksum: 10c0/754832b67bb269be42a450bcdd50a214f9b77dc69f1e62934433537ae7571bea2ab41a80530dce3d9d0b24eae6fa32a37edcc2fff0bdb44199643026ba3c7fd6
+    minimatch: "npm:^10.2.5"
+  checksum: 10c0/9280903868718c33c42761345ebc01218e3d0ad0db6446814111e5e3e77302c81a4a66f45b8334e26cee5d2951e936885584bc4450bc00abba94c99f22134a2b
   languageName: node
   linkType: hard
 
@@ -3235,6 +3235,15 @@ __metadata:
   dependencies:
     balanced-match: "npm:^4.0.2"
   checksum: 10c0/60c765e5df6fc0ceca3d5703202ae6779db61f28ea3bf93a04dbf0d50c22ef8e4644e09d0459c827077cd2d09ba8f199a04d92c36419fcf874601a5565013174
+  languageName: node
+  linkType: hard
+
+"brace-expansion@npm:^5.0.5":
+  version: 5.0.5
+  resolution: "brace-expansion@npm:5.0.5"
+  dependencies:
+    balanced-match: "npm:^4.0.2"
+  checksum: 10c0/4d238e14ed4f5cc9c07285550a41cef23121ca08ba99fa9eb5b55b580dcb6bf868b8210aa10526bdc9f8dc97f33ca2a7259039c4cc131a93042beddb424c48e3
   languageName: node
   linkType: hard
 
@@ -7336,6 +7345,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"minimatch@npm:^10.2.5":
+  version: 10.2.5
+  resolution: "minimatch@npm:10.2.5"
+  dependencies:
+    brace-expansion: "npm:^5.0.5"
+  checksum: 10c0/6bb058bd6324104b9ec2f763476a35386d05079c1f5fe4fbf1f324a25237cd4534d6813ecd71f48208f4e635c1221899bef94c3c89f7df55698fe373aaae20fd
+  languageName: node
+  linkType: hard
+
 "minimatch@npm:^3.0.4, minimatch@npm:^3.0.5, minimatch@npm:^3.1.1, minimatch@npm:^3.1.2":
   version: 3.1.5
   resolution: "minimatch@npm:3.1.5"
@@ -8945,7 +8963,7 @@ __metadata:
   dependencies:
     "@actions/core": "npm:3.0.0"
     "@actions/github": "npm:7.0.0"
-    "@actions/glob": "npm:0.6.1"
+    "@actions/glob": "npm:0.7.0"
     "@actions/io": "npm:3.0.2"
     "@octokit/openapi-types": "npm:27.0.0"
     "@octokit/plugin-retry": "npm:8.0.3"
