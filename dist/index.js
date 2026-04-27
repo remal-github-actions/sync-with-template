@@ -95745,7 +95745,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:65ea76352b18d93733fc7372092c6f503723904bb5d315208f6b245cf474b968d7e4f7fde0dfb3d2679d99f201122f3041c93742d5d4b216249a7eec007431b5!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:9dd4a9bb9b3b3c6a2d519d804f6954652ad5f962418a7dc7e45a990e36450473ed158f7e5d70210b77da150336cd1e3f86f68c6e669dcafc645927ff3336d99b!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
@@ -95942,8 +95942,7 @@ async function run() {
                     if (transformationScript != null) {
                         info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`);
                         const fileToSyncPath = external_path_.join(workspacePath, fileToSync);
-                        let content = null;
-                        content = external_fs_.readFileSync(fileToSyncPath, 'utf8');
+                        let content = external_fs_.readFileSync(fileToSyncPath, 'utf8');
                         let contentToFileContent = value => (value ?? '').toString();
                         if (transformation.format === 'text') {
                         }
