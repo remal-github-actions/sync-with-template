@@ -38,6 +38,6 @@ inputs:
     description: Set to 'true' to disable Git push
 
 runs:
-  using: node20
+  using: node24
   main: dist/index.js
   #post: dist/index.js
