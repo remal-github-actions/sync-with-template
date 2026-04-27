@@ -1,3 +1,4 @@
+/* eslint-disable jest/valid-title */
 import { processCronTokenPart } from './adjustGitHubActionsCron.js'
 
 describe(processCronTokenPart.name, () => {
@@ -38,3 +39,4 @@ describe(processCronTokenPart.name, () => {
     })
 
 })
+/* eslint-enable jest/valid-title */

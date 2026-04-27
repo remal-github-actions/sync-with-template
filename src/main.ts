@@ -1,28 +1,26 @@
-/* eslint-disable import/no-named-as-default-member */
-
 import * as core from '@actions/core'
-import {context} from '@actions/github'
-import type {components, operations} from '@octokit/openapi-types'
-import {Ajv2020} from 'ajv/dist/2020.js'
+import { context } from '@actions/github'
+import type { components, operations } from '@octokit/openapi-types'
+import { Ajv2020 } from 'ajv/dist/2020.js'
 import * as crypto from 'crypto'
 import * as debug from 'debug'
 import * as fs from 'fs'
-import {PathLike} from 'fs'
+import { PathLike } from 'fs'
 import JSON5 from 'json5'
 import path from 'path'
 import picomatch from 'picomatch'
-import {rimrafSync} from 'rimraf'
-import {simpleGit, SimpleGit} from 'simple-git'
+import { rimrafSync } from 'rimraf'
+import { simpleGit, SimpleGit } from 'simple-git'
 import * as tmp from 'tmp'
-import {URL} from 'url'
+import { URL } from 'url'
 import YAML from 'yaml'
-import {adjustGitHubActionsCron} from './internal/adjustGitHubActionsCron.js'
-import {Config} from './internal/config.js'
-import {evalInScope} from './internal/evalInScope.js'
-import {isTextFile} from './internal/isTextFile.js'
-import {FilesTransformation, LocalTransformations} from './internal/local-transformations.js'
-import {injectModifiableSections, ModifiableSections, parseModifiableSections} from './internal/modifiableSections.js'
-import {newOctokitInstance} from './internal/octokit.js'
+import { adjustGitHubActionsCron } from './internal/adjustGitHubActionsCron.js'
+import { Config } from './internal/config.js'
+import { evalInScope } from './internal/evalInScope.js'
+import { isTextFile } from './internal/isTextFile.js'
+import { FilesTransformation, LocalTransformations } from './internal/local-transformations.js'
+import { injectModifiableSections, ModifiableSections, parseModifiableSections } from './internal/modifiableSections.js'
+import { newOctokitInstance } from './internal/octokit.js'
 import * as schemas from './internal/schemas.no-coverage.js'
 
 export type Repo = components['schemas']['full-repository']
@@ -43,14 +41,14 @@ if (core.isDebug()) {
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-const configFilePath = core.getInput('configFile', {required: true})
-const filesToDeletePath = core.getInput('filesToDeleteFile', {required: false})
-const transformationsFilePath = core.getInput('localTransformationsFile', {required: true})
-const conventionalCommits = core.getInput('conventionalCommits', {required: false})?.toLowerCase() === 'true'
-const dryRun = core.getInput('dryRun', {required: false}).toLowerCase() === 'true'
-const templateRepositoryFullName = core.getInput('templateRepository', {required: false})
+const configFilePath = core.getInput('configFile', { required: true })
+const filesToDeletePath = core.getInput('filesToDeleteFile', { required: false })
+const transformationsFilePath = core.getInput('localTransformationsFile', { required: true })
+const conventionalCommits = core.getInput('conventionalCommits', { required: false })?.toLowerCase() === 'true'
+const dryRun = core.getInput('dryRun', { required: false }).toLowerCase() === 'true'
+const templateRepositoryFullName = core.getInput('templateRepository', { required: false })
 
-const githubToken = core.getInput('githubToken', {required: true})
+const githubToken = core.getInput('githubToken', { required: true })
 core.setSecret(githubToken)
 
 const octokit = newOctokitInstance(githubToken)
@@ -68,7 +66,7 @@ const DEFAULT_GIT_ENV: Record<string, string> = {
 
 async function run(): Promise<void> {
     try {
-        const workspacePath = tmp.dirSync({unsafeCleanup: true}).name
+        const workspacePath = tmp.dirSync({ unsafeCleanup: true }).name
         core.debug(`Workspace path: ${workspacePath}`)
 
         const repo = await octokit.repos.get({
@@ -421,7 +419,7 @@ async function run(): Promise<void> {
                         })
                 }
 
-                fs.mkdirSync(path.dirname(filesToDeletePathFull), {recursive: true})
+                fs.mkdirSync(path.dirname(filesToDeletePathFull), { recursive: true })
                 fs.writeFileSync(
                     filesToDeletePathFull,
                     filesToDelete.toSorted().join('\n') + '\n',
@@ -542,8 +540,7 @@ async function run(): Promise<void> {
                         core.info(`  Executing '${transformation.name}' local transformation for ${fileToSync}`)
                         const fileToSyncPath = path.join(workspacePath, fileToSync)
 
-                        let content: any = null
-                        content = fs.readFileSync(fileToSyncPath, 'utf8')
+                        let content: any = fs.readFileSync(fileToSyncPath, 'utf8')
                         let contentToFileContent: (value: any) => string = value => (value ?? '').toString()
                         if (transformation.format === 'text') {
                             // do nothing
@@ -759,7 +756,7 @@ const predefinedFilesTransformationScripts: Record<string, (content: any) => str
 }
 
 function getSyncBranchName(): string {
-    const name = core.getInput('syncBranchName', {required: true})
+    const name = core.getInput('syncBranchName', { required: true })
     if (!conventionalCommits || name.toLowerCase().startsWith('chore/')) {
         return name
     } else {
@@ -768,7 +765,7 @@ function getSyncBranchName(): string {
 }
 
 function getCommitMessage(templateRepoName: string): string {
-    let message = core.getInput('commitMessage', {required: true})
+    let message = core.getInput('commitMessage', { required: true })
 
     message = message.replaceAll(/<template-repository>/g, templateRepoName)
 
@@ -791,7 +788,7 @@ async function getTemplateRepo(currentRepo: Repo): Promise<Repo | undefined> {
 
     } else {
         const [owner, repo] = templateRepoName.split('/')
-        return octokit.repos.get({owner, repo}).then(it => it.data)
+        return octokit.repos.get({ owner, repo }).then(it => it.data)
     }
 
     return undefined

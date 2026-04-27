@@ -1,3 +1,4 @@
+/* eslint-disable jest/valid-title */
 import { evalInScope } from './evalInScope.js'
 
 describe(evalInScope.name, () => {
@@ -8,3 +9,4 @@ describe(evalInScope.name, () => {
     })
 
 })
+/* eslint-enable jest/valid-title */

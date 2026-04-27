@@ -1,3 +1,4 @@
+/* eslint-disable jest/valid-title */
 import fs from 'fs'
 import * as os from 'node:os'
 import path from 'path'
@@ -66,3 +67,4 @@ describe(isTextFile.name, () => {
     })
 
 })
+/* eslint-enable jest/valid-title */
