@@ -37739,7 +37739,7 @@ class Ajv {
     constructor(opts = {}) {
         this.schemas = {};
         this.refs = {};
-        this.formats = {};
+        this.formats = Object.create(null);
         this._compilations = new Set();
         this._loading = {};
         this._cache = new Map();
@@ -95745,7 +95745,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:ad3e49ea6a20f5072511cafd2dc6348b0ab91b0d0f41803388c4b13fb9a48eec8e9f8ace175901522fc1cb2ac83e369e0c738fec72acf1cc26c26ae28ae28a1f!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:65ea76352b18d93733fc7372092c6f503723904bb5d315208f6b245cf474b968d7e4f7fde0dfb3d2679d99f201122f3041c93742d5d4b216249a7eec007431b5!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
