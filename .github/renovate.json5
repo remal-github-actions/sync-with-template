@@ -21,7 +21,6 @@
   packageRules: [
     {
       matchCategories: ["node"],
-      matchUpdateTypes: ["major"],
       enabled: false,
     },
     {
