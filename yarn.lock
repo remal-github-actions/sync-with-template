@@ -1810,10 +1810,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node24@npm:24.0.0":
-  version: 24.0.0
-  resolution: "@tsconfig/node24@npm:24.0.0"
-  checksum: 10c0/50f93181a84aab782a56a5fed6ca90c6b19ab94b91a33c8921f2b2e6f561d26f13c36af302402e8320d615a325dee5dbf57f5f5d4853d1aee54c6afc542f6131
+"@tsconfig/node24@npm:24.0.4":
+  version: 24.0.4
+  resolution: "@tsconfig/node24@npm:24.0.4"
+  checksum: 10c0/9c5d4173204c6935c45d3ff0584fd423bd7d8bc3f6b246e646320ae584e4226b34ea1c66ec67cd16769c73e7e80f4cc562287b0acaa4ec81aa482463972ff83f
   languageName: node
   linkType: hard
 
@@ -7893,7 +7893,7 @@ __metadata:
     "@octokit/plugin-retry": "npm:8.0.3"
     "@octokit/plugin-throttling": "npm:11.0.3"
     "@octokit/rest": "npm:22.0.1"
-    "@tsconfig/node24": "npm:24.0.0"
+    "@tsconfig/node24": "npm:24.0.4"
     "@types/console-log-level": "npm:1.4.5"
     "@types/jest": "npm:30.0.0"
     "@types/node": "npm:24.12.2"
