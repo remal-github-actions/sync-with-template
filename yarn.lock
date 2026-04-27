@@ -1861,10 +1861,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node20@npm:20.1.9":
-  version: 20.1.9
-  resolution: "@tsconfig/node20@npm:20.1.9"
-  checksum: 10c0/04e4e515dc6ce9386af74accb565884c3771b355208acc3d3dee32f0ce4c1d12e59319e05200fb2b87a8655ed4d8eb9910e36667a91e4683879feea9938d90d1
+"@tsconfig/node24@npm:24.0.0":
+  version: 24.0.0
+  resolution: "@tsconfig/node24@npm:24.0.0"
+  checksum: 10c0/50f93181a84aab782a56a5fed6ca90c6b19ab94b91a33c8921f2b2e6f561d26f13c36af302402e8320d615a325dee5dbf57f5f5d4853d1aee54c6afc542f6131
   languageName: node
   linkType: hard
 
@@ -1995,12 +1995,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:20.19.39":
-  version: 20.19.39
-  resolution: "@types/node@npm:20.19.39"
+"@types/node@npm:24.0.0":
+  version: 24.0.0
+  resolution: "@types/node@npm:24.0.0"
   dependencies:
-    undici-types: "npm:~6.21.0"
-  checksum: 10c0/1d16da7b5f47a7415b827fcf3b94d279febf4c14671afec74a03e47856b5270023d9beb1b9aeab4d3b622fd97d61a60206cfc2cca588663181331bc592468289
+    undici-types: "npm:~7.8.0"
+  checksum: 10c0/075f3129aa88932a0b4c3c9c28486f93a8d295151138b1fdd590cbbb59ec92d59b66201f99a0f061a7c8955a09d06ecc3fa070ed3c438a521a9890d1a3460958
   languageName: node
   linkType: hard
 
@@ -8979,10 +8979,10 @@ __metadata:
     "@octokit/plugin-retry": "npm:8.0.3"
     "@octokit/plugin-throttling": "npm:11.0.3"
     "@octokit/rest": "npm:22.0.1"
-    "@tsconfig/node20": "npm:20.1.9"
+    "@tsconfig/node24": "npm:24.0.0"
     "@types/console-log-level": "npm:1.4.5"
     "@types/jest": "npm:30.0.0"
-    "@types/node": "npm:20.19.39"
+    "@types/node": "npm:24.0.0"
     "@types/picomatch": "npm:4.0.3"
     "@types/semver": "npm:7.7.1"
     "@types/tmp": "npm:0.2.6"
@@ -9507,10 +9507,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:~6.21.0":
-  version: 6.21.0
-  resolution: "undici-types@npm:6.21.0"
-  checksum: 10c0/c01ed51829b10aa72fc3ce64b747f8e74ae9b60eafa19a7b46ef624403508a54c526ffab06a14a26b3120d055e1104d7abe7c9017e83ced038ea5cf52f8d5e04
+"undici-types@npm:~7.8.0":
+  version: 7.8.0
+  resolution: "undici-types@npm:7.8.0"
+  checksum: 10c0/9d9d246d1dc32f318d46116efe3cfca5a72d4f16828febc1918d94e58f6ffcf39c158aa28bf5b4fc52f410446bc7858f35151367bd7a49f21746cab6497b709b
   languageName: node
   linkType: hard
 

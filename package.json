@@ -4,7 +4,7 @@
   "description": "Synchronize repository with template repository",
   "version": "3.0.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "packageManager": "yarn@4.14.1",
   "type": "module",
@@ -39,10 +39,10 @@
   },
   "devDependencies": {
     "@octokit/openapi-types": "27.0.0",
-    "@tsconfig/node20": "20.1.9",
+    "@tsconfig/node24": "24.0.0",
     "@types/console-log-level": "1.4.5",
     "@types/jest": "30.0.0",
-    "@types/node": "20.19.39",
+    "@types/node": "24.0.0",
     "@types/picomatch": "4.0.3",
     "@types/semver": "7.7.1",
     "@types/tmp": "0.2.6",

@@ -9,11 +9,11 @@
   constraintsFiltering: "strict",
   // $$$sync-with-template-modifiable: constraints $$$
   constraints: {
-    node: "^20.9999.9999",
+    node: "^24.9999.9999",
   },
   force: {
     constraints: {
-      node: "^20.9999.9999",
+      node: "^24.9999.9999",
     },
   },
   // $$$sync-with-template-modifiable-end$$$
