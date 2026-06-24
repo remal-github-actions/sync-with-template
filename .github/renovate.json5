@@ -21,6 +21,13 @@
   packageRules: [
     {
       matchCategories: ["node"],
+      matchUpdateTypes: ["major", "replacement"],
+      enabled: false,
+    },
+    {
+      matchManagers: ["asdf"],
+      matchPackageNames: ["node", "nodejs"],
+      matchUpdateTypes: ["major", "replacement"],
       enabled: false,
     },
     {
