@@ -45189,29 +45189,50 @@ __webpack_unused_export__ = defaultContentType
 
 
 
-const { normalizeIPv6, normalizeIPv4, removeDotSegments, recomposeAuthority, normalizeComponentEncoding } = __nccwpck_require__(5077)
-const SCHEMES = __nccwpck_require__(5300)
+const { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, escapePreservingEscapes, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = __nccwpck_require__(5077)
+const { SCHEMES, getSchemeHandler } = __nccwpck_require__(5300)
 
+/**
+ * @template {import('./types/index').URIComponent|string} T
+ * @param {T} uri
+ * @param {import('./types/index').Options} [options]
+ * @returns {T}
+ */
 function normalize (uri, options) {
   if (typeof uri === 'string') {
-    uri = serialize(parse(uri, options), options)
+    uri = /** @type {T} */ (normalizeString(uri, options))
   } else if (typeof uri === 'object') {
-    uri = parse(serialize(uri, options), options)
+    uri = /** @type {T} */ (parse(serialize(uri, options), options))
   }
   return uri
 }
 
+/**
+ * @param {string} baseURI
+ * @param {string} relativeURI
+ * @param {import('./types/index').Options} [options]
+ * @returns {string}
+ */
 function resolve (baseURI, relativeURI, options) {
-  const schemelessOptions = Object.assign({ scheme: 'null' }, options)
-  const resolved = resolveComponents(parse(baseURI, schemelessOptions), parse(relativeURI, schemelessOptions), schemelessOptions, true)
-  return serialize(resolved, { ...schemelessOptions, skipEscape: true })
+  const schemelessOptions = options ? Object.assign({ scheme: 'null' }, options) : { scheme: 'null' }
+  const resolved = resolveComponent(parse(baseURI, schemelessOptions), parse(relativeURI, schemelessOptions), schemelessOptions, true)
+  schemelessOptions.skipEscape = true
+  return serialize(resolved, schemelessOptions)
 }
 
-function resolveComponents (base, relative, options, skipNormalization) {
+/**
+ * @param {import ('./types/index').URIComponent} base
+ * @param {import ('./types/index').URIComponent} relative
+ * @param {import('./types/index').Options} [options]
+ * @param {boolean} [skipNormalization=false]
+ * @returns {import ('./types/index').URIComponent}
+ */
+function resolveComponent (base, relative, options, skipNormalization) {
+  /** @type {import('./types/index').URIComponent} */
   const target = {}
   if (!skipNormalization) {
-    base = parse(serialize(base, options), options) // normalize base components
-    relative = parse(serialize(relative, options), options) // normalize relative components
+    base = parse(serialize(base, options), options) // normalize base component
+    relative = parse(serialize(relative, options), options) // normalize relative component
   }
   options = options || {}
 
@@ -45240,7 +45261,7 @@ function resolveComponents (base, relative, options, skipNormalization) {
           target.query = base.query
         }
       } else {
-        if (relative.path.charAt(0) === '/') {
+        if (relative.path[0] === '/') {
           target.path = removeDotSegments(relative.path)
         } else {
           if ((base.userinfo !== undefined || base.host !== undefined || base.port !== undefined) && !base.path) {
@@ -45267,26 +45288,26 @@ function resolveComponents (base, relative, options, skipNormalization) {
   return target
 }
 
+/**
+ * @param {import ('./types/index').URIComponent|string} uriA
+ * @param {import ('./types/index').URIComponent|string} uriB
+ * @param {import ('./types/index').Options} options
+ * @returns {boolean}
+ */
 function equal (uriA, uriB, options) {
-  if (typeof uriA === 'string') {
-    uriA = unescape(uriA)
-    uriA = serialize(normalizeComponentEncoding(parse(uriA, options), true), { ...options, skipEscape: true })
-  } else if (typeof uriA === 'object') {
-    uriA = serialize(normalizeComponentEncoding(uriA, true), { ...options, skipEscape: true })
-  }
+  const normalizedA = normalizeComparableURI(uriA, options)
+  const normalizedB = normalizeComparableURI(uriB, options)
 
-  if (typeof uriB === 'string') {
-    uriB = unescape(uriB)
-    uriB = serialize(normalizeComponentEncoding(parse(uriB, options), true), { ...options, skipEscape: true })
-  } else if (typeof uriB === 'object') {
-    uriB = serialize(normalizeComponentEncoding(uriB, true), { ...options, skipEscape: true })
-  }
-
-  return uriA.toLowerCase() === uriB.toLowerCase()
+  return normalizedA !== undefined && normalizedB !== undefined && normalizedA.toLowerCase() === normalizedB.toLowerCase()
 }
 
+/**
+ * @param {Readonly<import('./types/index').URIComponent>} cmpts
+ * @param {import('./types/index').Options} [opts]
+ * @returns {string}
+ */
 function serialize (cmpts, opts) {
-  const components = {
+  const component = {
     host: cmpts.host,
     scheme: cmpts.scheme,
     userinfo: cmpts.userinfo,
@@ -45306,29 +45327,28 @@ function serialize (cmpts, opts) {
   const uriTokens = []
 
   // find scheme handler
-  const schemeHandler = SCHEMES[(options.scheme || components.scheme || '').toLowerCase()]
+  const schemeHandler = getSchemeHandler(options.scheme || component.scheme)
 
   // perform scheme specific serialization
-  if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(components, options)
+  if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(component, options)
 
-  if (components.path !== undefined) {
+  if (component.path !== undefined) {
     if (!options.skipEscape) {
-      components.path = escape(components.path)
+      component.path = escapePreservingEscapes(component.path)
 
-      if (components.scheme !== undefined) {
-        components.path = components.path.split('%3A').join(':')
+      if (component.scheme !== undefined) {
+        component.path = component.path.split('%3A').join(':')
       }
     } else {
-      components.path = unescape(components.path)
+      component.path = normalizePercentEncoding(component.path)
     }
   }
 
-  if (options.reference !== 'suffix' && components.scheme) {
-    uriTokens.push(components.scheme)
-    uriTokens.push(':')
+  if (options.reference !== 'suffix' && component.scheme) {
+    uriTokens.push(component.scheme, ':')
   }
 
-  const authority = recomposeAuthority(components, options)
+  const authority = recomposeAuthority(component)
   if (authority !== undefined) {
     if (options.reference !== 'suffix') {
       uriTokens.push('//')
@@ -45336,53 +45356,66 @@ function serialize (cmpts, opts) {
 
     uriTokens.push(authority)
 
-    if (components.path && components.path.charAt(0) !== '/') {
+    if (component.path && component.path[0] !== '/') {
       uriTokens.push('/')
     }
   }
-  if (components.path !== undefined) {
-    let s = components.path
+  if (component.path !== undefined) {
+    let s = component.path
 
     if (!options.absolutePath && (!schemeHandler || !schemeHandler.absolutePath)) {
       s = removeDotSegments(s)
     }
 
-    if (authority === undefined) {
-      s = s.replace(/^\/\//u, '/%2F') // don't allow the path to start with "//"
+    if (
+      authority === undefined &&
+      s[0] === '/' &&
+      s[1] === '/'
+    ) {
+      // don't allow the path to start with "//"
+      s = '/%2F' + s.slice(2)
     }
 
     uriTokens.push(s)
   }
 
-  if (components.query !== undefined) {
-    uriTokens.push('?')
-    uriTokens.push(components.query)
+  if (component.query !== undefined) {
+    uriTokens.push('?', component.query)
   }
 
-  if (components.fragment !== undefined) {
-    uriTokens.push('#')
-    uriTokens.push(components.fragment)
+  if (component.fragment !== undefined) {
+    uriTokens.push('#', component.fragment)
   }
   return uriTokens.join('')
 }
 
-const hexLookUp = Array.from({ length: 127 }, (v, k) => /[^!"$&'()*+,\-.;=_`a-z{}~]/u.test(String.fromCharCode(k)))
-
-function nonSimpleDomain (value) {
-  let code = 0
-  for (let i = 0, len = value.length; i < len; ++i) {
-    code = value.charCodeAt(i)
-    if (code > 126 || hexLookUp[code]) {
-      return true
-    }
-  }
-  return false
-}
-
 const URI_PARSE = /^(?:([^#/:?]+):)?(?:\/\/((?:([^#/?@]*)@)?(\[[^#/?\]]+\]|[^#/:?]*)(?::(\d*))?))?([^#?]*)(?:\?([^#]*))?(?:#((?:.|[\n\r])*))?/u
 
-function parse (uri, opts) {
+/**
+ * @param {import('./types/index').URIComponent} parsed
+ * @param {RegExpMatchArray} matches
+ * @returns {string|undefined}
+ */
+function getParseError (parsed, matches) {
+  if (matches[2] !== undefined && parsed.path && parsed.path[0] !== '/') {
+    return 'URI path must start with "/" when authority is present.'
+  }
+
+  if (typeof parsed.port === 'number' && (parsed.port < 0 || parsed.port > 65535)) {
+    return 'URI port is malformed.'
+  }
+
+  return undefined
+}
+
+/**
+ * @param {string} uri
+ * @param {import('./types/index').Options} [opts]
+ * @returns {{ parsed: import('./types/index').URIComponent, malformedAuthorityOrPort: boolean }}
+ */
+function parseWithStatus (uri, opts) {
   const options = Object.assign({}, opts)
+  /** @type {import('./types/index').URIComponent} */
   const parsed = {
     scheme: undefined,
     userinfo: undefined,
@@ -45392,9 +45425,17 @@ function parse (uri, opts) {
     query: undefined,
     fragment: undefined
   }
-  const gotEncoding = uri.indexOf('%') !== -1
+
+  let malformedAuthorityOrPort = false
+
   let isIP = false
-  if (options.reference === 'suffix') uri = (options.scheme ? options.scheme + ':' : '') + '//' + uri
+  if (options.reference === 'suffix') {
+    if (options.scheme) {
+      uri = options.scheme + ':' + uri
+    } else {
+      uri = '//' + uri
+    }
+  }
 
   const matches = uri.match(URI_PARSE)
 
@@ -45412,18 +45453,24 @@ function parse (uri, opts) {
     if (isNaN(parsed.port)) {
       parsed.port = matches[5]
     }
+
+    const parseError = getParseError(parsed, matches)
+    if (parseError !== undefined) {
+      parsed.error = parsed.error || parseError
+      malformedAuthorityOrPort = true
+    }
+
     if (parsed.host) {
-      const ipv4result = normalizeIPv4(parsed.host)
-      if (ipv4result.isIPV4 === false) {
-        const ipv6result = normalizeIPv6(ipv4result.host, { isIPV4: false })
+      const ipv4result = isIPv4(parsed.host)
+      if (ipv4result === false) {
+        const ipv6result = normalizeIPv6(parsed.host)
         parsed.host = ipv6result.host.toLowerCase()
         isIP = ipv6result.isIPV6
       } else {
-        parsed.host = ipv4result.host
         isIP = true
       }
     }
-    if (parsed.scheme === undefined && parsed.userinfo === undefined && parsed.host === undefined && parsed.port === undefined && !parsed.path && parsed.query === undefined) {
+    if (parsed.scheme === undefined && parsed.userinfo === undefined && parsed.host === undefined && parsed.port === undefined && parsed.query === undefined && !parsed.path) {
       parsed.reference = 'same-document'
     } else if (parsed.scheme === undefined) {
       parsed.reference = 'relative'
@@ -45439,7 +45486,7 @@ function parse (uri, opts) {
     }
 
     // find scheme handler
-    const schemeHandler = SCHEMES[(options.scheme || parsed.scheme || '').toLowerCase()]
+    const schemeHandler = getSchemeHandler(options.scheme || parsed.scheme)
 
     // check if scheme can't handle IRIs
     if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport)) {
@@ -45456,20 +45503,23 @@ function parse (uri, opts) {
     }
 
     if (!schemeHandler || (schemeHandler && !schemeHandler.skipNormalize)) {
-      if (gotEncoding && parsed.scheme !== undefined) {
-        parsed.scheme = unescape(parsed.scheme)
+      if (uri.indexOf('%') !== -1) {
+        if (parsed.scheme !== undefined) {
+          parsed.scheme = unescape(parsed.scheme)
+        }
+        if (parsed.host !== undefined) {
+          parsed.host = reescapeHostDelimiters(unescape(parsed.host), isIP)
+        }
       }
-      if (gotEncoding && parsed.userinfo !== undefined) {
-        parsed.userinfo = unescape(parsed.userinfo)
+      if (parsed.path) {
+        parsed.path = normalizePathEncoding(parsed.path)
       }
-      if (gotEncoding && parsed.host !== undefined) {
-        parsed.host = unescape(parsed.host)
-      }
-      if (parsed.path !== undefined && parsed.path.length) {
-        parsed.path = escape(unescape(parsed.path))
-      }
-      if (parsed.fragment !== undefined && parsed.fragment.length) {
-        parsed.fragment = encodeURI(decodeURIComponent(parsed.fragment))
+      if (parsed.fragment) {
+        try {
+          parsed.fragment = encodeURI(decodeURIComponent(parsed.fragment))
+        } catch {
+          parsed.error = parsed.error || 'URI malformed'
+        }
       }
     }
 
@@ -45480,14 +45530,61 @@ function parse (uri, opts) {
   } else {
     parsed.error = parsed.error || 'URI can not be parsed.'
   }
-  return parsed
+  return { parsed, malformedAuthorityOrPort }
+}
+
+/**
+ * @param {string} uri
+ * @param {import('./types/index').Options} [opts]
+ * @returns
+ */
+function parse (uri, opts) {
+  return parseWithStatus(uri, opts).parsed
+}
+
+/**
+ * @param {string} uri
+ * @param {import('./types/index').Options} [opts]
+ * @returns {string}
+ */
+function normalizeString (uri, opts) {
+  return normalizeStringWithStatus(uri, opts).normalized
+}
+
+/**
+ * @param {string} uri
+ * @param {import('./types/index').Options} [opts]
+ * @returns {{ normalized: string, malformedAuthorityOrPort: boolean }}
+ */
+function normalizeStringWithStatus (uri, opts) {
+  const { parsed, malformedAuthorityOrPort } = parseWithStatus(uri, opts)
+  return {
+    normalized: malformedAuthorityOrPort ? uri : serialize(parsed, opts),
+    malformedAuthorityOrPort
+  }
+}
+
+/**
+ * @param {import ('./types/index').URIComponent|string} uri
+ * @param {import('./types/index').Options} [opts]
+ * @returns {string|undefined}
+ */
+function normalizeComparableURI (uri, opts) {
+  if (typeof uri === 'string') {
+    const { normalized, malformedAuthorityOrPort } = normalizeStringWithStatus(uri, opts)
+    return malformedAuthorityOrPort ? undefined : normalized
+  }
+
+  if (typeof uri === 'object') {
+    return serialize(uri, opts)
+  }
 }
 
 const fastUri = {
   SCHEMES,
   normalize,
   resolve,
-  resolveComponents,
+  resolveComponent,
   equal,
   serialize,
   parse
@@ -45501,296 +45598,387 @@ module.exports.fastUri = fastUri
 /***/ }),
 
 /***/ 5300:
-/***/ ((module) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
-const UUID_REG = /^[\da-f]{8}\b-[\da-f]{4}\b-[\da-f]{4}\b-[\da-f]{4}\b-[\da-f]{12}$/iu
+const { isUUID } = __nccwpck_require__(5077)
 const URN_REG = /([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-.:;=@]|%[\da-f]{2})+)/iu
 
-function isSecure (wsComponents) {
-  return typeof wsComponents.secure === 'boolean' ? wsComponents.secure : String(wsComponents.scheme).toLowerCase() === 'wss'
+const supportedSchemeNames = /** @type {const} */ (['http', 'https', 'ws',
+  'wss', 'urn', 'urn:uuid'])
+
+/** @typedef {supportedSchemeNames[number]} SchemeName */
+
+/**
+ * @param {string} name
+ * @returns {name is SchemeName}
+ */
+function isValidSchemeName (name) {
+  return supportedSchemeNames.indexOf(/** @type {*} */ (name)) !== -1
 }
 
-function httpParse (components) {
-  if (!components.host) {
-    components.error = components.error || 'HTTP URIs must have a host.'
+/**
+ * @callback SchemeFn
+ * @param {import('../types/index').URIComponent} component
+ * @param {import('../types/index').Options} options
+ * @returns {import('../types/index').URIComponent}
+ */
+
+/**
+ * @typedef {Object} SchemeHandler
+ * @property {SchemeName} scheme - The scheme name.
+ * @property {boolean} [domainHost] - Indicates if the scheme supports domain hosts.
+ * @property {SchemeFn} parse - Function to parse the URI component for this scheme.
+ * @property {SchemeFn} serialize - Function to serialize the URI component for this scheme.
+ * @property {boolean} [skipNormalize] - Indicates if normalization should be skipped for this scheme.
+ * @property {boolean} [absolutePath] - Indicates if the scheme uses absolute paths.
+ * @property {boolean} [unicodeSupport] - Indicates if the scheme supports Unicode.
+ */
+
+/**
+ * @param {import('../types/index').URIComponent} wsComponent
+ * @returns {boolean}
+ */
+function wsIsSecure (wsComponent) {
+  if (wsComponent.secure === true) {
+    return true
+  } else if (wsComponent.secure === false) {
+    return false
+  } else if (wsComponent.scheme) {
+    return (
+      wsComponent.scheme.length === 3 &&
+      (wsComponent.scheme[0] === 'w' || wsComponent.scheme[0] === 'W') &&
+      (wsComponent.scheme[1] === 's' || wsComponent.scheme[1] === 'S') &&
+      (wsComponent.scheme[2] === 's' || wsComponent.scheme[2] === 'S')
+    )
+  } else {
+    return false
+  }
+}
+
+/** @type {SchemeFn} */
+function httpParse (component) {
+  if (!component.host) {
+    component.error = component.error || 'HTTP URIs must have a host.'
   }
 
-  return components
+  return component
 }
 
-function httpSerialize (components) {
-  const secure = String(components.scheme).toLowerCase() === 'https'
+/** @type {SchemeFn} */
+function httpSerialize (component) {
+  const secure = String(component.scheme).toLowerCase() === 'https'
 
   // normalize the default port
-  if (components.port === (secure ? 443 : 80) || components.port === '') {
-    components.port = undefined
+  if (component.port === (secure ? 443 : 80) || component.port === '') {
+    component.port = undefined
   }
 
   // normalize the empty path
-  if (!components.path) {
-    components.path = '/'
+  if (!component.path) {
+    component.path = '/'
   }
 
   // NOTE: We do not parse query strings for HTTP URIs
   // as WWW Form Url Encoded query strings are part of the HTML4+ spec,
   // and not the HTTP spec.
 
-  return components
+  return component
 }
 
-function wsParse (wsComponents) {
+/** @type {SchemeFn} */
+function wsParse (wsComponent) {
 // indicate if the secure flag is set
-  wsComponents.secure = isSecure(wsComponents)
+  wsComponent.secure = wsIsSecure(wsComponent)
 
   // construct resouce name
-  wsComponents.resourceName = (wsComponents.path || '/') + (wsComponents.query ? '?' + wsComponents.query : '')
-  wsComponents.path = undefined
-  wsComponents.query = undefined
+  wsComponent.resourceName = (wsComponent.path || '/') + (wsComponent.query ? '?' + wsComponent.query : '')
+  wsComponent.path = undefined
+  wsComponent.query = undefined
 
-  return wsComponents
+  return wsComponent
 }
 
-function wsSerialize (wsComponents) {
+/** @type {SchemeFn} */
+function wsSerialize (wsComponent) {
 // normalize the default port
-  if (wsComponents.port === (isSecure(wsComponents) ? 443 : 80) || wsComponents.port === '') {
-    wsComponents.port = undefined
+  if (wsComponent.port === (wsIsSecure(wsComponent) ? 443 : 80) || wsComponent.port === '') {
+    wsComponent.port = undefined
   }
 
   // ensure scheme matches secure flag
-  if (typeof wsComponents.secure === 'boolean') {
-    wsComponents.scheme = (wsComponents.secure ? 'wss' : 'ws')
-    wsComponents.secure = undefined
+  if (typeof wsComponent.secure === 'boolean') {
+    wsComponent.scheme = (wsComponent.secure ? 'wss' : 'ws')
+    wsComponent.secure = undefined
   }
 
   // reconstruct path from resource name
-  if (wsComponents.resourceName) {
-    const [path, query] = wsComponents.resourceName.split('?')
-    wsComponents.path = (path && path !== '/' ? path : undefined)
-    wsComponents.query = query
-    wsComponents.resourceName = undefined
+  if (wsComponent.resourceName) {
+    const [path, query] = wsComponent.resourceName.split('?')
+    wsComponent.path = (path && path !== '/' ? path : undefined)
+    wsComponent.query = query
+    wsComponent.resourceName = undefined
   }
 
   // forbid fragment component
-  wsComponents.fragment = undefined
+  wsComponent.fragment = undefined
 
-  return wsComponents
+  return wsComponent
 }
 
-function urnParse (urnComponents, options) {
-  if (!urnComponents.path) {
-    urnComponents.error = 'URN can not be parsed'
-    return urnComponents
+/** @type {SchemeFn} */
+function urnParse (urnComponent, options) {
+  if (!urnComponent.path) {
+    urnComponent.error = 'URN can not be parsed'
+    return urnComponent
   }
-  const matches = urnComponents.path.match(URN_REG)
+  const matches = urnComponent.path.match(URN_REG)
   if (matches) {
-    const scheme = options.scheme || urnComponents.scheme || 'urn'
-    urnComponents.nid = matches[1].toLowerCase()
-    urnComponents.nss = matches[2]
-    const urnScheme = `${scheme}:${options.nid || urnComponents.nid}`
-    const schemeHandler = SCHEMES[urnScheme]
-    urnComponents.path = undefined
+    const scheme = options.scheme || urnComponent.scheme || 'urn'
+    urnComponent.nid = matches[1].toLowerCase()
+    urnComponent.nss = matches[2]
+    const urnScheme = `${scheme}:${options.nid || urnComponent.nid}`
+    const schemeHandler = getSchemeHandler(urnScheme)
+    urnComponent.path = undefined
 
     if (schemeHandler) {
-      urnComponents = schemeHandler.parse(urnComponents, options)
+      urnComponent = schemeHandler.parse(urnComponent, options)
     }
   } else {
-    urnComponents.error = urnComponents.error || 'URN can not be parsed.'
+    urnComponent.error = urnComponent.error || 'URN can not be parsed.'
   }
 
-  return urnComponents
+  return urnComponent
 }
 
-function urnSerialize (urnComponents, options) {
-  const scheme = options.scheme || urnComponents.scheme || 'urn'
-  const nid = urnComponents.nid.toLowerCase()
+/** @type {SchemeFn} */
+function urnSerialize (urnComponent, options) {
+  if (urnComponent.nid === undefined) {
+    throw new Error('URN without nid cannot be serialized')
+  }
+  const scheme = options.scheme || urnComponent.scheme || 'urn'
+  const nid = urnComponent.nid.toLowerCase()
   const urnScheme = `${scheme}:${options.nid || nid}`
-  const schemeHandler = SCHEMES[urnScheme]
+  const schemeHandler = getSchemeHandler(urnScheme)
 
   if (schemeHandler) {
-    urnComponents = schemeHandler.serialize(urnComponents, options)
+    urnComponent = schemeHandler.serialize(urnComponent, options)
   }
 
-  const uriComponents = urnComponents
-  const nss = urnComponents.nss
-  uriComponents.path = `${nid || options.nid}:${nss}`
+  const uriComponent = urnComponent
+  const nss = urnComponent.nss
+  uriComponent.path = `${nid || options.nid}:${nss}`
 
   options.skipEscape = true
-  return uriComponents
+  return uriComponent
 }
 
-function urnuuidParse (urnComponents, options) {
-  const uuidComponents = urnComponents
-  uuidComponents.uuid = uuidComponents.nss
-  uuidComponents.nss = undefined
+/** @type {SchemeFn} */
+function urnuuidParse (urnComponent, options) {
+  const uuidComponent = urnComponent
+  uuidComponent.uuid = uuidComponent.nss
+  uuidComponent.nss = undefined
 
-  if (!options.tolerant && (!uuidComponents.uuid || !UUID_REG.test(uuidComponents.uuid))) {
-    uuidComponents.error = uuidComponents.error || 'UUID is not valid.'
+  if (!options.tolerant && (!uuidComponent.uuid || !isUUID(uuidComponent.uuid))) {
+    uuidComponent.error = uuidComponent.error || 'UUID is not valid.'
   }
 
-  return uuidComponents
+  return uuidComponent
 }
 
-function urnuuidSerialize (uuidComponents) {
-  const urnComponents = uuidComponents
+/** @type {SchemeFn} */
+function urnuuidSerialize (uuidComponent) {
+  const urnComponent = uuidComponent
   // normalize UUID
-  urnComponents.nss = (uuidComponents.uuid || '').toLowerCase()
-  return urnComponents
+  urnComponent.nss = (uuidComponent.uuid || '').toLowerCase()
+  return urnComponent
 }
 
-const http = {
+const http = /** @type {SchemeHandler} */ ({
   scheme: 'http',
   domainHost: true,
   parse: httpParse,
   serialize: httpSerialize
-}
+})
 
-const https = {
+const https = /** @type {SchemeHandler} */ ({
   scheme: 'https',
   domainHost: http.domainHost,
   parse: httpParse,
   serialize: httpSerialize
-}
+})
 
-const ws = {
+const ws = /** @type {SchemeHandler} */ ({
   scheme: 'ws',
   domainHost: true,
   parse: wsParse,
   serialize: wsSerialize
-}
+})
 
-const wss = {
+const wss = /** @type {SchemeHandler} */ ({
   scheme: 'wss',
   domainHost: ws.domainHost,
   parse: ws.parse,
   serialize: ws.serialize
-}
+})
 
-const urn = {
+const urn = /** @type {SchemeHandler} */ ({
   scheme: 'urn',
   parse: urnParse,
   serialize: urnSerialize,
   skipNormalize: true
-}
+})
 
-const urnuuid = {
+const urnuuid = /** @type {SchemeHandler} */ ({
   scheme: 'urn:uuid',
   parse: urnuuidParse,
   serialize: urnuuidSerialize,
   skipNormalize: true
-}
+})
 
-const SCHEMES = {
+const SCHEMES = /** @type {Record<SchemeName, SchemeHandler>} */ ({
   http,
   https,
   ws,
   wss,
   urn,
   'urn:uuid': urnuuid
-}
+})
 
-module.exports = SCHEMES
+Object.setPrototypeOf(SCHEMES, null)
 
-
-/***/ }),
-
-/***/ 1553:
-/***/ ((module) => {
-
-
-
-const HEX = {
-  0: 0,
-  1: 1,
-  2: 2,
-  3: 3,
-  4: 4,
-  5: 5,
-  6: 6,
-  7: 7,
-  8: 8,
-  9: 9,
-  a: 10,
-  A: 10,
-  b: 11,
-  B: 11,
-  c: 12,
-  C: 12,
-  d: 13,
-  D: 13,
-  e: 14,
-  E: 14,
-  f: 15,
-  F: 15
+/**
+ * @param {string|undefined} scheme
+ * @returns {SchemeHandler|undefined}
+ */
+function getSchemeHandler (scheme) {
+  return (
+    scheme && (
+      SCHEMES[/** @type {SchemeName} */ (scheme)] ||
+      SCHEMES[/** @type {SchemeName} */(scheme.toLowerCase())])
+  ) ||
+    undefined
 }
 
 module.exports = {
-  HEX
+  wsIsSecure,
+  SCHEMES,
+  isValidSchemeName,
+  getSchemeHandler,
 }
 
 
 /***/ }),
 
 /***/ 5077:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+/***/ ((module) => {
 
 
 
-const { HEX } = __nccwpck_require__(1553)
+/** @type {(value: string) => boolean} */
+const isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu)
 
-function normalizeIPv4 (host) {
-  if (findToken(host, '.') < 3) { return { host, isIPV4: false } }
-  const matches = host.match(/^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/u) || []
-  const [address] = matches
-  if (address) {
-    return { host: stripLeadingZeros(address, '.'), isIPV4: true }
-  } else {
-    return { host, isIPV4: false }
-  }
-}
+/** @type {(value: string) => boolean} */
+const isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u)
+
+/** @type {(value: string) => boolean} */
+const isHexPair = RegExp.prototype.test.bind(/^[\da-f]{2}$/iu)
+
+/** @type {(value: string) => boolean} */
+const isUnreserved = RegExp.prototype.test.bind(/^[\da-z\-._~]$/iu)
+
+/** @type {(value: string) => boolean} */
+const isPathCharacter = RegExp.prototype.test.bind(/^[\da-z\-._~!$&'()*+,;=:@/]$/iu)
 
 /**
- * @param {string[]} input
- * @param {boolean} [keepZero=false]
- * @returns {string|undefined}
+ * @param {Array<string>} input
+ * @returns {string}
  */
-function stringArrayToHexStripped (input, keepZero = false) {
+function stringArrayToHexStripped (input) {
   let acc = ''
-  let strip = true
-  for (const c of input) {
-    if (HEX[c] === undefined) return undefined
-    if (c !== '0' && strip === true) strip = false
-    if (!strip) acc += c
+  let code = 0
+  let i = 0
+
+  for (i = 0; i < input.length; i++) {
+    code = input[i].charCodeAt(0)
+    if (code === 48) {
+      continue
+    }
+    if (!((code >= 48 && code <= 57) || (code >= 65 && code <= 70) || (code >= 97 && code <= 102))) {
+      return ''
+    }
+    acc += input[i]
+    break
   }
-  if (keepZero && acc.length === 0) acc = '0'
+
+  for (i += 1; i < input.length; i++) {
+    code = input[i].charCodeAt(0)
+    if (!((code >= 48 && code <= 57) || (code >= 65 && code <= 70) || (code >= 97 && code <= 102))) {
+      return ''
+    }
+    acc += input[i]
+  }
   return acc
 }
 
+/**
+ * @typedef {Object} GetIPV6Result
+ * @property {boolean} error - Indicates if there was an error parsing the IPv6 address.
+ * @property {string} address - The parsed IPv6 address.
+ * @property {string} [zone] - The zone identifier, if present.
+ */
+
+/**
+ * @param {string} value
+ * @returns {boolean}
+ */
+const nonSimpleDomain = RegExp.prototype.test.bind(/[^!"$&'()*+,\-.;=_`a-z{}~]/u)
+
+/**
+ * @param {Array<string>} buffer
+ * @returns {boolean}
+ */
+function consumeIsZone (buffer) {
+  buffer.length = 0
+  return true
+}
+
+/**
+ * @param {Array<string>} buffer
+ * @param {Array<string>} address
+ * @param {GetIPV6Result} output
+ * @returns {boolean}
+ */
+function consumeHextets (buffer, address, output) {
+  if (buffer.length) {
+    const hex = stringArrayToHexStripped(buffer)
+    if (hex !== '') {
+      address.push(hex)
+    } else {
+      output.error = true
+      return false
+    }
+    buffer.length = 0
+  }
+  return true
+}
+
+/**
+ * @param {string} input
+ * @returns {GetIPV6Result}
+ */
 function getIPV6 (input) {
   let tokenCount = 0
   const output = { error: false, address: '', zone: '' }
+  /** @type {Array<string>} */
   const address = []
+  /** @type {Array<string>} */
   const buffer = []
-  let isZone = false
   let endipv6Encountered = false
   let endIpv6 = false
 
-  function consume () {
-    if (buffer.length) {
-      if (isZone === false) {
-        const hex = stringArrayToHexStripped(buffer)
-        if (hex !== undefined) {
-          address.push(hex)
-        } else {
-          output.error = true
-          return false
-        }
-      }
-      buffer.length = 0
-    }
-    return true
-  }
+  let consume = consumeHextets
 
   for (let i = 0; i < input.length; i++) {
     const cursor = input[i]
@@ -45799,29 +45987,28 @@ function getIPV6 (input) {
       if (endipv6Encountered === true) {
         endIpv6 = true
       }
-      if (!consume()) { break }
-      tokenCount++
-      address.push(':')
-      if (tokenCount > 7) {
+      if (!consume(buffer, address, output)) { break }
+      if (++tokenCount > 7) {
         // not valid
         output.error = true
         break
       }
-      if (i - 1 >= 0 && input[i - 1] === ':') {
+      if (i > 0 && input[i - 1] === ':') {
         endipv6Encountered = true
       }
+      address.push(':')
       continue
     } else if (cursor === '%') {
-      if (!consume()) { break }
+      if (!consume(buffer, address, output)) { break }
       // switch to zone detection
-      isZone = true
+      consume = consumeIsZone
     } else {
       buffer.push(cursor)
       continue
     }
   }
   if (buffer.length) {
-    if (isZone) {
+    if (consume === consumeIsZone) {
       output.zone = buffer.join('')
     } else if (endIpv6) {
       address.push(buffer.join(''))
@@ -45833,7 +46020,18 @@ function getIPV6 (input) {
   return output
 }
 
-function normalizeIPv6 (host, opts = {}) {
+/**
+ * @typedef {Object} NormalizeIPv6Result
+ * @property {string} host - The normalized host.
+ * @property {string} [escapedHost] - The escaped host.
+ * @property {boolean} isIPV6 - Indicates if the host is an IPv6 address.
+ */
+
+/**
+ * @param {string} host
+ * @returns {NormalizeIPv6Result}
+ */
+function normalizeIPv6 (host) {
   if (findToken(host, ':') < 2) { return { host, isIPV6: false } }
   const ipv6 = getIPV6(host)
 
@@ -45844,35 +46042,17 @@ function normalizeIPv6 (host, opts = {}) {
       newHost += '%' + ipv6.zone
       escapedHost += '%25' + ipv6.zone
     }
-    return { host: newHost, escapedHost, isIPV6: true }
+    return { host: newHost, isIPV6: true, escapedHost }
   } else {
     return { host, isIPV6: false }
   }
 }
 
-function stripLeadingZeros (str, token) {
-  let out = ''
-  let skip = true
-  const l = str.length
-  for (let i = 0; i < l; i++) {
-    const c = str[i]
-    if (c === '0' && skip) {
-      if ((i + 1 <= l && str[i + 1] === token) || i + 1 === l) {
-        out += c
-        skip = false
-      }
-    } else {
-      if (c === token) {
-        skip = true
-      } else {
-        skip = false
-      }
-      out += c
-    }
-  }
-  return out
-}
-
+/**
+ * @param {string} str
+ * @param {string} token
+ * @returns {number}
+ */
 function findToken (str, token) {
   let ind = 0
   for (let i = 0; i < str.length; i++) {
@@ -45881,99 +46061,259 @@ function findToken (str, token) {
   return ind
 }
 
-const RDS1 = /^\.\.?\//u
-const RDS2 = /^\/\.(?:\/|$)/u
-const RDS3 = /^\/\.\.(?:\/|$)/u
-const RDS5 = /^\/?(?:.|\n)*?(?=\/|$)/u
-
-function removeDotSegments (input) {
+/**
+ * @param {string} path
+ * @returns {string}
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc3986#section-5.2.4
+ */
+function removeDotSegments (path) {
+  let input = path
   const output = []
+  let nextSlash = -1
+  let len = 0
 
-  while (input.length) {
-    if (input.match(RDS1)) {
-      input = input.replace(RDS1, '')
-    } else if (input.match(RDS2)) {
-      input = input.replace(RDS2, '/')
-    } else if (input.match(RDS3)) {
-      input = input.replace(RDS3, '/')
-      output.pop()
-    } else if (input === '.' || input === '..') {
-      input = ''
-    } else {
-      const im = input.match(RDS5)
-      if (im) {
-        const s = im[0]
-        input = input.slice(s.length)
-        output.push(s)
+  // eslint-disable-next-line no-cond-assign
+  while (len = input.length) {
+    if (len === 1) {
+      if (input === '.') {
+        break
+      } else if (input === '/') {
+        output.push('/')
+        break
       } else {
-        throw new Error('Unexpected dot segment condition')
+        output.push(input)
+        break
+      }
+    } else if (len === 2) {
+      if (input[0] === '.') {
+        if (input[1] === '.') {
+          break
+        } else if (input[1] === '/') {
+          input = input.slice(2)
+          continue
+        }
+      } else if (input[0] === '/') {
+        if (input[1] === '.' || input[1] === '/') {
+          output.push('/')
+          break
+        }
+      }
+    } else if (len === 3) {
+      if (input === '/..') {
+        if (output.length !== 0) {
+          output.pop()
+        }
+        output.push('/')
+        break
       }
     }
+    if (input[0] === '.') {
+      if (input[1] === '.') {
+        if (input[2] === '/') {
+          input = input.slice(3)
+          continue
+        }
+      } else if (input[1] === '/') {
+        input = input.slice(2)
+        continue
+      }
+    } else if (input[0] === '/') {
+      if (input[1] === '.') {
+        if (input[2] === '/') {
+          input = input.slice(2)
+          continue
+        } else if (input[2] === '.') {
+          if (input[3] === '/') {
+            input = input.slice(3)
+            if (output.length !== 0) {
+              output.pop()
+            }
+            continue
+          }
+        }
+      }
+    }
+
+    // Rule 2E: Move normal path segment to output
+    if ((nextSlash = input.indexOf('/', 1)) === -1) {
+      output.push(input)
+      break
+    } else {
+      output.push(input.slice(0, nextSlash))
+      input = input.slice(nextSlash)
+    }
   }
+
   return output.join('')
 }
 
-function normalizeComponentEncoding (components, esc) {
-  const func = esc !== true ? escape : unescape
-  if (components.scheme !== undefined) {
-    components.scheme = func(components.scheme)
-  }
-  if (components.userinfo !== undefined) {
-    components.userinfo = func(components.userinfo)
-  }
-  if (components.host !== undefined) {
-    components.host = func(components.host)
-  }
-  if (components.path !== undefined) {
-    components.path = func(components.path)
-  }
-  if (components.query !== undefined) {
-    components.query = func(components.query)
-  }
-  if (components.fragment !== undefined) {
-    components.fragment = func(components.fragment)
-  }
-  return components
+/**
+ * Re-escape RFC 3986 gen-delims that must not appear literally in the host.
+ * After the URI regex parses, these characters cannot be literal in the host
+ * field, so any that appear after decoding came from percent-encoding and
+ * must be restored to prevent authority structure changes.
+ *
+ * @param {string} host
+ * @param {boolean} isIP - true for IPv4/IPv6 hosts (skip colon re-escaping)
+ * @returns {string}
+ */
+const HOST_DELIMS = { '@': '%40', '/': '%2F', '?': '%3F', '#': '%23', ':': '%3A' }
+const HOST_DELIM_RE = /[@/?#:]/g
+const HOST_DELIM_NO_COLON_RE = /[@/?#]/g
+
+function reescapeHostDelimiters (host, isIP) {
+  const re = isIP ? HOST_DELIM_NO_COLON_RE : HOST_DELIM_RE
+  re.lastIndex = 0
+  return host.replace(re, (ch) => HOST_DELIMS[ch])
 }
 
-function recomposeAuthority (components, options) {
+/**
+ * Normalizes percent escapes and optionally decodes only unreserved ASCII bytes.
+ * Reserved delimiters such as `%2F` and `%2E` stay escaped.
+ *
+ * @param {string} input
+ * @param {boolean} [decodeUnreserved=false]
+ * @returns {string}
+ */
+function normalizePercentEncoding (input, decodeUnreserved = false) {
+  if (input.indexOf('%') === -1) {
+    return input
+  }
+
+  let output = ''
+
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === '%' && i + 2 < input.length) {
+      const hex = input.slice(i + 1, i + 3)
+      if (isHexPair(hex)) {
+        const normalizedHex = hex.toUpperCase()
+        const decoded = String.fromCharCode(parseInt(normalizedHex, 16))
+
+        if (decodeUnreserved && isUnreserved(decoded)) {
+          output += decoded
+        } else {
+          output += '%' + normalizedHex
+        }
+
+        i += 2
+        continue
+      }
+    }
+
+    output += input[i]
+  }
+
+  return output
+}
+
+/**
+ * Normalizes path data without turning reserved escapes into live path syntax.
+ * Valid escapes are uppercased, raw unsafe characters are escaped, and only
+ * unreserved bytes that are not `.` are decoded.
+ *
+ * @param {string} input
+ * @returns {string}
+ */
+function normalizePathEncoding (input) {
+  let output = ''
+
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === '%' && i + 2 < input.length) {
+      const hex = input.slice(i + 1, i + 3)
+      if (isHexPair(hex)) {
+        const normalizedHex = hex.toUpperCase()
+        const decoded = String.fromCharCode(parseInt(normalizedHex, 16))
+
+        if (decoded !== '.' && isUnreserved(decoded)) {
+          output += decoded
+        } else {
+          output += '%' + normalizedHex
+        }
+
+        i += 2
+        continue
+      }
+    }
+
+    if (isPathCharacter(input[i])) {
+      output += input[i]
+    } else {
+      output += escape(input[i])
+    }
+  }
+
+  return output
+}
+
+/**
+ * Escapes a component while preserving existing valid percent escapes.
+ *
+ * @param {string} input
+ * @returns {string}
+ */
+function escapePreservingEscapes (input) {
+  let output = ''
+
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === '%' && i + 2 < input.length) {
+      const hex = input.slice(i + 1, i + 3)
+      if (isHexPair(hex)) {
+        output += '%' + hex.toUpperCase()
+        i += 2
+        continue
+      }
+    }
+
+    output += escape(input[i])
+  }
+
+  return output
+}
+
+/**
+ * @param {import('../types/index').URIComponent} component
+ * @returns {string|undefined}
+ */
+function recomposeAuthority (component) {
   const uriTokens = []
 
-  if (components.userinfo !== undefined) {
-    uriTokens.push(components.userinfo)
+  if (component.userinfo !== undefined) {
+    uriTokens.push(component.userinfo)
     uriTokens.push('@')
   }
 
-  if (components.host !== undefined) {
-    let host = unescape(components.host)
-    const ipV4res = normalizeIPv4(host)
-
-    if (ipV4res.isIPV4) {
-      host = ipV4res.host
-    } else {
-      const ipV6res = normalizeIPv6(ipV4res.host, { isIPV4: false })
+  if (component.host !== undefined) {
+    let host = unescape(component.host)
+    if (!isIPv4(host)) {
+      const ipV6res = normalizeIPv6(host)
       if (ipV6res.isIPV6 === true) {
         host = `[${ipV6res.escapedHost}]`
       } else {
-        host = components.host
+        host = reescapeHostDelimiters(host, false)
       }
     }
     uriTokens.push(host)
   }
 
-  if (typeof components.port === 'number' || typeof components.port === 'string') {
+  if (typeof component.port === 'number' || typeof component.port === 'string') {
     uriTokens.push(':')
-    uriTokens.push(String(components.port))
+    uriTokens.push(String(component.port))
   }
 
   return uriTokens.length ? uriTokens.join('') : undefined
 };
 
 module.exports = {
+  nonSimpleDomain,
   recomposeAuthority,
-  normalizeComponentEncoding,
+  reescapeHostDelimiters,
+  normalizePercentEncoding,
+  normalizePathEncoding,
+  escapePreservingEscapes,
   removeDotSegments,
-  normalizeIPv4,
+  isIPv4,
+  isUUID,
   normalizeIPv6,
   stringArrayToHexStripped
 }
@@ -68503,7 +68843,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:1b6d281e3cc1a3d5efa58e92c32f17c4471770a12c2b3bf1cfe93803b0d1b516565607e70cff1228aad264160f6634a1f9d618fea1120a69ed25056d23e8df37!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:2e28a0b2526fba9d8d46f66479a0e197541915e4143b263df017fbe419be50b0c42a7028d373047e5cec98a9c5c51675854a99a817681e986233724684fd86a9!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 if (external_fs_.existsSync(fileToSyncFullPath)) {
