@@ -46,6 +46,11 @@ const filesToDeletePath = core.getInput('filesToDeleteFile', { required: false }
 const transformationsFilePath = core.getInput('localTransformationsFile', { required: true })
 const conventionalCommits = core.getInput('conventionalCommits', { required: false })?.toLowerCase() === 'true'
 const dryRun = core.getInput('dryRun', { required: false }).toLowerCase() === 'true'
+const duplicatePrDetection = core.getInput('duplicatePrDetection', { required: false })?.toLowerCase() !== 'false'
+const duplicatePrThreshold = parseInt(core.getInput('duplicatePrThreshold', { required: false }))
+if (isNaN(duplicatePrThreshold) || duplicatePrThreshold < 1) {
+    throw new Error('duplicatePrThreshold must be a positive integer')
+}
 const templateRepositoryFullName = core.getInput('templateRepository', { required: false })
 
 const githubToken = core.getInput('githubToken', { required: true })
@@ -56,6 +61,7 @@ const octokit = newOctokitInstance(githubToken)
 const syncBranchName = getSyncBranchName()
 
 const PULL_REQUEST_LABEL = 'sync-with-template'
+const DUPLICATE_PR_CHECK_NAME = 'Duplicate template sync detection'
 const SYNCHRONIZATION_EMAIL_SUFFIX = '+sync-with-template@users.noreply.github.com'
 const DEFAULT_GIT_ENV: Record<string, string> = {
     GIT_TERMINAL_PROMPT: '0',
@@ -778,6 +784,8 @@ async function run(): Promise<void> {
                 } else {
                     core.info(`Pull request for '${syncBranchName}' branch has been synchronized: ${openedPr.html_url}`)
                 }
+
+                await runDuplicatePrDetection(defaultBranchName)
             })
 
         } else {
@@ -803,6 +811,8 @@ async function run(): Promise<void> {
                 })
 
                 core.info(`Pull request for '${syncBranchName}' branch has been created: ${newPullRequest.html_url}`)
+
+                await runDuplicatePrDetection(defaultBranchName)
             }
         }
 
@@ -936,6 +946,125 @@ async function getOpenedPullRequest(): Promise<PullRequestSimple | undefined> {
                 return undefined
             }
         })
+}
+
+async function getClosedPullRequests(limit: number): Promise<PullRequestSimple[]> {
+    return octokit.pulls.list({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        state: 'closed',
+        head: `${context.repo.owner}:${syncBranchName}`,
+        sort: 'created',
+        direction: 'desc',
+        per_page: limit,
+    })
+        .then(it => it.data)
+        .then(prs => prs.filter(pr => pr.head.ref === syncBranchName))
+}
+
+async function getPullRequestDiff(pullNumber: number): Promise<string> {
+    return octokit.pulls.get({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        pull_number: pullNumber,
+        mediaType: {
+            format: 'diff',
+        },
+    }).then(it => it.data as unknown as string)
+}
+
+async function getCurrentDiff(defaultBranchName: string): Promise<string> {
+    return octokit.repos.compareCommits({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        base: defaultBranchName,
+        head: syncBranchName,
+        mediaType: {
+            format: 'diff',
+        },
+    }).then(it => it.data as unknown as string)
+}
+
+function hashDiff(diff: string): string {
+    return crypto.createHash('sha256').update(diff, 'utf8').digest('hex')
+}
+
+async function runDuplicatePrDetection(defaultBranchName: string): Promise<void> {
+    if (!duplicatePrDetection) {
+        return
+    }
+
+    const headSha = await octokit.repos.getBranch({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        branch: syncBranchName,
+    }).then(it => it.data.commit.sha)
+
+    const closedPrs = await getClosedPullRequests(duplicatePrThreshold)
+    if (closedPrs.length < duplicatePrThreshold) {
+        core.info(`Duplicate PR detection: found ${closedPrs.length} closed PRs for '${syncBranchName}' branch,`
+            + ` less than ${duplicatePrThreshold} required`)
+        await cleanupDuplicatePrCheckRun(headSha)
+        return
+    }
+
+    const currentDiffHash = hashDiff(await getCurrentDiff(defaultBranchName))
+
+    let allDiffsMatch = true
+    for (const closedPr of closedPrs) {
+        const closedPrDiffHash = hashDiff(await getPullRequestDiff(closedPr.number))
+        if (closedPrDiffHash !== currentDiffHash) {
+            allDiffsMatch = false
+        }
+    }
+
+    if (allDiffsMatch) {
+        const prNumbers = closedPrs.map(pr => `#${pr.number}`).join(', ')
+        core.warning(`The current diff matches the last ${closedPrs.length} closed PRs (${prNumbers}),`
+            + ` creating a failed '${DUPLICATE_PR_CHECK_NAME}' check run`)
+        await octokit.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: DUPLICATE_PR_CHECK_NAME,
+            head_sha: headSha,
+            status: 'completed',
+            conclusion: 'failure',
+            output: {
+                title: `The same template changes have been rejected ${closedPrs.length} times`,
+                summary: `The current diff matches the last ${closedPrs.length} closed PRs (${prNumbers}).\n`
+                    + `The same template changes have been rejected ${closedPrs.length} times.\n`
+                    + `Set duplicatePrDetection to 'false' to disable this check, or adjust duplicatePrThreshold.`,
+            },
+        })
+    } else {
+        await cleanupDuplicatePrCheckRun(headSha)
+    }
+}
+
+async function cleanupDuplicatePrCheckRun(headSha: string): Promise<void> {
+    const checkRuns = await octokit.checks.listForRef({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        ref: headSha,
+        check_name: DUPLICATE_PR_CHECK_NAME,
+    }).then(it => it.data.check_runs)
+
+    for (const checkRun of checkRuns) {
+        if (checkRun.conclusion === 'failure') {
+            core.info(`Updating previously failed '${DUPLICATE_PR_CHECK_NAME}' check run to 'success'`)
+            await octokit.checks.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                check_run_id: checkRun.id,
+                status: 'completed',
+                conclusion: 'success',
+                output: {
+                    title: 'No duplicate detected',
+                    summary: 'The current diff doesn\'t match the previously closed PRs anymore.',
+                },
+            })
+        }
+    }
 }
 
 async function closePullRequest(

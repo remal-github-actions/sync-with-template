@@ -36,6 +36,14 @@ inputs:
     required: true
     default: 'false'
     description: Set to 'true' to disable Git push
+  duplicatePrDetection:
+    required: false
+    default: 'true'
+    description: Set to 'false' to disable duplicate closed PR detection
+  duplicatePrThreshold:
+    required: false
+    default: '2'
+    description: Number of previous closed PRs with matching diff required to trigger a failed check
 
 runs:
   using: node24
