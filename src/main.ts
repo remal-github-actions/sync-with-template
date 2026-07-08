@@ -287,7 +287,14 @@ async function run(): Promise<void> {
 
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = path.join(workspacePath, fileToSync)
-                if (fs.existsSync(fileToSyncFullPath)) {
+                const fileToSyncStats = fs.lstatSync(fileToSyncFullPath, { throwIfNoEntry: false })
+                if (fileToSyncStats?.isSymbolicLink()) {
+                    const symlinkTarget = fs.readlinkSync(fileToSyncFullPath)
+                    core.info(`${fileToSync} - symlink to '${symlinkTarget}'`)
+                    hashBuilder.update(fileToSync, 'utf8')
+                    hashBuilder.update(`symlink:${symlinkTarget}`, 'utf8')
+                    hashBuilder.update('\n', 'utf8')
+                } else if (fileToSyncStats != null) {
                     core.info(fileToSync)
                     hashBuilder.update(fileToSync, 'utf8')
                     hashBuilder.update(fs.readFileSync(fileToSyncFullPath))
@@ -346,7 +353,7 @@ async function run(): Promise<void> {
                 if (isDeletedByTransformations(fileToSync)) {
                     core.info(`  Deleting by local transformations '${fileToSync}'`)
                     const fileToSyncPath = path.join(workspacePath, fileToSync)
-                    if (fs.existsSync(fileToSyncPath)) {
+                    if (existsIncludingBrokenSymlinks(fileToSyncPath)) {
                         fs.unlinkSync(fileToSyncPath)
                     }
                     continue
@@ -376,7 +383,7 @@ async function run(): Promise<void> {
 
                 if (isDeletedByTransformations(filesToDeletePath)) {
                     core.info(`  Deleting by local transformations '${filesToDeletePath}'`)
-                    if (fs.existsSync(filesToDeletePathFull)) {
+                    if (existsIncludingBrokenSymlinks(filesToDeletePathFull)) {
                         fs.unlinkSync(filesToDeletePathFull)
                     }
                     break
@@ -408,6 +415,22 @@ async function run(): Promise<void> {
                     } catch (_) {
                         // do nothing
                     }
+
+                    const templateFileToDeleteLsTree = await git.raw(
+                        'ls-tree',
+                        `template/${templateRepo.default_branch}`,
+                        '--',
+                        filesToDeletePath,
+                    )
+                    if (templateFileToDeleteLsTree.startsWith('120000 ')) {
+                        throw new Error(
+                            `Files-to-delete file ${filesToDeletePath} is stored as a symlink`
+                            + ` in the template repository.`
+                            + ` Replace the symlink with a regular file in the template repository,`
+                            + ` or add a 'delete: true' local transformation matching '${filesToDeletePath}'.`,
+                        )
+                    }
+
                     templateFileToDeleteContent
                         .split(/[\r\n]+/)
                         .map(line => line.trim())
@@ -417,6 +440,15 @@ async function run(): Promise<void> {
                                 filesToDelete.push(line)
                             }
                         })
+                }
+
+                if (isSymlink(filesToDeletePathFull)) {
+                    const symlinkTarget = fs.readlinkSync(filesToDeletePathFull)
+                    throw new Error(
+                        `Files-to-delete file ${filesToDeletePath} is a symlink to '${symlinkTarget}'.`
+                        + ` Replace the symlink with a regular file,`
+                        + ` or add a 'delete: true' local transformation matching '${filesToDeletePath}'.`,
+                    )
                 }
 
                 fs.mkdirSync(path.dirname(filesToDeletePathFull), { recursive: true })
@@ -443,13 +475,17 @@ async function run(): Promise<void> {
 
                 if (!filesToDelete.length) {
                     core.info(`  No files to delete`)
-                    if (fs.existsSync(filesToDeletePathFull)) {
+                    if (existsIncludingBrokenSymlinks(filesToDeletePathFull)) {
                         fs.unlinkSync(filesToDeletePathFull)
                     }
                 } else {
                     filesToDelete.forEach(fileToDelete => {
                         const fileToDeleteFull = path.join(workspacePath, fileToDelete)
-                        if (fs.existsSync(fileToDeleteFull)) {
+                        const fileToDeleteStats = fs.lstatSync(fileToDeleteFull, { throwIfNoEntry: false })
+                        if (fileToDeleteStats?.isSymbolicLink()) {
+                            core.info(`  Deleting ${fileToDelete}`)
+                            fs.unlinkSync(fileToDeleteFull)
+                        } else if (fileToDeleteStats != null) {
                             core.info(`  Deleting ${fileToDelete}`)
                             rimrafSync(fileToDeleteFull)
                         } else {
@@ -488,6 +524,9 @@ async function run(): Promise<void> {
 
             async function parseModifiableSectionsFor(fileToSync: string): Promise<ModifiableSections | undefined> {
                 const fullFilePath = path.join(workspacePath, fileToSync)
+                if (isSymlink(fullFilePath)) {
+                    return undefined
+                }
                 if (!isTextFile(fullFilePath)) {
                     return undefined
                 }
@@ -510,6 +549,23 @@ async function run(): Promise<void> {
                 for (const transformation of transformations) {
                     if (!isTransforming(transformation, fileToSync)) {
                         continue
+                    }
+
+                    const isContentTransformation = transformation.replaceWithFile != null
+                        || transformation.replaceWithText != null
+                        || transformation.script != null
+                    if (isContentTransformation) {
+                        const fileToSyncPath = path.join(workspacePath, fileToSync)
+                        if (isSymlink(fileToSyncPath)) {
+                            const symlinkTarget = fs.readlinkSync(fileToSyncPath)
+                            throw new Error(
+                                `'${transformation.name}' local transformation can't transform ${fileToSync}:`
+                                + ` it's a symlink to '${symlinkTarget}'.`
+                                + ` Add '${fileToSync}' to the transformation's 'excludes',`
+                                + ` add an 'ignore: true' local transformation matching it,`
+                                + ` or remove the symlink from the template repository.`,
+                            )
+                        }
                     }
 
                     let isTransformed = false
@@ -607,6 +663,16 @@ async function run(): Promise<void> {
 
                 core.info(`  Processing modifiable sections: ${Object.keys(modifiableSections).join(', ')}`)
                 const fullFilePath = path.join(workspacePath, fileToSync)
+                if (isSymlink(fullFilePath)) {
+                    const symlinkTarget = fs.readlinkSync(fullFilePath)
+                    throw new Error(
+                        `Can't inject modifiable sections into ${fileToSync}: the template repository stores it`
+                        + ` as a symlink to '${symlinkTarget}'.`
+                        + ` Add '${fileToSync}' to 'modifiable-sections-exclusions' in the config,`
+                        + ` remove the modifiable section markers from the local file,`
+                        + ` or remove the symlink from the template repository.`,
+                    )
+                }
                 const content = fs.readFileSync(fullFilePath, 'utf8')
                 const transformedContent = injectModifiableSections(content, modifiableSections)
                 if (transformedContent !== content) {
@@ -801,6 +867,14 @@ function hasAccessToFile(filePath: PathLike, mode: number): boolean {
     } catch (_) {
         return false
     }
+}
+
+function existsIncludingBrokenSymlinks(filePath: PathLike): boolean {
+    return fs.lstatSync(filePath, { throwIfNoEntry: false }) != null
+}
+
+function isSymlink(filePath: PathLike): boolean {
+    return fs.lstatSync(filePath, { throwIfNoEntry: false })?.isSymbolicLink() === true
 }
 
 type BranchName = string
