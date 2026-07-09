@@ -13011,7 +13011,15 @@ const parseRepeatedExtglob = (pattern, requireEnd = true) => {
   }
 };
 
-const getStarExtglobSequenceOutput = pattern => {
+const buildCharClassStar = chars => {
+  const source = chars.length === 1
+    ? utils.escapeRegex(chars[0])
+    : `[${chars.map(ch => utils.escapeRegex(ch)).join('')}]`;
+
+  return `${source}*`;
+};
+
+const getStarExtglobSequenceChars = pattern => {
   let index = 0;
   const chars = [];
 
@@ -13040,11 +13048,7 @@ const getStarExtglobSequenceOutput = pattern => {
     return;
   }
 
-  const source = chars.length === 1
-    ? utils.escapeRegex(chars[0])
-    : `[${chars.map(ch => utils.escapeRegex(ch)).join('')}]`;
-
-  return `${source}*`;
+  return chars;
 };
 
 const repeatedExtglobRecursion = pattern => {
@@ -13083,15 +13087,41 @@ const analyzeRepeatedExtglob = (body, options) => {
     }
   }
 
+  // A repeated extglob is "risky" (prone to catastrophic backtracking) when a
+  // branch is itself a `*(...)` sequence, since that nests an unbounded quantifier
+  // inside the outer `+(...)`/`*(...)`. When *every* branch reduces to single
+  // characters we can emit one flat, ReDoS-safe character class that preserves the
+  // meaning of ALL branches (e.g. `+(*(a)|*(b))` -> `[ab]*`), rather than dropping
+  // every branch but the first.
+  const safeChars = [];
+  let sawStarSequence = false;
+  let combinable = true;
+
   for (const branch of branches) {
-    const safeOutput = getStarExtglobSequenceOutput(branch);
-    if (safeOutput) {
-      return { risky: true, safeOutput };
+    const chars = getStarExtglobSequenceChars(branch);
+    if (chars) {
+      sawStarSequence = true;
+      safeChars.push(...chars);
+      continue;
     }
+
+    const literal = normalizeSimpleBranch(branch);
+    if (literal && literal.length === 1) {
+      safeChars.push(literal);
+      continue;
+    }
+
+    combinable = false;
 
     if (repeatedExtglobRecursion(branch) > max) {
       return { risky: true };
     }
+  }
+
+  if (sawStarSequence) {
+    return combinable
+      ? { risky: true, safeOutput: buildCharClassStar([...new Set(safeChars)]) }
+      : { risky: true };
   }
 
   return { risky: false };
@@ -14194,6 +14224,18 @@ const isObject = val => val && typeof val === 'object' && !Array.isArray(val);
  * const isMatch = picomatch('*.!(*a)');
  * console.log(isMatch('a.a')); //=> false
  * console.log(isMatch('a.b')); //=> true
+ *
+ * // For environments without `node.js`, `picomatch/posix` provides you a dependency-free matcher, without automatic OS detection.
+ * const picomatch = require('picomatch/posix');
+ * // the same API, defaulting to posix paths
+ * const isMatch = picomatch('a/*');
+ * console.log(isMatch('a\\b')); //=> false
+ * console.log(isMatch('a/b')); //=> true
+ *
+ * // you can still configure the matcher function to accept windows paths
+ * const isMatch = picomatch('a/*', { options: windows });
+ * console.log(isMatch('a\\b')); //=> true
+ * console.log(isMatch('a/b')); //=> true
  * ```
  * @name picomatch
  * @param {String|Array} `globs` One or more glob patterns.
@@ -14331,9 +14373,9 @@ picomatch.test = (input, regex, options, { glob, posix } = {}) => {
  * @api public
  */
 
-picomatch.matchBase = (input, glob, options) => {
+picomatch.matchBase = (input, glob, options, posix = options && options.windows) => {
   const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options);
-  return regex.test(utils.basename(input));
+  return regex.test(utils.basename(input, { windows: posix }));
 };
 
 /**
@@ -68849,7 +68891,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:132719a92f206ee9e2cfd966292b80b0042bb73874d2f25c01f87e80fa9accf2dd916bc7755994afacb248f3b43f80cf84c7482e8e5f1c38100677a0f937cd9d!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:e9df2852304fff5f3b192d2e878daea31f62257f1283b70e6a6bff2be2f0d0dc61cbc5a909e8c88501b2ad46f36ffece213336b6a42b7813818a0a615b4d79f0!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 const fileToSyncStats = external_fs_.lstatSync(fileToSyncFullPath, { throwIfNoEntry: false });
