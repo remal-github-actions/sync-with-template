@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import { getOctokitOptions } from '@actions/github/lib/utils.js'
+import { getOctokitOptions } from '@actions/github/lib/utils'
 import { Octokit as OctokitBaseFactory } from '@octokit/core'
 import { paginateRest } from '@octokit/plugin-paginate-rest'
 import { requestLog } from '@octokit/plugin-request-log'
@@ -28,7 +28,7 @@ export function newOctokitInstance(token: string) {
 
     const retryOptions = {
         retry: {
-            doNotRetry: ['429'],
+            doNotRetry: [429],
         },
     }
 
