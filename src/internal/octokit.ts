@@ -28,7 +28,7 @@ export function newOctokitInstance(token: string) {
 
     const retryOptions = {
         retry: {
-            doNotRetry: ['429'],
+            doNotRetry: [429],
         },
     }
 
