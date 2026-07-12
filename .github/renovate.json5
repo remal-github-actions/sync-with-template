@@ -41,5 +41,9 @@
       matchPackageNames: ["renovate"],
       schedule: ["* 15-23 * * 6"]
     },
+    {
+      matchFileNames: ["dist/package.json"],
+      enabled: false,
+    },
   ],
 }

@@ -1,0 +1,23 @@
+name: Read action's Node.js version
+description: Read the action's Node.js major version from `runs.using` of the repository root `action.yml`
+
+outputs:
+  result:
+    description: Node.js major version
+    value: ${{steps.read-node-version.outputs.result}}
+
+runs:
+  using: composite
+  steps:
+  - name: Read action's Node.js version
+    id: read-node-version
+    shell: bash
+    run: |
+      USING=$( yq '.runs.using' ./action.yml )
+      if ! [[ "$USING" =~ ^node[0-9]+$ ]]; then
+        echo "::error::action.yml: .runs.using doesn't start with 'node': '$USING'"
+        exit 1
+      fi
+      VERSION=${USING:4}
+      echo "Action's Node.js version: $VERSION"
+      echo "result=$VERSION" | tee -a "$GITHUB_OUTPUT"
