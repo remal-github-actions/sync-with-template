@@ -45,7 +45,7 @@ jobs:
 
     - name: Read action's Node.js version
       id: read-node-version
-      uses: ./.github/workflows/actions/read-action-nodejs-version
+      uses: ./.github/actions/read-action-nodejs-version
 
     - name: Setup Node.js ${{steps.read-node-version.outputs.result}}
       uses: actions/setup-node@v6
@@ -60,7 +60,7 @@ jobs:
 
 
     - name: Install dependencies
-      uses: ./.github/workflows/actions/install-dependencies
+      uses: ./.github/actions/install-dependencies
       with:
         nodeVersion: '${{steps.read-node-version.outputs.result}}'
 
