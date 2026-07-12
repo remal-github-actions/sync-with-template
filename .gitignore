@@ -103,4 +103,3 @@ out/
 /build
 /coverage
 /dist/build
-/dist/*.index.js

@@ -45,15 +45,7 @@ jobs:
 
     - name: Read action's Node.js version
       id: read-node-version
-      run: |
-        USING=$( yq '.runs.using' ./action.yml )
-        if ! [[ "$USING" =~ ^node[0-9]+$ ]]; then
-          echo "::error::action.yml: .runs.using doesn't start with 'node': '$USING'"
-          exit 1
-        fi
-        VERSION=${USING:4}
-        echo "Action's Node.js version: $VERSION"
-        echo "result=$VERSION" | tee -a "$GITHUB_OUTPUT"
+      uses: ./.github/workflows/actions/read-action-nodejs-version
 
     - name: Setup Node.js ${{steps.read-node-version.outputs.result}}
       uses: actions/setup-node@v6
@@ -67,55 +59,10 @@ jobs:
         node update-node-version-in-files "$NODE_VERSION"
 
 
-    - name: Get package manager
-      id: package-manager
-      run: |
-        PACKAGE_MANAGER=$( yq -r '.packageManager' ./package.json )
-        PACKAGE_MANAGER=${PACKAGE_MANAGER%%@*}
-        if ! [[ "$PACKAGE_MANAGER" =~ ^[a-z]+$ ]]; then
-          echo "::error::package.json: unsupported .packageManager format: '$PACKAGE_MANAGER'"
-          exit 1
-        fi
-        echo "PACKAGE_MANAGER=$PACKAGE_MANAGER" | tee -a "$GITHUB_ENV"
-        echo "result=$PACKAGE_MANAGER" | tee -a "$GITHUB_OUTPUT"
-        PACKAGE_MANAGER_NAME=${PACKAGE_MANAGER^}
-        echo "name=$PACKAGE_MANAGER_NAME" | tee -a "$GITHUB_OUTPUT"
-
-    - name: Create cache params
-      id: cache-params
-      env:
-        CACHE_KEY: ${{runner.os}}-dependencies-${{steps.read-node-version.outputs.result}}-${{hashFiles('package.json', 'pnpm-*.yml', '.yarnrc.yml', 'yarn.lock' , '.pnp.*', '.yarn/patches/**', '.yarn/plugins/**', '.yarn/releases/**', '.yarn/versions/**')}}
-      run: |
-        echo "key=$CACHE_KEY" | tee -a "$GITHUB_OUTPUT"
-        echo "paths<<EOF" | tee -a "$GITHUB_OUTPUT"
-        echo "node_modules" | tee -a "$GITHUB_OUTPUT"
-        echo ".yarn/cache" | tee -a "$GITHUB_OUTPUT"
-        echo "EOF" | tee -a "$GITHUB_OUTPUT"
-
-    - name: Restore dependencies cache
-      id: restore-dependencies-cache
-      uses: actions/cache/restore@v6
-      with:
-        key: ${{steps.cache-params.outputs.key}}
-        path: ${{steps.cache-params.outputs.paths}}
-
     - name: Install dependencies
-      run: |
-        if [ "$PACKAGE_MANAGER" == "pnpm" ]; then
-          pnpm install --no-frozen-lockfile
-        elif [ "$PACKAGE_MANAGER" == "yarn" ]; then
-          yarn install --no-immutable
-        else
-          echo "::error::Unsupported package manager: $PACKAGE_MANAGER"
-          exit 1
-        fi
-
-    - name: Save dependencies cache
-      if: ${{steps.restore-dependencies-cache.outputs.cache-hit != 'true'}}
-      uses: actions/cache/save@v6
+      uses: ./.github/workflows/actions/install-dependencies
       with:
-        key: ${{steps.cache-params.outputs.key}}
-        path: ${{steps.cache-params.outputs.paths}}
+        nodeVersion: '${{steps.read-node-version.outputs.result}}'
 
 
     - name: Build
