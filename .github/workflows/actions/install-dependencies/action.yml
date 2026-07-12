@@ -49,6 +49,7 @@ runs:
     uses: actions/cache/restore@v6
     with:
       key: ${{steps.cache-params.outputs.key}}
+      restore-keys: ${{runner.os}}-dependencies-${{inputs.nodeVersion}}-
       path: ${{steps.cache-params.outputs.paths}}
 
   - name: Install dependencies
@@ -64,7 +65,7 @@ runs:
       fi
 
   - name: Save dependencies cache
-    if: ${{steps.restore-dependencies-cache.outputs.cache-hit != 'true'}}
+    if: ${{github.ref == 'refs/heads/main'}}
     uses: actions/cache/save@v6
     with:
       key: ${{steps.cache-params.outputs.key}}
