@@ -6,7 +6,7 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "yarn@4.17.0",
+  "packageManager": "yarn@4.17.1",
   "type": "module",
   "scripts": {
     "generate-config": "json2ts config.schema.json > src/internal/config.ts",
