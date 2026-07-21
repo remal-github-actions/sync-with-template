@@ -52,7 +52,7 @@ jobs:
       uses: ./.github/actions/read-action-nodejs-version
 
     - name: Setup Node.js ${{steps.read-node-version.outputs.result}}
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v7
       with:
         node-version: '${{steps.read-node-version.outputs.result}}'
 
