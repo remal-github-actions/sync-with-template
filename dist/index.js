@@ -45154,6 +45154,10 @@ function serialize (cmpts, opts) {
 
 const URI_PARSE = /^(?:([^#/:?]+):)?(?:\/\/((?:([^#/?@]*)@)?(\[[^#/?\]]+\]|[^#/:?]*)(?::(\d*))?))?([^#?]*)(?:\?([^#]*))?(?:#((?:.|[\n\r])*))?/u
 
+// Captures the authority component (between "//" and the next "/", "?" or "#"),
+// with or without a scheme prefix, for the literal-backslash rejection below.
+const AUTHORITY_PREFIX = /^(?:[^#/:?]+:)?\/\/([^/?#]*)/
+
 /**
  * @param {import('./types/index').URIComponent} parsed
  * @param {RegExpMatchArray} matches
@@ -45198,6 +45202,19 @@ function parseWithStatus (uri, opts) {
     } else {
       uri = '//' + uri
     }
+  }
+
+  // A literal backslash (U+005C) is not a valid RFC 3986 URI character and is
+  // not an authority delimiter. Reject it in the authority rather than
+  // rewriting it: normalizing "\" -> "/" (WHATWG error recovery) could silently
+  // change the resource identified by an otherwise-invalid input, and lets "\"
+  // act as a host delimiter here while Node's native URL parses a different
+  // host (SSRF / redirect / origin-allowlist bypass). Percent-encoded %5C is
+  // untouched and remains valid encoded data.
+  const authorityMatch = uri.match(AUTHORITY_PREFIX)
+  if (authorityMatch !== null && authorityMatch[1].indexOf('\\') !== -1) {
+    parsed.error = 'URI authority must not contain a literal backslash.'
+    malformedAuthorityOrPort = true
   }
 
   const matches = uri.match(URI_PARSE)
@@ -45257,7 +45274,7 @@ function parseWithStatus (uri, opts) {
       if (parsed.host && (options.domainHost || (schemeHandler && schemeHandler.domainHost)) && isIP === false && nonSimpleDomain(parsed.host)) {
         // convert Unicode IDN -> ASCII IDN
         try {
-          parsed.host = URL.domainToASCII(parsed.host.toLowerCase())
+          parsed.host = new URL('http://' + parsed.host).hostname
         } catch (e) {
           parsed.error = parsed.error || "Host's domain name can not be converted to ASCII: " + e
         }
@@ -68711,7 +68728,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:876a202d11a8be38f259b09411daf608200fb11eca3866c6e686ab12d9be046d7229405340871023dab24af04735f63fc20312e9c02ca6c8448eb83f951a3d3d!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:e25d1c95e113d8a2aab3b45b6047462b6e6fc21914fc0cc89f41b14aede63c2a9336ab216c440e3703b49f07ffaadd43533831bb3728d2883079d7d8502c5a6c!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 const fileToSyncStats = external_fs_.lstatSync(fileToSyncFullPath, { throwIfNoEntry: false });
