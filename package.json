@@ -46,7 +46,7 @@
     "@types/jest": "30.0.0",
     "@types/node": "24.13.3",
     "@types/picomatch": "4.0.3",
-    "@types/semver": "7.7.1",
+    "@types/semver": "7.8.0",
     "@types/tmp": "0.2.6",
     "@vercel/ncc": "0.44.1",
     "console-log-level": "1.4.1",
