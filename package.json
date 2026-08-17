@@ -65,11 +65,11 @@
     "semver": "7.8.5",
     "ts-jest": "29.4.12",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.66.0"
+    "typescript-eslint": "8.67.0"
   },
   "resolutions": {
     "@octokit/openapi-types": "27.0.0",
     "@octokit/types": "17.0.0",
-    "@typescript-eslint/utils": "8.66.0"
+    "@typescript-eslint/utils": "8.67.0"
   }
 }
