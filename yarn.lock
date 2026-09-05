@@ -1563,12 +1563,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/types@npm:17.0.0":
-  version: 17.0.0
-  resolution: "@octokit/types@npm:17.0.0"
+"@octokit/types@npm:18.0.0":
+  version: 18.0.0
+  resolution: "@octokit/types@npm:18.0.0"
   dependencies:
-    "@octokit/openapi-types": "npm:^28.0.0"
-  checksum: 10c0/fb190b7ef48dcc974c4178a92b62c76a5c820c120607e1812f2c76adeeab5af4c13b645e37a5f54d66b0222b2a58399cb91fa2fd1d375270f77c7987a9cfd231
+    "@octokit/openapi-types": "npm:^29.0.1"
+  checksum: 10c0/d7336d2a4176684820388a6c6cf5bc8249672fad1f81f641c6ac30d2da123c0475fb752d3b16edf7cd3715e8fb01d3765c0e2f7ed724a6fbf7f84a1becd04bb5
   languageName: node
   linkType: hard
 
