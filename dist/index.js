@@ -45422,6 +45422,18 @@ function hasMalformedPercentEncoding (component) {
 }
 
 /**
+ * Whether the host is a bracketed IP literal (RFC 3986 `IP-literal`).
+ * An unterminated `[` is not a literal, so it must still be validated as a
+ * reg-name instead of being waved through as an IP.
+ *
+ * @param {string} host
+ * @returns {boolean}
+ */
+function isIPLiteral (host) {
+  return host[0] === '[' && host[host.length - 1] === ']'
+}
+
+/**
  * @param {RegExpMatchArray} matches
  * @returns {boolean}
  */
@@ -45430,7 +45442,7 @@ function hasMalformedComponentPercentEncoding (matches) {
   // compatibility. Their parsing is intentionally left to normalizeIPv6.
   const host = matches[4]
   return hasMalformedPercentEncoding(matches[3]) ||
-    (host !== undefined && !(host[0] === '[' && host[host.length - 1] === ']') && hasMalformedPercentEncoding(host)) ||
+    (host !== undefined && !isIPLiteral(host) && hasMalformedPercentEncoding(host)) ||
     hasMalformedPercentEncoding(matches[6]) ||
     hasMalformedPercentEncoding(matches[7]) ||
     hasMalformedPercentEncoding(matches[8])
@@ -45448,7 +45460,7 @@ function canonicalizeHost (parsed, options, schemeHandler, isIP) {
     !options.unicodeSupport &&
     (!schemeHandler || !schemeHandler.unicodeSupport) &&
     parsed.host &&
-    parsed.host[0] !== '[' &&
+    !isIPLiteral(parsed.host) &&
     (options.domainHost || (schemeHandler && schemeHandler.domainHost)) &&
     isIP === false &&
     nonSimpleDomain(parsed.host)
@@ -45573,10 +45585,11 @@ function parseWithStatus (uri, opts) {
     if (parsed.host) {
       const ipv4result = isIPv4(parsed.host)
       if (ipv4result === false) {
-        const bracketedIPLiteral = parsed.host[0] === '[' && parsed.host[parsed.host.length - 1] === ']'
+        const bracketedIPLiteral = isIPLiteral(parsed.host)
+        const hasIPLiteralBracket = parsed.host.indexOf('[') !== -1 || parsed.host.indexOf(']') !== -1
         const ipv6result = normalizeIPv6(parsed.host)
         isIP = ipv6result.isIPV6 || ipv6result.isIPVFuture === true
-        malformedIPLiteral = bracketedIPLiteral && ipv6result.error === true
+        malformedIPLiteral = hasIPLiteralBracket && (!bracketedIPLiteral || ipv6result.error === true)
         parsed.host = isIP ? ipv6result.host : ipv6result.host.toLowerCase()
 
         if (malformedIPLiteral) {
@@ -45606,15 +45619,21 @@ function parseWithStatus (uri, opts) {
     const schemeHandler = getSchemeHandler(options.scheme || parsed.scheme)
 
     // convert Unicode IDN -> ASCII IDN when the effective scheme uses domain hosts
-    malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP)
+    if (!malformedIPLiteral) {
+      malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP)
+    }
+
+    if (uri.indexOf('%') !== -1 && parsed.host !== undefined && !malformedIPLiteral) {
+      let host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true)
+      if (!isIP) {
+        // Fold reg-name case after decoding unreserved octets. The second
+        // pass only restores uppercase hex in escapes that remain encoded.
+        host = normalizePercentEncoding(host.toLowerCase())
+      }
+      parsed.host = reescapeHostDelimiters(host, isIP)
+    }
 
     if (!schemeHandler || (schemeHandler && !schemeHandler.skipNormalize)) {
-      if (uri.indexOf('%') !== -1) {
-        if (parsed.host !== undefined && !malformedIPLiteral) {
-          const host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true)
-          parsed.host = reescapeHostDelimiters(host, isIP)
-        }
-      }
       if (parsed.path) {
         parsed.path = normalizePathEncoding(parsed.path)
       }
@@ -46000,6 +46019,9 @@ const isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\d
 
 /** @type {(value: string) => boolean} */
 const isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u)
+
+/** @type {(value: string) => boolean} */
+const isPort = RegExp.prototype.test.bind(/^\d*$/u)
 
 /** @type {(value: string) => boolean} */
 const isHexPair = RegExp.prototype.test.bind(/^[\da-f]{2}$/iu)
@@ -46708,8 +46730,12 @@ function recomposeAuthority (component) {
   }
 
   if (typeof component.port === 'number' || typeof component.port === 'string') {
+    const port = String(component.port)
+    if (!isPort(port)) {
+      throw new TypeError('URI port is malformed.')
+    }
     uriTokens.push(':')
-    uriTokens.push(String(component.port))
+    uriTokens.push(port)
   }
 
   return uriTokens.length ? uriTokens.join('') : undefined
@@ -69421,7 +69447,7 @@ async function run() {
         });
         function hashFilesToSync() {
             const hashBuilder = external_crypto_.createHash('sha512');
-            hashBuilder.update('!!!HASH:d227fe314b7cbee8fd4e4309875d71bb1ff13746c3f144d0a298fea3f7cf70360de485bb00a4c3f362ca852cbe98470ebb7ab326d4d548850d5cc67675e9ead3!!!\n', 'utf8');
+            hashBuilder.update('!!!HASH:e8b13f96b7426b54f0ea5b34492bf32e705a8c4b992af89616d520c3124f4b13a3252763f2c975aacfac1bb56470915dd6e1e193416e6b8c6532c79ec69d89af!!!\n', 'utf8');
             for (const fileToSync of filesToSync) {
                 const fileToSyncFullPath = external_path_.join(workspacePath, fileToSync);
                 const fileToSyncStats = external_fs_.lstatSync(fileToSyncFullPath, { throwIfNoEntry: false });
