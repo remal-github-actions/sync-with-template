@@ -33,6 +33,4 @@ jobs:
         fetch-depth: 1
 
     - name: Run actionlint
-      uses: raven-actions/actionlint@v2
-      with:
-        fail-on-error: true
+      uses: kjanat/actionlint@v1
