@@ -41,7 +41,7 @@
     "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
     "@eslint/js": "10.0.1",
     "@octokit/openapi-types": "29.0.1",
-    "@tsconfig/node24": "24.0.5",
+    "@tsconfig/node24": "24.0.6",
     "@types/console-log-level": "1.4.5",
     "@types/jest": "30.0.0",
     "@types/node": "24.19.2",
